@@ -4,19 +4,10 @@ ensure_authorized_json();
 
 header('Content-Type: application/json; charset=utf-8');
 
-$db_file = realpath(__DIR__ . '/../main.sqlite');
 try {
-    $pdo = new PDO('sqlite:' . $db_file);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Database error']);
-    exit;
-}
-
-try {
+    $pdo = get_database_connection();
     $pdo->exec("CREATE TABLE IF NOT EXISTS PendingSubmission (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         idMap INTEGER,
         idVehicle INTEGER,
         distance INTEGER,
@@ -24,8 +15,12 @@ try {
         playerCountry TEXT,
         submitterIp TEXT,
         status TEXT DEFAULT 'pending',
-        submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )");
+} catch (PDOException $e) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Database error']);
+    exit;
 } catch (Exception $e) {
 }
 
@@ -61,8 +56,9 @@ try {
             $pstmt = $pdo->prepare('SELECT idPlayer FROM Player WHERE namePlayer = :name LIMIT 1');
             $pstmt->execute([':name' => $sub['playerName']]);
             $prow = $pstmt->fetch(PDO::FETCH_ASSOC);
-            if ($prow) $playerId = (int)$prow['idPlayer'];
-            else {
+            if ($prow) {
+                $playerId = (int)$prow['idPlayer'];
+            } else {
                 $row = $pdo->query('SELECT COALESCE(MAX(idPlayer), 0) AS m FROM Player')->fetch(PDO::FETCH_ASSOC);
                 $newId = (int)$row['m'] + 1;
                 $ins = $pdo->prepare('INSERT INTO Player (idPlayer, namePlayer, country) VALUES (:id, :name, :country)');
@@ -71,8 +67,45 @@ try {
             }
         }
 
-        $ins = $pdo->prepare('INSERT INTO WorldRecord (idMap, idVehicle, idPlayer, distance, current) VALUES (:idMap, :idVehicle, :idPlayer, :distance, 1)');
+        $ins = $pdo->prepare('INSERT INTO WorldRecord (idMap, idVehicle, idPlayer, distance, current) VALUES (:idMap, :idVehicle, :idPlayer, :distance, 1) RETURNING idRecord');
         $ins->execute([':idMap' => $sub['idMap'], ':idVehicle' => $sub['idVehicle'], ':idPlayer' => $playerId, ':distance' => $sub['distance']]);
+        $recordRowid = $ins->fetchColumn();
+
+        if (!empty($sub['tuningParts'])) {
+            $tuningPartsStr = trim($sub['tuningParts']);
+            if (!empty($tuningPartsStr)) {
+                $partNames = array_map('trim', explode(',', $tuningPartsStr));
+                $partNames = array_filter($partNames);
+
+                if (count($partNames) >= 3 && count($partNames) <= 4) {
+                    $partIds = [];
+                    foreach ($partNames as $partName) {
+                        $pstmt = $pdo->prepare('SELECT idTuningPart FROM TuningPart WHERE nameTuningPart = :name LIMIT 1');
+                        $pstmt->execute([':name' => $partName]);
+                        $prow = $pstmt->fetch(PDO::FETCH_ASSOC);
+                        if ($prow) {
+                            $partIds[] = (int)$prow['idTuningPart'];
+                        }
+                    }
+
+                    if (count($partIds) === count($partNames)) {
+                        $row = $pdo->query('SELECT COALESCE(MAX(idTuningSetup), 0) AS m FROM TuningSetup')->fetch(PDO::FETCH_ASSOC);
+                        $newSetupId = (int)$row['m'] + 1;
+
+                        $setupStmt = $pdo->prepare('INSERT INTO TuningSetup (idTuningSetup) VALUES (:id)');
+                        $setupStmt->execute([':id' => $newSetupId]);
+
+                        $partStmt = $pdo->prepare('INSERT INTO TuningSetupParts (idTuningSetup, idTuningPart) VALUES (:setupId, :partId)');
+                        foreach ($partIds as $partId) {
+                            $partStmt->execute([':setupId' => $newSetupId, ':partId' => $partId]);
+                        }
+
+                        $updateStmt = $pdo->prepare('UPDATE WorldRecord SET idTuningSetup = :setupId WHERE idRecord = :idRecord');
+                        $updateStmt->execute([':setupId' => $newSetupId, ':idRecord' => $recordRowid]);
+                    }
+                }
+            }
+        }
 
         $upd = $pdo->prepare("UPDATE PendingSubmission SET status = 'approved' WHERE id = :id");
         $upd->execute([':id' => $id]);

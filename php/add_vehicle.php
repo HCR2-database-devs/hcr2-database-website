@@ -2,11 +2,8 @@
 require_once __DIR__ . '/../auth/check_auth.php';
 ensure_authorized_json();
 
-$db_file = __DIR__ . '/../main.sqlite';
-
 try {
-    $db = new PDO("sqlite:" . $db_file);
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $db = get_database_connection();
 } catch (PDOException $e) {
     die(json_encode(array('error' => "Database connection failed: " . $e->getMessage())));
 }
@@ -29,7 +26,6 @@ try {
 
     $vehicleName = trim($vehicleName);
 
-    // Check if vehicle already exists
     $check = $db->prepare('SELECT idVehicle FROM Vehicle WHERE nameVehicle = :name LIMIT 1');
     $check->execute([':name' => $vehicleName]);
     if ($check->fetch()) {
@@ -37,15 +33,48 @@ try {
         exit;
     }
 
-    // Get next vehicle ID
     $row = $db->query('SELECT COALESCE(MAX(idVehicle), 0) AS m FROM Vehicle')->fetch(PDO::FETCH_ASSOC);
     $newId = (int)$row['m'] + 1;
 
-    // Insert new vehicle
     $stmt = $db->prepare('INSERT INTO Vehicle (idVehicle, nameVehicle) VALUES (:idVehicle, :nameVehicle)');
     $stmt->execute([':idVehicle' => $newId, ':nameVehicle' => $vehicleName]);
 
-    echo json_encode(['success' => true, 'idVehicle' => $newId, 'nameVehicle' => $vehicleName]);
+    $iconMessage = '';
+    if (!empty($_FILES['icon']['tmp_name'])) {
+        $iconFile = $_FILES['icon'];
+        $fileName = $iconFile['name'];
+        $mimeType = $iconFile['type'];
+        
+        if (!in_array($mimeType, ['image/svg+xml', 'text/plain']) && !preg_match('/\.svg$/i', $fileName)) {
+            echo json_encode(['error' => 'Only SVG files are allowed for icons.']);
+            exit;
+        }
+        
+        if ($iconFile['size'] > 1048576) {
+            echo json_encode(['error' => 'Icon file must be smaller than 1MB.']);
+            exit;
+        }
+        
+        $fileContent = file_get_contents($iconFile['tmp_name']);
+        if (strpos($fileContent, '<svg') === false) {
+            echo json_encode(['error' => 'File does not appear to be a valid SVG.']);
+            exit;
+        }
+        
+        $iconFilename = strtolower(str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9 ]/', '', $vehicleName))) . '.svg';
+        $iconPath = __DIR__ . '/../img/vehicle_icons/' . $iconFilename;
+        
+        if (!is_dir(__DIR__ . '/../img/vehicle_icons/')) {
+            mkdir(__DIR__ . '/../img/vehicle_icons/', 0755, true);
+        }
+        
+        if (move_uploaded_file($iconFile['tmp_name'], $iconPath)) {
+            $iconMessage = '(icon uploaded: ' . $iconFilename . ')';
+        } else {
+            $iconMessage = '(warning: icon save failed)';
+        }
+    }
+    echo json_encode(['success' => true, 'idVehicle' => $newId, 'nameVehicle' => $vehicleName, 'iconMessage' => $iconMessage]);
 } catch (PDOException $e) {
     echo json_encode(['error' => "Database error: " . $e->getMessage()]);
 }

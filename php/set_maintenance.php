@@ -3,7 +3,6 @@ require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/maintenance_helpers.php';
 header('Content-Type: application/json; charset=utf-8');
 
-// Only allow admin users
 if (!is_request_admin_allowed()) {
     http_response_code(403);
     echo json_encode(['error' => 'Permission denied']);
@@ -17,7 +16,6 @@ $action = $data['action'] ?? $_POST['action'] ?? null;
 $path = maintenance_flag_path();
 try {
     if ($action === 'enable' || $action === 'on' || $action === '1') {
-        // create file
         file_put_contents($path, "1");
         echo json_encode(['success' => true, 'maintenance' => true]);
         exit;
@@ -27,7 +25,6 @@ try {
         echo json_encode(['success' => true, 'maintenance' => false]);
         exit;
     }
-    // toggle if none provided
     if (file_exists($path)) { unlink($path); $m=false; } else { file_put_contents($path, "1"); $m=true; }
     echo json_encode(['success' => true, 'maintenance' => $m]);
 } catch (Exception $e) {

@@ -1,10 +1,7 @@
-/* ================= RESET ================= */
-
 * {
   box-sizing: border-box;
 }
 
-/* === THEME VARIABLES & GLOBAL HELPERS === */
 :root {
   --bg: #f4f4f9;
   --text: #222222;
@@ -20,7 +17,6 @@
   --transition: 220ms ease;
 }
 
-/* utility: visually-hidden for screen-readers */
 .sr-only {
   position: absolute !important;
   height: 1px; width: 1px;
@@ -29,14 +25,12 @@
   white-space: nowrap;
 }
 
-/* sensible focus styles for keyboard users */
 :focus {
   outline: 3px solid rgba(0,123,255,0.14);
   outline-offset: 2px;
   box-shadow: 0 0 0 3px rgba(0,123,255,0.06);
 }
 
-/* Respect users' reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
@@ -60,7 +54,6 @@ button {
   box-sizing: border-box;
 }
 
-/* Improved focus/active styles for form controls */
 input:focus,
 select:focus,
 textarea:focus,
@@ -83,8 +76,6 @@ body {
   flex-direction: column;
 }
 
-/* ================= HEADER ================= */
-
 header {
   width: 100%;
   background: linear-gradient(90deg, var(--brand-1), var(--brand-2));
@@ -92,7 +83,6 @@ header {
   position: relative;
 }
 
-/* Small device note shown at top on small viewports to advise desktop use */
 .device-note {
   text-align: center;
   padding: 6px 10px;
@@ -105,7 +95,6 @@ header {
   .device-note { display: none; }
 }
 
-/* Inner container (centers content) */
 .header-inner {
   max-width: 1200px;
   margin: 0 auto;
@@ -115,7 +104,6 @@ header {
   gap: 16px;
 }
 
-/* Generic centered container utility */
 .container {
   max-width: var(--max-width);
   margin: 0 auto;
@@ -123,10 +111,6 @@ header {
   width: 100%;
 }
 
-
-/* ================= BRANDING ================= */
-
-/* Branding */
 .branding {
   display: flex;
   align-items: center;
@@ -163,8 +147,6 @@ header {
   opacity: 0.9;
 }
 
-/* ================= MOBILE MENU BUTTON ================= */
-
 .mobile-menu-btn {
   display: none;
   margin-left: auto;
@@ -182,13 +164,10 @@ header {
   background: rgba(255,255,255,0.25);
 }
 
-/* ================= NAV / BUTTONS ================= */
-
 .header-right {
   margin-left: auto;
 }
 
-/* Desktop: pin header buttons to the very right and align them to the bottom of the header */
 @media (min-width: 769px) {
   header {
     position: relative;
@@ -203,7 +182,6 @@ header {
     gap: 16px;
   }
 
-  /* Move the buttons outside the centered container to the far right of the viewport */
   .header-right {
     position: absolute;
     right: 16px;
@@ -211,7 +189,6 @@ header {
     margin-left: 0;
   }
 
-  /* ensure the header buttons align to the bottom visually */
   .header-buttons, .discord-btn {
     align-items: center;
   }
@@ -231,7 +208,6 @@ header {
   }
 }
 
-/* Normal buttons */
 .header-buttons button {
   background: var(--card-bg);
   color: var(--brand-2);
@@ -250,7 +226,6 @@ header {
   filter: brightness(0.95);
 }
 
-/* Reusable button utility */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -272,7 +247,6 @@ header {
   }
 }
 
-/* Discord button */
 .discord-btn {
   background: var(--discord) !important;
   color: var(--card-bg) !important;
@@ -293,14 +267,12 @@ header {
 }
 
 @media (min-width: 769px) {
-  /* Desktop: ensure header buttons and discord button don't expand to full width */
   .header-buttons button,
   .header-buttons .discord-btn,
   .discord-btn {
     width: auto;
   }
 
-  /* Make discord button match other buttons size-wise on desktop */
   .discord-btn {
     padding: 5px 8px !important;
     font-size: 11px !important;
@@ -316,22 +288,16 @@ header {
   }
 }
 
-/* ================= AUTH WARNING ================= */
-
 #auth-warning {
   text-align: center;
   font-size: 14px;
 }
-
-/* ================= MAIN ================= */
 
 main {
   flex: 1;
   padding: 20px;
   text-align: center;
 }
-
-/* ================= ABOUT SECTION ================= */
 
 .about-section {
   background: #fff;
@@ -342,8 +308,6 @@ main {
   border-radius: 10px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
-
-/* ================= TABLES (RESPONSIVE) ================= */
 
 .table-wrapper {
   width: 100%;
@@ -397,9 +361,6 @@ tr:hover {
   }
 }
 
-/* ================= MODALS (MOBILE SAFE) ================= */
-
-/* Country flag next to country name in tables */
 .country-cell {
   display: inline-flex;
   align-items: center;
@@ -421,7 +382,7 @@ tr:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px; /* keep some spacing on small viewports */
+  padding: 20px;
   z-index: 9999;
 }
 
@@ -447,7 +408,6 @@ tr:hover {
   cursor: pointer;
 }
 
-/* === Submission modal improvements === */
 .form-container {
   padding: 6px 4px 12px 4px;
 }
@@ -502,7 +462,6 @@ tr:hover {
   margin-left: auto;
   margin-right: auto;
   flex-wrap: wrap;
-  /* ensure buttons don't stretch full width on small screens */
   text-align: center;
 }
 
@@ -563,7 +522,6 @@ tr:hover {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
 }
 
-/* Success / error message styles */
 #public-submit-message {
   margin-top: 10px;
   min-height: 20px;
@@ -571,14 +529,13 @@ tr:hover {
 }
 
 #public-submit-message.success {
-  color: #14632a; /* dark green */
+  color: #14632a; 
 }
 
 #public-submit-message.error {
-  color: #8a1e1e; /* dark red */
+  color: #8a1e1e; 
 }
 
-/* Make modal form layout nicer on larger screens */
 @media (min-width: 600px) {
   .form-container form {
     display: grid;
@@ -587,33 +544,27 @@ tr:hover {
     align-items: start;
   }
 
-  /* make full-width items span both columns */
   .form-container label:nth-of-type(odd),
   .form-container label:nth-of-type(even) {
     font-size: 14px;
   }
 
-  /* target first label-input pair ordering: since HTML uses sequential label+input blocks, make inputs span columns */
   .form-container select,
   .form-container input,
   .form-container textarea {
     grid-column: span 1;
   }
 
-  /* distance, player name, country: make them span full width for readability */
   #public-distance-input,
   #public-player-name,
   #public-player-country {
     grid-column: 1 / -1;
   }
 
-  /* actions to span full width and align right */
   .form-container .actions {
     grid-column: 1 / -1;
   }
 }
-
-/* ================= FOOTER ================= */
 
 #footer {
   margin-top: 40px;
@@ -623,8 +574,6 @@ tr:hover {
   font-size: 14px;
   color: #555;
 }
-
-/* ================= MOBILE ================= */
 
 @media (max-width: 768px) {
 
@@ -640,12 +589,10 @@ tr:hover {
     font-size: 16px;
   }
 
-  /* Show hamburger */
   .mobile-menu-btn {
     display: block;
   }
 
-  /* Mobile dropdown menu */
   #mobile-menu {
     position: absolute;
     top: 100%;
@@ -673,7 +620,6 @@ tr:hover {
     font-size: 15px;
   }
 
-  /* Mobile: ensure discord icon is visible and properly sized */
   .discord-logo {
     display: inline-block;
     width: 20px;
@@ -688,7 +634,6 @@ tr:hover {
   }
 }
 
-/* === FILTER CONTAINER === */
 
 .filter-container {
   display: flex;
@@ -718,7 +663,6 @@ tr:hover {
   }
 }
 
-/* Tablet optimization: 769px - 1024px - stack filters more efficiently */
 @media (min-width: 769px) and (max-width: 1024px) {
   .filter-container {
     flex-wrap: wrap;
@@ -767,8 +711,6 @@ tr:hover {
   }
 }
 
-/* === MULTI-DROPDOWN STYLES === */
-
 .multi-dropdown button {
   padding: 9px 14px !important;
   border-radius: 12px !important;
@@ -794,27 +736,27 @@ tr:hover {
 .dropdown-panel {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   display: flex;
-  flex-direction: column; /* stack items vertically */
-  gap: 6px; /* space between checkbox items to avoid overlap */
+  flex-direction: column; 
+  gap: 6px; 
   align-items: stretch;
-  padding: 8px; /* small padding so items don't touch edges */
-  min-width: 180px; /* avoid extremely narrow panels */
-  max-width: 340px; /* constrain width so adjacent panels don't overlap */
+  padding: 8px; 
+  min-width: 180px; 
+  max-width: 340px; 
   border-radius: 12px;
 }
 
-/* Make each checkbox + label an inline-flex item so the checkbox and its text stay on one line */
+
 .dropdown-panel label {
   display: flex !important;
   align-items: center;
   gap: 8px;
-  white-space: nowrap; /* prevent label text from wrapping to the next line */
+  white-space: nowrap; 
   cursor: pointer;
   font-weight: normal;
   font-size: 13px;
   margin: 0;
   padding: 4px 6px;
-  width: 100%; /* make each label take full panel width so checkbox stays left */
+  width: 100%; 
   box-sizing: border-box;
 }
 
@@ -824,7 +766,6 @@ tr:hover {
   flex-shrink: 0;
 }
 
-/* === DISTANCE FILTER STYLES === */
 .distance-filter {
   display: flex;
   gap: 6px;
@@ -843,7 +784,6 @@ tr:hover {
   transition: border-color var(--transition), box-shadow var(--transition);
 }
 
-/* === PLAYER RECORD FILTER STYLES === */
 .player-record-filter {
   display: flex;
   gap: 6px;
@@ -891,8 +831,6 @@ tr:hover {
   }
 }
 
-/* === STATS BAR CHART FIX === */
-
 .chart-container {
     display: flex;
     flex-direction: column;
@@ -936,12 +874,10 @@ tr:hover {
     padding-right: 8px;
 }
 
-/* Player bars (blue) */
 .players-chart .bar {
   background: linear-gradient(90deg, #60a5fa, #1e3a8a);
 }
 
-/* New: flexible bar wrap and fill for accurate percentage rendering */
 .players-chart .bar-wrap {
   flex: 1 1 auto;
   background: rgba(0,0,0,0.04);
@@ -972,7 +908,6 @@ tr:hover {
   font-weight: 700;
 }
 
-/* Stars (green) chart uses same structure as players */
 .stars-chart .bar-wrap {
   flex: 1 1 auto;
   background: rgba(0,0,0,0.04);
@@ -1011,7 +946,6 @@ tr:hover {
     color: #fff;
 }
 
-/* MOBILE FIX */
 @media (max-width: 600px) {
     .player-name {
         width: 90px;
@@ -1023,14 +957,12 @@ tr:hover {
   .players-chart .bar-wrap { height: 20px; }
 }
 
-/* Ensure Discord PNG/SVG renders as white across breakpoints */
 .discord-logo {
   -webkit-filter: brightness(0) invert(1) !important;
   filter: brightness(0) invert(1) !important;
   object-fit: contain;
 }
 
-/* ================= PIE / COUNTRY LEGEND ================= */
 .pie-container {
   display: flex;
   gap: 18px;
@@ -1074,7 +1006,7 @@ tr:hover {
   border-radius: 3px;
   flex-shrink: 0;
   border: 1px solid rgba(0,0,0,0.08);
-  background: transparent; /* will be set by inline JS */
+  background: transparent;
 }
 
 .legend-label {
@@ -1132,7 +1064,6 @@ tr:hover {
   }
 }
 
-/* ================= STATS SECTION IMPROVEMENTS ================= */
 .stats-section {
   margin: 20px auto;
   padding: 16px;
@@ -1162,7 +1093,6 @@ tr:hover {
   text-align: center;
 }
 
-/* Slightly tighter table styles for stats tables */
 .stats-section table th, .stats-section table td {
   padding: 10px 12px;
   text-wrap: wrap;
@@ -1178,8 +1108,6 @@ tr:hover {
   .stat-box { min-width: 120px; padding: 10px; }
 }
 
-/* ================= VEHICLE HEADER RESPONSIVE FIX ================= */
-/* Inline styles in JS set absolute positioning for the title; override on small screens */
 .vehicle-header {
   position: relative;
   display: flex;
@@ -1225,23 +1153,21 @@ tr:hover {
     width: 92%;
   }
 
-  /* Mobile: ensure tables don't overflow before JS runs */
   .table-wrapper {
     overflow-x: auto;
     max-width: 100% !important;
   }
 
-  /* stronger rules to override inline styles or JS-applied widths */
   .table-wrapper table {
     width: 100% !important;
     max-width: 100% !important;
-    table-layout: fixed !important; /* allow cells to break and respect container width */
-    min-width: 0 !important; /* override any larger intrinsic widths */
+    table-layout: fixed !important; 
+    min-width: 0 !important;
   }
 
   .table-wrapper th,
   .table-wrapper td {
-    white-space: normal !important; /* allow wrapping */
+    white-space: normal !important;
     word-break: break-word !important;
     overflow-wrap: anywhere !important;
   }
@@ -1249,7 +1175,6 @@ tr:hover {
 
 }
 
-/* Ensure tables generated directly inside data/stats containers are responsive on small screens */
 @media (max-width: 768px) {
   #data-container, #stats-container {
     overflow-x: auto;
@@ -1257,7 +1182,6 @@ tr:hover {
     max-width: 100%;
   }
 
-  /* Apply fixed layout and wrapping to any table inside those containers */
   #data-container table,
   #stats-container table,
   main table {
@@ -1279,8 +1203,6 @@ tr:hover {
   }
 }
 
-/* ================= ADMIN TABLE RESPONSIVE STYLES ================= */
-/* Pending submissions and backups tables on mobile */
 
 .admin-pending-table,
 .admin-backups-table {
@@ -1356,7 +1278,6 @@ tr:hover {
   box-shadow: 0 6px 16px rgba(0, 123, 255, 0.24);
 }
 
-/* Desktop: normal table layout (769px and up) */
 @media (min-width: 769px) {
   .admin-pending-table,
   .admin-backups-table {
@@ -1372,7 +1293,6 @@ tr:hover {
   }
 }
 
-/* Tablet optimization (769px - 1024px): Allow some wrapping */
 @media (min-width: 769px) and (max-width: 1024px) {
   .admin-pending-table,
   .admin-backups-table {
@@ -1395,7 +1315,6 @@ tr:hover {
   }
 }
 
-/* Mobile responsive (max 768px): Transform to card-like layout */
 @media (max-width: 768px) {
   .admin-pending-table,
   .admin-backups-table {
@@ -1466,7 +1385,6 @@ tr:hover {
     text-align: left;
   }
 
-  /* Actions row: stack buttons vertically on very small screens */
   .admin-pending-table td[data-label="Actions"],
   .admin-backups-table td[data-label="Actions"] {
     flex-direction: column;
@@ -1505,8 +1423,6 @@ tr:hover {
     color: var(--brand-2);
   }
 }
-
-/* ================= PUBLIC RECORDS TABLE RESPONSIVE ================= */
 
 .public-records-table {
   width: 100%;
@@ -1551,7 +1467,6 @@ tr:hover {
   background: rgba(0, 123, 255, 0.04);
 }
 
-/* Desktop: normal table layout (769px and up) */
 @media (min-width: 769px) {
   .public-records-table {
     min-width: 100%;
@@ -1564,7 +1479,6 @@ tr:hover {
   }
 }
 
-/* Tablet optimization (769px - 1024px): Allow some wrapping */
 @media (min-width: 769px) and (max-width: 1024px) {
   .public-records-table {
     font-size: 13px;
@@ -1577,7 +1491,6 @@ tr:hover {
   }
 }
 
-/* Mobile responsive (max 768px): Transform to card-like layout */
 @media (max-width: 768px) {
   .public-records-table {
     display: block;
@@ -1639,7 +1552,6 @@ tr:hover {
     text-align: left;
   }
 
-  /* Highlight distance (primary metric) */
   .public-records-table td[data-label="Distance"] {
     background: rgba(0, 123, 255, 0.04);
     border-radius: 6px;
@@ -1653,7 +1565,6 @@ tr:hover {
     font-size: 11px;
   }
 
-  /* Country flag handling */
   .public-records-table td[data-label="Country"] {
     padding-left: 100px !important;
   }
@@ -1669,7 +1580,6 @@ tr:hover {
     height: 15px;
   }
 
-  /* Make other fields readable */
   .public-records-table td[data-label="Map"],
   .public-records-table td[data-label="Vehicle"],
   .public-records-table td[data-label="Player"] {
@@ -1677,7 +1587,6 @@ tr:hover {
     color: #333;
   }
 
-  /* Wrap long text on mobile */
   .public-records-table td {
     word-break: break-word;
     overflow-wrap: anywhere;

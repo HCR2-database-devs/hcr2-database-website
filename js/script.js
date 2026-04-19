@@ -2,7 +2,6 @@ let allData = [];
 let currentDataType = ''; 
 let allPlayers = []; 
 
-// Simple in-memory cache for frequently requested JSON data
 window._dataCache = window._dataCache || {};
 function cachedFetchJson(url, ttl = 60000) {
     const key = url;
@@ -17,7 +16,6 @@ function cachedFetchJson(url, ttl = 60000) {
     });
 }
 
-// Smooth show/hide helpers to avoid abrupt flashing
 function showElementWithFade(el) {
     if (!el) return;
     el.style.display = 'block';
@@ -42,7 +40,19 @@ function hideElementWithFade(el) {
     }, 220);
 }
 
-// =============== DARK MODE TOGGLE ===============
+(function ensureDarkTogglePlacement() {
+    try {
+        const btn = document.getElementById('dark-mode-toggle');
+        const menu = document.getElementById('mobile-menu');
+        if (btn && menu && menu.contains(btn)) {
+            menu.parentNode.insertBefore(btn, menu.nextSibling);
+            try { btn.style.pointerEvents = 'auto'; } catch(e){}
+            console.log('Early-moved #dark-mode-toggle out of #mobile-menu');
+        }
+    } catch (e) {
+    }
+})();
+
 function initDarkMode() {
     const savedMode = localStorage.getItem('darkMode');
     if (savedMode === 'true') {
@@ -52,16 +62,32 @@ function initDarkMode() {
 }
 
 function toggleDarkMode() {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    if (isDark) {
-        document.documentElement.removeAttribute('data-theme');
-        localStorage.setItem('darkMode', 'false');
-        updateDarkModeButton(false);
-    } else {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        localStorage.setItem('darkMode', 'true');
-        updateDarkModeButton(true);
+    try {
+        console.log('toggleDarkMode invoked');
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        if (isDark) {
+            document.documentElement.removeAttribute('data-theme');
+            localStorage.setItem('darkMode', 'false');
+            updateDarkModeButton(false);
+            console.log('dark mode disabled');
+        } else {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            localStorage.setItem('darkMode', 'true');
+            updateDarkModeButton(true);
+            console.log('dark mode enabled');
+        }
+    } catch (e) {
+        console.error('toggleDarkMode error', e);
     }
+}
+
+const darkModeBtn = document.getElementById("dark-mode-toggle");
+if (darkModeBtn) {
+    darkModeBtn.addEventListener("click", toggleDarkMode);
+    try { darkModeBtn.style.pointerEvents = 'auto'; } catch(e){}
+    console.log('darkModeBtn bound directly');
+} else {
+    console.log('darkModeBtn not found at bind time');
 }
 
 function updateDarkModeButton(isDark) {
@@ -71,10 +97,27 @@ function updateDarkModeButton(isDark) {
     }
 }
 
-// Initialize dark mode on page load
 document.addEventListener('DOMContentLoaded', initDarkMode);
 
-// =============== NEWS INDICATOR ===============
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        const btn = document.getElementById('dark-mode-toggle');
+        const menu = document.getElementById('mobile-menu');
+        if (btn && menu && menu.contains(btn)) {
+            menu.parentNode.insertBefore(btn, menu.nextSibling);
+            try { btn.style.pointerEvents = 'auto'; } catch(e){}
+            console.log('Moved #dark-mode-toggle out of #mobile-menu to avoid aria-hidden issues');
+        }
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        updateDarkModeButton(isDark);
+        try {
+            btn.removeEventListener && btn.removeEventListener('click', toggleDarkMode);
+            btn.addEventListener && btn.addEventListener('click', toggleDarkMode);
+            console.log('darkModeBtn rebound on DOMContentLoaded');
+        } catch(e) {}
+    } catch (e) { console.error('Failed to relocate dark-mode button', e); }
+});
+
 function updateNewsIndicator() {
     const newsBtn = document.getElementById('news-btn-container');
     if (!newsBtn) return;
@@ -101,10 +144,8 @@ function markNewsAsRead() {
     updateNewsIndicator();
 }
 
-// Initialize news indicator on page load
 document.addEventListener('DOMContentLoaded', updateNewsIndicator);
 
-// =============== LAZY LOAD SVG ICONS ===============
 function lazyLoadImages() {
     const images = document.querySelectorAll('img[data-src]');
     const imageObserver = new IntersectionObserver((entries, observer) => {
@@ -133,7 +174,6 @@ function esc(input) {
         .replace(/'/g, '&#39;');
 }
 
-// Return ISO2 country code (lowercase) for a given country name or code when possible
 function getCountryCode(country) {
     if (!country) return null;
     const c = String(country).trim();
@@ -167,23 +207,40 @@ function getCountryCode(country) {
         'other countries': 'question'
     };
     if (map[norm]) return map[norm];
-    // try extracting last word if value like "Republic of X"
     const last = norm.split(/[,\s]+/).pop();
     if (map[last]) return map[last];
     return null;
 }
 
+function renderTuningParts(partsString) {
+    if (!partsString || typeof partsString !== 'string' || partsString.trim() === '') return '';
+    const parts = partsString.split(',').map(p => p.trim()).filter(p => p);
+    return parts.map(part => {
+        const iconName = part.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_-]/g, '');
+        const svgSrc = `/img/tuning_parts_icons/${iconName}.svg`;
+        const pngSrc = `/img/tuning_parts_icons/${iconName}.png`;
+               return `<img class="tuning-part-icon" src="${svgSrc}" alt="${esc(part)} icon" title="${esc(part)}" onerror="this.onerror=null; this.src='${pngSrc}'; if(!this.complete) this.style.display='none';">`;
+    }).join(' ');
+}
+
+function renderTuningPartWithIcon(partName) {
+    if (!partName || typeof partName !== 'string') return esc(partName || 'Unknown');
+    const name = String(partName).trim().replace(/,/g, '');
+    const iconName = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_-]/g, '');
+    const svgSrc = `/img/tuning_parts_icons/${iconName}.svg`;
+    const pngSrc = `/img/tuning_parts_icons/${iconName}.png`;
+           return `<span class="tuning-part-cell"><img class="tuning-part-icon" src="${svgSrc}" alt="${esc(name)} icon" title="${esc(name)}" onerror="this.onerror=null; this.src='${pngSrc}'; if(!this.complete) this.style.display='none';"> ${esc(name)}</span>`;
+}
+
 function renderCountryWithFlag(country) {
     const code = getCountryCode(country);
     const name = country || '';
-    // Don't render a flag for the grouped "Other countries" bucket
     if (String(name).trim().toLowerCase() === 'other countries') {
         return esc(name);
     }
     if (code) {
-        // Use FlagCDN small PNGs (https://flagcdn.com)
         const src = `https://flagcdn.com/24x18/${code}.png`;
-        return `<span class="country-cell"><img class="country-flag" src="${src}" alt="${esc(name)} flag"> ${esc(name)}</span>`;
+               return `<span class="country-cell"><img class="country-flag" src="${src}" alt="${esc(name)} flag"> ${esc(name)}</span>`;
     }
     return esc(name || 'Unknown');
 }
@@ -191,45 +248,26 @@ function renderCountryWithFlag(country) {
 function renderMapWithIcon(mapName) {
     if (!mapName) return esc(mapName || 'Unknown');
     const name = String(mapName).trim();
-    // Convert map name to potential icon filename (lowercase, replace spaces with underscores)
     const iconName = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_-]/g, '');
     const svgSrc = `/img/map_icons/${iconName}.svg`;
     const pngSrc = `/img/map_icons/${iconName}.png`;
-    // Try SVG first, fall back to PNG on error
-    return `<span class="map-cell"><img class="map-icon" src="${svgSrc}" alt="${esc(name)} icon" onerror="this.src='${pngSrc}'; this.onerror=null; if(!this.complete) this.style.display='none';"> ${esc(name)}</span>`;
+           return `<span class="map-cell"><img class="map-icon" src="${svgSrc}" alt="${esc(name)} icon" onerror="this.src='${pngSrc}'; this.onerror=null; if(!this.complete) this.style.display='none';"> ${esc(name)}</span>`;
 }
 
 function renderVehicleWithIcon(vehicleName) {
     if (!vehicleName) return esc(vehicleName || 'Unknown');
     const name = String(vehicleName).trim();
-    // Convert vehicle name to potential icon filename (lowercase, replace spaces with underscores)
     const iconName = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_-]/g, '');
     const svgSrc = `/img/vehicle_icons/${iconName}.svg`;
     const pngSrc = `/img/vehicle_icons/${iconName}.png`;
-    // Try SVG first, fall back to PNG on error
     return `<span class="vehicle-cell"><img class="vehicle-icon" src="${svgSrc}" alt="${esc(name)} icon" onerror="this.src='${pngSrc}'; this.onerror=null; if(!this.complete) this.style.display='none';"> ${esc(name)}</span>`;
 }
-
-function renderTuningParts(partsString) {
-    if (!partsString || partsString.trim() === '') return '';
-    const parts = partsString.split(', ').map(p => p.trim()).filter(p => p);
-    return parts.map(part => {
-        const iconName = part.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_-]/g, '');
-        const svgSrc = `/img/tuning_parts_icons/${iconName}.svg`;
-        const pngSrc = `/img/tuning_parts_icons/${iconName}.png`;
-        return `<img class="tuning-part-icon" src="${svgSrc}" alt="${esc(part)}" title="${esc(part)}" onerror="this.src='${pngSrc}'; this.onerror=null; if(!this.complete) this.style.display='none';">`;
-    }).join(' ');
-}
-
-function renderTuningPartWithIcon(partName) {
-    if (!partName) return esc(partName || 'Unknown');
-    const name = String(partName).trim();
-    const iconName = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_-]/g, '');
-    const svgSrc = `/img/tuning_parts_icons/${iconName}.svg`;
-    const pngSrc = `/img/tuning_parts_icons/${iconName}.png`;
-    return `<span class="tuning-part-cell"><img class="tuning-part-icon" src="${svgSrc}" alt="${esc(name)} icon" onerror="this.src='${pngSrc}'; this.onerror=null; if(!this.complete) this.style.display='none';"> ${esc(name)}</span>`;
-}
-
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest && e.target.closest('#dark-mode-toggle');
+    if (btn) {
+        try { toggleDarkMode(); } catch (e) { /* no-op */ }
+    }
+});
 function formatDistance(value, decimals = null) {
     if (value === null || value === undefined || value === '') return '';
     const num = Number(value);
@@ -247,21 +285,30 @@ function fetchWithTimeout(resource, options = {}, timeout = 3000) {
     return fetch(resource, opts).finally(() => clearTimeout(id));
 }
 
+async function fetchAuthStatusWithRetries(retries = 3, initialTimeout = 3000) {
+    let timeout = initialTimeout;
+    for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+            const res = await fetchWithTimeout('auth/status.php', { cache: 'no-cache', credentials: 'same-origin' }, timeout);
+            return res;
+        } catch (err) {
+            await new Promise(r => setTimeout(r, 250 * (attempt + 1)));
+            timeout = Math.min(10000, Math.floor(timeout * 1.5));
+        }
+    }
+    return null;
+}
 
 function fetchStats() {
-    // close mobile menu for better UX
-    if (window.closeMobileMenu) try { window.closeMobileMenu(); } catch (e) {}
-
+	if (window.closeMobileMenu) try { window.closeMobileMenu(); } catch (e) {}
     const statsContainer = document.getElementById('stats-container');
     const dataContainer = document.getElementById('data-container');
     const filterContainer = document.getElementById('filter-container');
-
     if (currentDataType === 'stats' && statsContainer && statsContainer.style.display === 'block') {
         hideElementWithFade(statsContainer);
         currentDataType = '';
         return;
     }
-
     currentDataType = 'stats';
     if (dataContainer) hideElementWithFade(dataContainer);
     if (filterContainer) hideElementWithFade(filterContainer);
@@ -332,7 +379,6 @@ let totalStars = 0;
 sortedVehiclesByStars.forEach(v => { totalStars += v[1]; });
 
 let starsHTML = '<div class="stats-section"><h3>Vehicle Rankings by Adventure Stars</h3>';
-// add stars-chart so green bars use the flexible bar structure
 starsHTML += '<div class="chart-container stars-chart">';
 
 const maxStars = Math.max(...sortedVehiclesByStars.map(v => v[1]));
@@ -357,7 +403,6 @@ starsHTML += `<div class="total-stars-value">${formatDistance(totalStars)}</div>
 starsHTML += '</div></div>';
 statsContainer.innerHTML += starsHTML;
 
-// explicitly set star bar fills to ensure accurate rendering on mobile browsers
 try {
     const starFills = statsContainer.querySelectorAll('.stars-chart .bar-fill');
     (starFills || []).forEach((el, i) => {
@@ -376,7 +421,6 @@ const sortedPlayers = Object.entries(playerRecords)
     .slice(0, 10);
 
 let playersHTML = '<div class="stats-section"><h3>Top 10 Players by Record Count</h3>';
-// add a modifier class so player bars can be styled separately
 playersHTML += '<div class="chart-container players-chart">';
 
 const maxRecords = Math.max(...sortedPlayers.map(p => p[1]));
@@ -398,7 +442,6 @@ sortedPlayers.forEach((player, index) => {
 playersHTML += '</div></div>';
 statsContainer.innerHTML += playersHTML;
 
-// ensure fill widths are explicitly set (helps avoid any rendering inconsistencies on some mobile browsers)
 try {
     const fills = statsContainer.querySelectorAll('.players-chart .bar-fill');
     const max = Math.max(...sortedPlayers.map(p => p[1])) || 1;
@@ -408,7 +451,6 @@ try {
         el.style.width = pct.toFixed(2) + '%';
     });
 } catch (e) {
-    // non-fatal
 }
 
 const countryCounts = {};
@@ -435,8 +477,7 @@ let pieHTML = '<div class="stats-section"><h3>Records by Country</h3><div class=
 pieHTML += '<canvas id="country-pie" width="500" height="375" aria-label="Pie chart showing records by country"></canvas>';
     pieHTML += '<div class="pie-legend">';
 countryEntries.forEach((entry, idx) => {
-    const countryFlag = renderCountryWithFlag(entry[0]);
-    pieHTML += `<div class="legend-item"><span class="legend-color" data-idx="${idx}"></span><span class="legend-label">${countryFlag} (${entry[1]})</span></div>`;
+    pieHTML += `<div class="legend-item"><span class="legend-color" data-idx="${idx}"></span><span class="legend-label">${esc(entry[0])} (${entry[1]})</span></div>`;
 });
 pieHTML += '</div></div></div>';
 statsContainer.innerHTML += pieHTML;
@@ -502,7 +543,6 @@ mapHTML += '<tr><th>Map Name</th><th>Total Records</th><th>Total Distance</th><t
 mapHTML += '</table></div>';
 statsContainer.innerHTML += mapHTML;
 
-// Calculate map adventure stars
 const mapStars = {};
 data.forEach(record => {
     if (!mapStars[record.map_name]) {
@@ -551,12 +591,11 @@ mapStarsHTML += `<div class="total-stars"> ⭐ Total Adventure Stars : </div>`;
 mapStarsHTML += `<div class="total-stars-value">${formatDistance(totalMapStars)}</div>`;
 mapStarsHTML += '</div></div>';
 statsContainer.innerHTML += mapStarsHTML;
-
-// Tuning Part Statistics
+    
 const tuningPartStats = {};
 const tuningSetupStats = {};
 data.forEach(record => {
-    if (record.tuning_parts) {
+    if (record.tuning_parts && typeof record.tuning_parts === 'string') {
         const parts = record.tuning_parts.split(', ');
         parts.forEach(part => {
             if (!tuningPartStats[part]) {
@@ -576,7 +615,6 @@ data.forEach(record => {
 
 let tuningHTML = '<div class="stats-section"><h3>Tuning Part Statistics</h3><div class="tuning-stats">';
 
-// Most used individual tuning parts
 const sortedParts = Object.entries(tuningPartStats).sort((a, b) => b[1] - a[1]).slice(0, 10);
 if (sortedParts.length > 0) {
     tuningHTML += '<div class="stat-subsection"><h4>Most Used Individual Parts</h4><table>';
@@ -587,7 +625,6 @@ if (sortedParts.length > 0) {
     tuningHTML += '</table></div>';
 }
 
-// Most used setups
 const sortedSetups = Object.entries(tuningSetupStats).sort((a, b) => b[1].count - a[1].count).slice(0, 10);
 if (sortedSetups.length > 0) {
     tuningHTML += '<div class="stat-subsection"><h4>Most Used Setups</h4><table>';
@@ -848,32 +885,17 @@ function downloadCSV(dataArray) {
 
 
 function fetchData(dataType) {
-    // close mobile menu if open (mobile UX)
     if (window.closeMobileMenu) try { window.closeMobileMenu(); } catch (e) {}
 
     const container = document.getElementById('data-container');
     const filterContainer = document.getElementById('filter-container');
     const statsContainer = document.getElementById('stats-container');
-
-    // toggle off
-    if (currentDataType === dataType && container && container.style.display === 'block') {
-        hideElementWithFade(container);
-        if (filterContainer) hideElementWithFade(filterContainer);
-        currentDataType = '';
-        return;
-    }
-
     currentDataType = dataType;
     if (container) showElementWithFade(container);
-
-    // Reset and remove existing filter container when switching data types
     resetFilters();
     if (filterContainer) filterContainer.remove();
-
-    // hide stats panel if visible
     if (statsContainer) hideElementWithFade(statsContainer);
-
-    cachedFetchJson('php/load_data.php?type=' + dataType + '&t=' + Date.now(), 60000)
+    return cachedFetchJson('php/load_data.php?type=' + dataType + '&t=' + Date.now(), 60000)
     .then(data => {
         if (data.error) {
             console.error('Error:', data.error);
@@ -955,9 +977,6 @@ function displayData(data, dataType) {
 const container = document.getElementById('data-container');
 container.innerHTML = ''; 
 
-
-// Filters will be rendered below based on the active `dataType`.
-
 container.innerHTML += '<h2>' + dataType.toUpperCase() + '</h2>'; 
 
 if (data.length === 0) {
@@ -973,12 +992,12 @@ tableHTML += '>';
 if (dataType === 'maps') {
     tableHTML += '<tr><th>Map ID</th><th>Map Name</th></tr>';
     data.forEach(item => {
-        tableHTML += `<tr><td>${item.idMap}</td><td>${renderMapWithIcon(item.nameMap)}</td></tr>`;
+        tableHTML += `<tr><td>${item.idMap}</td><td>${item.nameMap}</td></tr>`;
     });
 } else if (dataType === 'vehicles') {
     tableHTML += '<tr><th>Vehicle ID</th><th>Vehicle Name</th></tr>';
     data.forEach(item => {
-        tableHTML += `<tr><td>${item.idVehicle}</td><td>${renderVehicleWithIcon(item.nameVehicle)}</td></tr>`;
+        tableHTML += `<tr><td>${item.idVehicle}</td><td>${item.nameVehicle}</td></tr>`;
     });
 } else if (dataType === 'players') {
     tableHTML += '<tr><th>Player ID</th><th>Player Name</th><th>Country</th><th>World Records</th></tr>';
@@ -987,9 +1006,11 @@ if (dataType === 'maps') {
         tableHTML += `<tr><td>${item.idPlayer}</td><td>${esc(item.namePlayer)}</td><td>${renderCountryWithFlag(item.country)}</td><td>${recordCount}</td></tr>`;
     });
 } else if (dataType === 'tuning_parts') {
-    tableHTML += '<tr><th>ID</th><th>Tuning Part Name</th></tr>';
+    tableHTML += '<tr><th>Part ID</th><th>Part Name</th></tr>';
     data.forEach(item => {
-        tableHTML += `<tr><td>${item.idTuningPart}</td><td>${renderTuningPartWithIcon(item.nameTuningPart)}</td></tr>`;
+        const tpName = item.nameTuningPart || item.name || item.name_tuning_part || item.tuning_part_name || '';
+        const tpId = item.idTuningPart || item.id || '';
+        tableHTML += `<tr><td>${tpId}</td><td>${renderTuningPartWithIcon(tpName)}</td></tr>`;
     });
 } else if (dataType === 'records') {
     const sortSelect = document.getElementById('sort-select');
@@ -1010,15 +1031,13 @@ if (dataType === 'maps') {
         records.sort((a, b) => Number(a.distance) - Number(b.distance));
     } else if (sortVal === 'dist-desc') {
         records.sort((a, b) => Number(b.distance) - Number(a.distance));
-    } else if (sortVal === 'most-recent') {
+     } else if (sortVal === 'most-recent') {
         records.sort((a, b) => {
             const aId = a.idRecord ?? a.record_id ?? 0;
             const bId = b.idRecord ?? b.record_id ?? 0;
-            // Higher ID = more recent, so sort descending
             return Number(bId) - Number(aId);
         });
     } else {
-        // Default sort: map name, then vehicle id, then vehicle name
         records.sort((a, b) => {
             const mapComp = String(a.map_name || a.nameMap || '').localeCompare(String(b.map_name || b.nameMap || ''));
             if (mapComp !== 0) return mapComp;
@@ -1028,11 +1047,23 @@ if (dataType === 'maps') {
         });
     }
 
-    tableHTML += '<thead><tr><th>Distance</th><th>Map Name</th><th>Vehicle Name</th><th>Tuning Parts</th><th>Player Name</th><th>Player Country</th></tr></thead><tbody>';
+    tableHTML += '<thead><tr><th>Distance</th><th>Status</th><th>Notes</th><th>Map Name</th><th>Vehicle Name</th><th>Tuning Parts</th><th>Player Name</th><th>Player Country</th></tr></thead><tbody>';
     records.forEach(item => {
         const rid = item.idRecord ?? item.record_id ?? '';
+        let statusHTML = '';
+        let notesHTML = '';
+        const notes = item.questionable_reason ?? item.questionableReason ?? '';
+        if (item.questionable === 1) {
+            statusHTML = `<span title="Questionable: ${esc(notes || 'No note provided')}" class="questionable-status">❓</span>`;
+        } else {
+            statusHTML = '<span title="Verified: confirmed legitimate record" class="verified-status">✓</span>';
+        }
+        notesHTML = notes ? `<span title="${esc(notes)}" class="record-notes">${esc(notes)}</span>` : '';
+        notesHTML = notes ? `<button class="note-btn" onclick="showNoteModal('${esc(notes).replace(/'/g, "\\'")}')">📝</button>` : '';
         tableHTML += `<tr data-record-id="${rid}">
             <td data-label="Distance">${formatDistance(item.distance)}</td>
+            <td data-label="Status">${statusHTML}</td>
+            <td data-label="Notes">${notesHTML}</td>
             <td data-label="Map">${renderMapWithIcon(item.map_name)}</td>
             <td data-label="Vehicle">${renderVehicleWithIcon(item.vehicle_name)}</td>
             <td data-label="Tuning Parts">${renderTuningParts(item.tuning_parts)}</td>
@@ -1043,12 +1074,28 @@ if (dataType === 'maps') {
     });
     tableHTML += '</tbody>';
 }
-    tableHTML += '</table>';
+tableHTML += '</table>';
     container.innerHTML += tableHTML;
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const linkedRecord = params.get('recordId');
+        if (linkedRecord) {
+            console.log('displayData: deep-link recordId present, attempting to highlight', linkedRecord);
+            setTimeout(() => {
+                const row = document.querySelector(`[data-record-id="${linkedRecord}"]`) || document.querySelector(`[data-record-id="${Number(linkedRecord)}"]`);
+                console.log('displayData: found row?', !!row);
+                if (row) {
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    row.style.background = 'rgba(255,255,0,0.12)';
+                    setTimeout(()=> row.style.background = '', 3000);
+                }
+            }, 50);
+        }
+    } catch (e) { console.error('displayData deep-link fallback failed', e); }
 if (dataType === 'records') {
     const maps = [...new Set(allData.map(record => record.map_name))].filter(Boolean).sort();
     const vehicles = [...new Set(allData.map(record => record.vehicle_name))].filter(Boolean).sort();
-    const tuningParts = [...new Set(allData.flatMap(record => record.tuning_parts ? record.tuning_parts.split(', ').map(p => p.trim()) : []))].filter(Boolean).sort();
+    const tuningParts = [...new Set(allData.flatMap(record => (record.tuning_parts && typeof record.tuning_parts === 'string') ? record.tuning_parts.split(', ').map(p => p.trim()) : []))].filter(Boolean).sort();
 
     const mapCheckboxes = maps.map(m => `<label style="display:block; padding:4px 6px;"><input type="checkbox" value="${esc(m)}" onchange="onMultiFilterChange('map')"> ${renderMapWithIcon(m)}</label>`).join('');
     const vehicleCheckboxes = vehicles.map(v => `<label style="display:block; padding:4px 6px;"><input type="checkbox" value="${esc(v)}" onchange="onMultiFilterChange('vehicle')"> ${renderVehicleWithIcon(v)}</label>`).join('');
@@ -1056,75 +1103,133 @@ if (dataType === 'records') {
 
     const searchHTML = `
         <div id="filter-container" class="filter-container">
-            <input type="text" id="search-bar" placeholder="Search by player, map, or vehicle..." oninput="filterRecords()">
-            <button id="export-btn" onclick="exportToCSV()" style="padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc; background-color: #28a745; color: white; cursor: pointer; font-size: 14px; margin-left: 8px;">📥 Export CSV</button>
-
-            <div class="multi-dropdown" style="display:inline-block; position:relative; margin-left:8px;">
-                <button id="map-btn" onclick="toggleDropdown('map')" type="button">Filter by Map</button>
-                <div id="map-panel" class="dropdown-panel" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; padding:8px; max-height:220px; overflow:auto; z-index:50;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><strong>Maps</strong><button type="button" onclick="clearMultiFilter('map')" style="font-size:12px;">Clear</button></div>
-                    ${mapCheckboxes}
-                </div>
+            <!-- Search Row -->
+            <div class="filter-row">
+                <input type="text" id="search-bar" class="filter-search" placeholder="Search by player, map, or vehicle..." oninput="filterRecords()">
             </div>
 
-            <div class="multi-dropdown" style="display:inline-block; position:relative; margin-left:8px;">
-                <button id="vehicle-btn" onclick="toggleDropdown('vehicle')" type="button">Filter by Vehicle</button>
-                <div id="vehicle-panel" class="dropdown-panel" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; padding:8px; max-height:220px; overflow:auto; z-index:50;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><strong>Vehicles</strong><button type="button" onclick="clearMultiFilter('vehicle')" style="font-size:12px;">Clear</button></div>
-                    ${vehicleCheckboxes}
+            <!-- Controls Row -->
+            <div class="filter-row">
+                <button id="export-btn" class="filter-btn filter-btn--primary" onclick="exportToCSV()">📥 Export CSV</button>
+
+                <div class="filter-group">
+                    <div class="multi-dropdown">
+                        <button id="map-btn" class="filter-btn" onclick="toggleDropdown('map')">🗺️ Map</button>
+                        <div id="map-panel" class="dropdown-panel">
+                            <div class="dropdown-header">
+                                <strong>Maps</strong>
+                                <button type="button" class="dropdown-clear" onclick="clearMultiFilter('map')">Clear</button>
+                            </div>
+                            <div class="dropdown-content">${mapCheckboxes}</div>
+                        </div>
+                    </div>
+
+                    <div class="multi-dropdown">
+                        <button id="vehicle-btn" class="filter-btn" onclick="toggleDropdown('vehicle')">🚗 Vehicle</button>
+                        <div id="vehicle-panel" class="dropdown-panel">
+                            <div class="dropdown-header">
+                                <strong>Vehicles</strong>
+                                <button type="button" class="dropdown-clear" onclick="clearMultiFilter('vehicle')">Clear</button>
+                            </div>
+                            <div class="dropdown-content">${vehicleCheckboxes}</div>
+                        </div>
+                    </div>
+
+                    <div class="multi-dropdown">
+                        <button id="tuning-btn" class="filter-btn" onclick="toggleDropdown('tuning')">⚙️ Tuning</button>
+                        <div id="tuning-panel" class="dropdown-panel">
+                            <div class="dropdown-header">
+                                <strong>Tuning Parts</strong>
+                                <button type="button" class="dropdown-clear" onclick="clearMultiFilter('tuning')">Clear</button>
+                            </div>
+                            <div class="dropdown-content">${tuningPartCheckboxes}</div>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="multi-dropdown" style="display:inline-block; position:relative; margin-left:8px;">
-                <button id="tuning-btn" onclick="toggleDropdown('tuning')" type="button">Filter by Tuning Parts</button>
-                <div id="tuning-panel" class="dropdown-panel" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; padding:8px; max-height:220px; overflow:auto; z-index:50;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><strong>Tuning Parts</strong><button type="button" onclick="clearMultiFilter('tuning')" style="font-size:12px;">Clear</button></div>
-                    ${tuningPartCheckboxes}
-                </div>
-            </div>
-
-            <select id="sort-select" onchange="filterRecords()" title="Sort records" style="margin-left:8px;">
-                <option value="default">Default: Map / Vehicle Alphabetically</option>
-                <option value="dist-asc">Distance ↑ (ascending)</option>
-                <option value="dist-desc">Distance ↓ (descending)</option>
-                <option value="most-recent">Most Recent (newest first)</option>
-            </select>
-
-            <div class="distance-filter" style="display:inline-block; margin-left:8px;">
-                <select id="distance-op" onchange="filterRecords()">
-                    <option value="">Distance</option>
-                    <option value="gte">≥</option>
-                    <option value="lte">≤</option>
+                <select id="sort-select" class="filter-select" onchange="filterRecords()" title="Sort records">
+                    <option value="default">Sort: Default</option>
+                    <option value="dist-asc">Sort: Distance ↑</option>
+                    <option value="dist-desc">Sort: Distance ↓</option>
+                    <option value="most-recent">Sort: Newest</option>
                 </select>
-                <input type="number" id="distance-value" placeholder="Distance" oninput="filterRecords()" style="width:120px; margin-left:6px;">
+
+                <div class="filter-distance">
+                    <select id="distance-op" class="filter-select" onchange="filterRecords()">
+                        <option value="">Distance</option>
+                        <option value="gte">≥</option>
+                        <option value="lte">≤</option>
+                    </select>
+                    <input type="number" id="distance-value" class="filter-input" placeholder="Value" oninput="filterRecords()">
+                </div>
+
+                <label class="filter-label">
+                    <input type="checkbox" id="questionable-filter" class="filter-checkbox" onchange="filterRecords()">
+                    <span>Questionable ❓</span>
+                </label>
+
+                <label class="filter-label">
+                    <input type="checkbox" id="verified-filter" class="filter-checkbox" onchange="filterRecords()">
+                    <span>Verified ✓</span>
+                </label>
             </div>
         </div>
-    `;
-    // ensure we don't duplicate container
+        `;
     if (!document.getElementById('filter-container')) container.insertAdjacentHTML('beforebegin', searchHTML);
 } else if (dataType === 'players') {
     if (!document.getElementById('filter-container')) addPlayerFilters();
 }
-
 }
 
 function toggleDropdown(type) {
     const panel = document.getElementById(type + '-panel');
+    const btn = document.getElementById(type + '-btn');
     if (!panel) return;
-    // Close any other open dropdown panels so only one is visible at a time
     const panels = document.querySelectorAll('.dropdown-panel');
     panels.forEach(p => {
-        if (p !== panel) p.style.display = 'none';
+        if (p !== panel) {
+            p.style.display = 'none';
+            p.classList.remove('open');
+            const otherBtn = document.getElementById(p.id.replace('-panel','-btn'));
+            if (otherBtn) otherBtn.setAttribute('aria-expanded', 'false');
+        }
     });
-    panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+    const isOpen = panel.classList.contains('open') || panel.style.display === 'block';
+    if (isOpen) {
+        panel.style.display = 'none';
+        panel.classList.remove('open');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+    } else {
+        panel.style.display = 'block';
+        panel.classList.add('open');
+        if (btn) btn.setAttribute('aria-expanded', 'true');
+    }
 }
+
+document.addEventListener('click', function(e){
+    const openPanels = document.querySelectorAll('.dropdown-panel.open');
+    if (!openPanels.length) return;
+    let clickedInside = false;
+    openPanels.forEach(p => {
+        if (p.contains(e.target)) clickedInside = true;
+        const btn = document.getElementById(p.id.replace('-panel','-btn'));
+        if (btn && btn.contains(e.target)) clickedInside = true;
+    });
+    if (!clickedInside) {
+        openPanels.forEach(p => {
+            p.style.display = 'none';
+            p.classList.remove('open');
+            const btn = document.getElementById(p.id.replace('-panel','-btn'));
+            if (btn) btn.setAttribute('aria-expanded','false');
+        });
+    }
+});
 
 function copyToClipboard(text) {
     if (!text) return false;
     if (navigator.clipboard && navigator.clipboard.writeText) {
         return navigator.clipboard.writeText(text).then(()=>true).catch(()=>false);
     }
-    // fallback
     try {
         const ta = document.createElement('textarea');
         ta.value = text;
@@ -1188,27 +1293,21 @@ function clearMultiFilter(type) {
 }
 
 function resetFilters() {
-    // Close all dropdown panels
     const panels = document.querySelectorAll('.dropdown-panel');
     panels.forEach(panel => panel.style.display = 'none');
     
-    // Reset all text inputs
     const inputs = document.querySelectorAll('#search-bar, #player-search');
     inputs.forEach(input => input.value = '');
     
-    // Reset all select dropdowns
     const selects = document.querySelectorAll('#sort-select, #distance-op, #record-count-op');
     selects.forEach(select => select.value = '');
     
-    // Reset number inputs
     const numberInputs = document.querySelectorAll('#distance-value, #record-count-value');
     numberInputs.forEach(input => input.value = '');
     
-    // Uncheck all checkboxes
-    const checkboxes = document.querySelectorAll('.dropdown-panel input[type=checkbox]');
+    const checkboxes = document.querySelectorAll('.dropdown-panel input[type=checkbox], #filter-container input[type=checkbox]');
     checkboxes.forEach(cb => cb.checked = false);
     
-    // Reset button labels only for filter buttons inside the filter container
     const filterButtons = document.querySelectorAll('#filter-container [id$="-btn"]');
     filterButtons.forEach(btn => {
         const type = btn.id.replace('-btn', '');
@@ -1225,15 +1324,18 @@ const tuningSelected = getSelectedMultiValues('tuning');
 const distOp = document.getElementById('distance-op')?.value || '';
 const distValRaw = document.getElementById('distance-value')?.value;
 const distVal = distValRaw ? Number(distValRaw) : NaN;
+const showOnlyQuestionable = document.getElementById('questionable-filter')?.checked || false;
+const showOnlyVerified = document.getElementById('verified-filter')?.checked || false;
 
 const filteredData = (allData || []).filter(record => {
+    const notesText = (record.questionable_reason || record.questionableReason || '').toString().toLowerCase();
     const matchesSearch = (record.player_name || '').toString().toLowerCase().includes(searchQuery) ||
                             (record.map_name || '').toString().toLowerCase().includes(searchQuery) ||
-                            (record.vehicle_name || '').toString().toLowerCase().includes(searchQuery);
-
+                            (record.vehicle_name || '').toString().toLowerCase().includes(searchQuery) ||
+                            notesText.includes(searchQuery);
     const matchesMap = !mapSelected || mapSelected.length === 0 || mapSelected.includes(record.map_name);
     const matchesVehicle = !vehicleSelected || vehicleSelected.length === 0 || vehicleSelected.includes(record.vehicle_name);
-    const recordParts = record.tuning_parts ? record.tuning_parts.split(', ').map(p => p.trim()) : [];
+    const recordParts = (record.tuning_parts && typeof record.tuning_parts === 'string') ? record.tuning_parts.split(', ').map(p => p.trim()) : [];
     const matchesTuning = !tuningSelected || tuningSelected.length === 0 || tuningSelected.every(part => recordParts.includes(part));
 
     let matchesDistance = true;
@@ -1243,7 +1345,10 @@ const filteredData = (allData || []).filter(record => {
         matchesDistance = Number(record.distance) <= distVal;
     }
 
-    return matchesSearch && matchesMap && matchesVehicle && matchesTuning && matchesDistance;
+    const matchesQuestionable = !showOnlyQuestionable || record.questionable === 1;
+    const matchesVerified = !showOnlyVerified || record.questionable === 0;
+
+    return matchesSearch && matchesMap && matchesVehicle && matchesTuning && matchesDistance && matchesQuestionable && matchesVerified;
 });
 
 displayData(filteredData, currentDataType);
@@ -1252,7 +1357,7 @@ displayData(filteredData, currentDataType);
 function addPlayerFilters() {
 const container = document.getElementById('data-container');
 const countries = [...new Set(allData.map(p => p.country).filter(c => c && c.trim()))].sort();
-const countryCheckboxes = countries.map(c => `<label style="display:block; padding:4px 6px;"><input type="checkbox" value="${esc(c)}" onchange="onPlayerFilterChange('country')"> ${renderCountryWithFlag(c)}</label>`).join('');
+const countryCheckboxes = countries.map(c => `<label style="display:block; padding:4px 6px;"><input type="checkbox" value="${esc(c)}" onchange="onPlayerFilterChange('country')"> ${esc(c)}</label>`).join('');
 
 const searchHTML = `
     <div id="filter-container" class="filter-container">
@@ -1263,8 +1368,8 @@ const searchHTML = `
             <div id="country-panel" class="dropdown-panel" style="display:none; position:absolute; background:#fff; border:1px solid #ccc; padding:8px; max-height:220px; overflow:auto; z-index:50;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><strong>Countries</strong><button type="button" onclick="clearMultiFilter('country')" style="font-size:12px;">Clear</button></div>
                 ${countryCheckboxes}
-                </div>
-            </div>
+            	</div>
+        	</div>
 
             <select id="record-count-op" onchange="filterPlayers()">
                 <option value="">Records</option>
@@ -1273,10 +1378,9 @@ const searchHTML = `
             </select>
             <input type="number" id="record-count-value" placeholder="Count" oninput="filterPlayers()" style="width:100px; margin-left:6px;" min="0">
         </div>
-    `;
+        `;
 
     container.insertAdjacentHTML('beforebegin', searchHTML);
-
 }
 
 function filterPlayers() {
@@ -1316,17 +1420,20 @@ function onPlayerFilterChange(type) {
 
 async function checkAuthAndInit() {
 try {
-    const res = await fetchWithTimeout('auth/status.php', { cache: 'no-cache', credentials: 'same-origin' }, 2500);
+    const res = await fetchWithTimeout('auth/status.php', { cache: 'no-cache', credentials: 'include' }, 2500);
     const status = res ? await res.json().catch(()=>({ logged: false })) : { logged: false };
+    console.log('[AUTH] Status check result:', status);
     const loginBtn = document.getElementById('login-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const adminBtn = document.getElementById('admin-btn');
     const authWarning = document.getElementById('auth-warning');
 
     if (status.logged) {
+        console.log('[AUTH] User is logged in as:', status.username || status.id);
         if (loginBtn) loginBtn.style.display = 'none';
         if (logoutBtn) { logoutBtn.style.display = 'inline-block'; logoutBtn.textContent = 'Logout (' + (status.username || status.id) + ')'; }
     } else {
+        console.log('[AUTH] User is not logged in');
         if (loginBtn) loginBtn.style.display = 'inline-block';
         if (logoutBtn) logoutBtn.style.display = 'none';
     }
@@ -1346,12 +1453,18 @@ try {
         }
     }
 } catch (err) {
-    console.error('Auth check failed', err);
+    console.error('[AUTH] Auth check failed', err);
 }
 }
 
 window.onload = () => {
+    console.log('[AUTH] Initial auth check starting...');
     checkAuthAndInit();
+    setTimeout(() => {
+        console.log('[AUTH] Retry auth check after 1s...');
+        checkAuthAndInit();
+    }, 1000);
+    setInterval(checkAuthAndInit, 30000);
 };
 
  
@@ -1418,7 +1531,6 @@ function publicSubmitKeyHandler(e) {
 }
 
 function togglePublicSubmitForm() {
-    // close mobile menu when opening the modal for better UX on mobile
     if (window.closeMobileMenu) try { window.closeMobileMenu(); } catch (e) {}
     const overlay = document.getElementById('public-submit-overlay');
     if (!overlay) return;
@@ -1433,13 +1545,11 @@ function togglePublicSubmitForm() {
         document.addEventListener('keydown', publicSubmitKeyHandler);
         overlay.addEventListener('click', publicSubmitOverlayClick);
         
-        // Set form load time for honeypot validation
         const formLoadTimeEl = document.getElementById('form-load-time');
         if (formLoadTimeEl) {
             formLoadTimeEl.value = Date.now();
         }
         
-        // Initialize hCaptcha
         initializeHCaptcha();
         
         setTimeout(() => {
@@ -1450,7 +1560,6 @@ function togglePublicSubmitForm() {
 }
 
 function initializeHCaptcha() {
-    // Fetch hCaptcha site key from server and render when the hcaptcha script is available
     fetch('php/get_hcaptcha_sitekey.php')
         .then(res => res.json())
         .then(data => {
@@ -1502,7 +1611,6 @@ function initializeHCaptcha() {
         })
         .catch(err => console.error('Failed to load hCaptcha site key', err));
 }
-// token handling is wired via the `callback` option passed to `hcaptcha.render` above
 
 function toggleNewsModal() {
     if (window.closeMobileMenu) try { window.closeMobileMenu(); } catch (e) {}
@@ -1513,9 +1621,23 @@ function toggleNewsModal() {
         overlay.style.display = 'none';
     } else {
         overlay.style.display = 'block';
-        markNewsAsRead();
         loadNews();
+        markNewsAsRead();
     }
+}
+
+function showNoteModal(note) {
+    if (window.closeMobileMenu) try { window.closeMobileMenu(); } catch (e) {}
+    const overlay = document.getElementById('note-overlay');
+    const content = document.getElementById('note-content');
+    if (!overlay || !content) return;
+    content.textContent = note;
+    overlay.style.display = 'block';
+}
+
+function hideNoteModal() {
+    const overlay = document.getElementById('note-overlay');
+    if (overlay) overlay.style.display = 'none';
 }
 
 async function loadNews() {
@@ -1563,7 +1685,6 @@ async function populatePublicSubmitOptions() {
         if (vehicleSel && Array.isArray(vehicles)) {
             vehicleSel.innerHTML = '<option value="">Select a Vehicle</option>' + vehicles.map(v => `<option value="${esc(v.idVehicle)}">${esc(v.nameVehicle)}</option>`).join('');
         }
-        // Load tuning parts and render checkboxes
         try {
             const partsRes = await fetch('php/load_data.php?type=tuning_parts&t=' + Date.now());
             const parts = await partsRes.json();
@@ -1600,8 +1721,6 @@ async function submitPublicRecord(e) {
         if (msgEl) { msgEl.textContent = 'Distance must be a positive number.'; msgEl.style.color = 'red'; }
         return;
     }
-
-    // Validate tuning parts selection (must be 3 or 4)
     const selectedPartEls = document.querySelectorAll('#public-tuning-parts input[type="checkbox"]:checked');
     const selectedParts = Array.from(selectedPartEls).map(el => el.value);
     if (selectedParts.length < 3 || selectedParts.length > 4) {
@@ -1610,20 +1729,17 @@ async function submitPublicRecord(e) {
     }
 
     try {
-        // Get hCaptcha response token
         const hcaptchaResponse = document.getElementById('h-captcha-response').value || '';
         if (!hcaptchaResponse) {
             if (msgEl) { msgEl.textContent = 'Please complete the hCaptcha verification.'; msgEl.style.color = 'red'; }
             return;
         }
         
-        // Collect all honeypot fields
         const hp_email = document.getElementById('hp_email') ? document.getElementById('hp_email').value.trim() : '';
         const hp_website = document.getElementById('hp_website') ? document.getElementById('hp_website').value.trim() : '';
         const hp_phone = document.getElementById('hp_phone') ? document.getElementById('hp_phone').value.trim() : '';
         const hp_comments = document.getElementById('hp_comments') ? document.getElementById('hp_comments').value.trim() : '';
         
-        // Get timing data
         const formLoadTime = parseInt(document.getElementById('form-load-time').value) || 0;
         const submissionTime = Date.now();
         
@@ -1684,20 +1800,25 @@ if (!playerId && newPlayerName && !country) {
 const selectedPlayerOption = document.getElementById('player-select').selectedOptions[0];
 const selectedPlayerName = selectedPlayerOption ? selectedPlayerOption.textContent : '';
 
+const note = document.getElementById('questionable-reason-submit').value.trim();
 const hasPlayerId = (playerId !== null && playerId !== undefined && playerId !== '');
 const formData = hasPlayerId ? {
     mapId,
     vehicleId,
     distance,
     playerId,
-    playerName: selectedPlayerName
+    playerName: selectedPlayerName,
+    questionable: document.getElementById('questionable-input').checked ? 1 : 0,
+    note
 } : {
     mapId,
     vehicleId,
     distance,
     playerId: null,
     newPlayerName,
-    country
+    country,
+    questionable: document.getElementById('questionable-input').checked ? 1 : 0,
+    note
 };
 
 fetch('php/submit_record.php', {
@@ -1833,17 +1954,21 @@ function exportToCSV() {
     downloadCSV(filteredData);
 }
 
-// ...existing code...
-
-// Mobile menu helpers (top-level, exposes functions on window)
 function closeMenu() {
-    const btn = document.getElementById('mobile-menu-btn');
-    const menu = document.getElementById('mobile-menu');
-    if (!btn || !menu) return;
-    btn.setAttribute('aria-expanded','false');
-    menu.setAttribute('aria-hidden','true');
-    document.body.classList.remove('mobile-menu-open');
-}
+        const btn = document.getElementById('mobile-menu-btn');
+        const menu = document.getElementById('mobile-menu');
+        if (!btn || !menu) return;
+        try {
+                const active = document.activeElement;
+                if (menu.contains(active)) {
+                        if (typeof active.blur === 'function') active.blur();
+                        btn.focus();
+                }
+        } catch (e) {}
+        btn.setAttribute('aria-expanded','false');
+        menu.setAttribute('aria-hidden','true');
+        document.body.classList.remove('mobile-menu-open');
+    }
 
 function openMenu() {
     const btn = document.getElementById('mobile-menu-btn');
@@ -1852,20 +1977,29 @@ function openMenu() {
     btn.setAttribute('aria-expanded','true');
     menu.setAttribute('aria-hidden','false');
     document.body.classList.add('mobile-menu-open');
-}
+  }
 
 window.toggleMobileMenu = function(){
     const btn = document.getElementById('mobile-menu-btn');
     const menu = document.getElementById('mobile-menu');
     if (!btn || !menu) return;
-    const open = btn.getAttribute('aria-expanded') === 'true';
-    if (open) closeMenu(); else openMenu();
-};
+    const isOpen = btn.getAttribute('aria-expanded') === 'true';
 
-// expose helpers for other code to control mobile menu
-window.closeMobileMenu = closeMenu;
-window.openMobileMenu = openMenu;
+    if (isOpen) {
+        closeMenu();
+    } else {
+        openMenu();
+        try {
+            const focusable = menu.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (focusable && typeof focusable.focus === 'function') focusable.focus();
+        } catch (e) {}
+    }
+  }
 
+  window.toggleMobileMenu = toggleMobileMenu;
+  window.closeMobileMenu = closeMenu;
+  window.openMobileMenu = openMenu;
+    
 document.addEventListener('click', function(e){
     const btn = document.getElementById('mobile-menu-btn');
     const menu = document.getElementById('mobile-menu');
@@ -1879,59 +2013,81 @@ window.addEventListener('resize', function(){
     const menu = document.getElementById('mobile-menu');
     if (!btn || !menu) return;
     if (window.innerWidth >= 800) {
-        // ensure menu visible on desktop
+        try { if (menu.contains(document.activeElement)) { document.activeElement.blur(); btn.focus(); } } catch(e) {}
         menu.removeAttribute('aria-hidden');
         btn.setAttribute('aria-expanded','false');
         document.body.classList.remove('mobile-menu-open');
     } else {
-        // keep it closed by default on small screens
+        try { if (menu.contains(document.activeElement)) { document.activeElement.blur(); btn.focus(); } } catch(e) {}
         menu.setAttribute('aria-hidden','true');
         btn.setAttribute('aria-expanded','false');
         document.body.classList.remove('mobile-menu-open');
     }
 });
 
-// initialize state on load
 document.addEventListener('DOMContentLoaded', function(){
     const menu = document.getElementById('mobile-menu');
     const btn = document.getElementById('mobile-menu-btn');
     if (!menu || !btn) return;
     if (window.innerWidth >= 800) {
+        try { if (menu.contains(document.activeElement)) { document.activeElement.blur(); btn.focus(); } } catch(e) {}
         menu.removeAttribute('aria-hidden');
         btn.setAttribute('aria-expanded','false');
     } else {
+        try { if (menu.contains(document.activeElement)) { document.activeElement.blur(); btn.focus(); } } catch(e) {}
         menu.setAttribute('aria-hidden','true');
         btn.setAttribute('aria-expanded','false');
     }
 });
 
-// Handle URL params: allow linking to a specific view/record/map
-document.addEventListener('DOMContentLoaded', function(){
+function handleDeepLinkParams() {
     try {
         const params = new URLSearchParams(window.location.search);
         const view = params.get('view');
         const recordId = params.get('recordId');
         const map = params.get('map');
-        if (view) {
-            // fetch the requested view
-            fetchData(view);
-            if (recordId) {
-                // wait shortly for rows to render, then scroll to the record
-                setTimeout(() => {
-                    const row = document.querySelector(`[data-record-id="${recordId}"]`);
-                    if (row) {
-                        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        row.style.background = 'rgba(255,255,0,0.12)';
-                        setTimeout(()=> row.style.background = '', 3000);
-                    }
-                }, 600);
-            } else if (map) {
-                // apply a simple scroll to first map match after render
-                setTimeout(() => {
-                    const el = Array.from(document.querySelectorAll('[data-label="Map"]')).find(td => td && td.textContent && td.textContent.includes(map));
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 600);
-            }
+        const validTypes = ['maps', 'vehicles', 'players', 'tuning_parts', 'records', 'tuning_setups'];
+        if (!view || !validTypes.includes(view)) {
+            return;
         }
-    } catch (e) {}
-});
+        try {
+                fetchData(view).then(() => {
+                    if (recordId) {
+                        const row = document.querySelector(`[data-record-id="${recordId}"]`);
+                        if (row) {
+                            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            row.style.background = 'rgba(255,255,0,0.12)';
+                            setTimeout(()=> row.style.background = '', 3000);
+                            return;
+                        }
+                        const alt = document.querySelector(`[data-record-id="${Number(recordId)}"]`);
+                        if (alt) { alt.scrollIntoView({ behavior: 'smooth', block: 'center' }); alt.style.background = 'rgba(255,255,0,0.12)'; setTimeout(()=> alt.style.background = '', 3000); }
+                    } else if (map) {
+                        const el = Array.from(document.querySelectorAll('[data-label="Map"]')).find(td => td && td.textContent && td.textContent.includes(map));
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }).catch(()=>{
+                    setTimeout(() => {
+                        if (recordId) {
+                            const row = document.querySelector(`[data-record-id="${recordId}"]`);
+                            if (row) {
+                                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                row.style.background = 'rgba(255,255,0,0.12)';
+                                setTimeout(()=> row.style.background = '', 3000);
+                            }
+                        } else if (map) {
+                            const el = Array.from(document.querySelectorAll('[data-label="Map"]')).find(td => td && td.textContent && td.textContent.includes(map));
+                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }, 1000);
+                });
+            } catch (e) {}
+        } catch (e) {
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', handleDeepLinkParams);
+} else {
+    try { handleDeepLinkParams(); } catch (e) {}
+}

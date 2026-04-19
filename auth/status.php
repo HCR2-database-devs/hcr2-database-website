@@ -1,13 +1,49 @@
 <?php
-require_once __DIR__ . '/config.php';
-if (session_status() === PHP_SESSION_NONE) session_start();
-header('Content-Type: application/json; charset=utf-8');
+ini_set('session.cookie_domain', '.hcr2.xyz'); 
+ini_set('session.cookie_path', '/'); 
+ini_set('session.cookie_secure', 1); 
+ini_set('session.cookie_httponly', 1); 
+ini_set('session.cookie_samesite', 'Lax'); 
+session_start();
 
-$logged = isset($_SESSION['discord']) && isset($_SESSION['discord']['id']);
-$id = $logged ? (string)$_SESSION['discord']['id'] : null;
-$username = $logged ? ($_SESSION['discord']['username'] ?? '') : null;
-$allowed = false;
-if ($logged && !empty($ALLOWED_DISCORD_IDS)) {
-    $allowed = in_array($id, $ALLOWED_DISCORD_IDS, true);
+require_once __DIR__ . '/check_auth.php';
+require_once __DIR__ . '/config.php';
+
+header('Content-Type: application/json');
+
+if (empty($_COOKIE['WC_TOKEN'])) {
+    error_log('[AUTH] WC_TOKEN cookie is missing or empty');
+    echo json_encode([
+        'logged' => false,
+        'allowed' => false,
+        'debug' => 'No WC_TOKEN cookie found'
+    ]);
+    exit;
 }
-echo json_encode(['logged' => $logged, 'id' => $id, 'username' => $username, 'allowed' => $allowed]);
+error_log('[AUTH] WC_TOKEN cookie received, verifying...');
+$payload = verify_token($_COOKIE['WC_TOKEN'], AUTH_SHARED_SECRET);
+
+if (!$payload) {
+    error_log('[AUTH] Token verification failed');
+    echo json_encode([
+        'logged' => false,
+        'allowed' => false,
+        'debug' => 'Token verification failed'
+    ]);
+    exit;
+}
+error_log('[AUTH] Token verified for user: ' . ($payload['username'] ?? $payload['sub']));
+$_SESSION['discord'] = [
+    'id' => $payload['sub'],
+    'username' => $payload['username']
+];
+
+global $ALLOWED_DISCORD_IDS;
+$allowed = in_array($payload['sub'], $ALLOWED_DISCORD_IDS, true);
+
+echo json_encode([
+    'logged' => true,
+    'allowed' => $allowed,
+    'id' => $payload['sub'],
+    'username' => $payload['username']
+]);

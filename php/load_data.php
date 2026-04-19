@@ -5,17 +5,14 @@ enforce_maintenance_json();
 
 header('Content-Type: application/json');
 
-$db_file = __DIR__ . '/../main.sqlite';
 try {
-    $db = new PDO("sqlite:" . $db_file);
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $db = get_database_connection();
 } catch (PDOException $e) {
     echo json_encode(array('error' => "Database connection failed: " . $e->getMessage()));
     exit;
 }
 
 function get_data($db, $table, $select = '*', $where = '', $order = '', $limit = '') {
-    // Whitelist allowed tables to prevent SQL injection
     $allowed_tables = ['Map', 'Vehicle', 'Player', 'TuningPart'];
     if (!in_array($table, $allowed_tables)) {
         return json_encode(array('error' => 'Invalid table'));
@@ -54,7 +51,7 @@ if (isset($_GET['type'])) {
         case 'tuning_setups':
             $sql = "
                 SELECT ts.idTuningSetup,
-                       GROUP_CONCAT(tp.nameTuningPart, ', ') as parts
+                       string_agg(tp.nameTuningPart, ', ') as parts
                 FROM TuningSetup ts
                 JOIN TuningSetupParts tsp ON ts.idTuningSetup = tsp.idTuningSetup
                 JOIN TuningPart tp ON tsp.idTuningPart = tp.idTuningPart
@@ -64,26 +61,36 @@ if (isset($_GET['type'])) {
             $stmt = $db->prepare($sql);
             $stmt->execute();
             $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            // For each setup, get the parts as array
             foreach ($data as &$row) {
-                $parts = explode(', ', $row['parts']);
-                $row['parts'] = array_map(function($name) {
-                    return ['nameTuningPart' => $name];
-                }, $parts);
+                if ($row['parts'] !== null) {
+                    $parts = explode(', ', $row['parts']);
+                    $row['parts'] = array_map(function($name) {
+                        return ['nameTuningPart' => $name];
+                    }, $parts);
+                } else {
+                    $row['parts'] = [];
+                }
             }
             echo json_encode($data);
             break;
         case 'records':
+            try {
+                $db->exec("ALTER TABLE WorldRecord ADD COLUMN IF NOT EXISTS questionable SMALLINT DEFAULT 0");
+                $db->exec("ALTER TABLE WorldRecord ADD COLUMN IF NOT EXISTS questionable_reason TEXT DEFAULT NULL");
+            } catch (Exception $e) {
+            }
             $sql = "SELECT
-                        wr.rowid AS idRecord,
+                        wr.idRecord AS idRecord,
                         wr.distance,
                         wr.current,
                         wr.idTuningSetup,
+                        wr.questionable,
+                        COALESCE(wr.questionable_reason, '') as questionable_reason,
                         m.nameMap AS map_name,
                         v.nameVehicle AS vehicle_name,
                         p.namePlayer AS player_name,
                         p.country AS player_country,
-                        GROUP_CONCAT(tp.nameTuningPart, ', ') as tuning_parts
+                        string_agg(tp.nameTuningPart, ', ') as tuning_parts
                     FROM WorldRecord AS wr
                     JOIN Map AS m ON wr.idMap = m.idMap
                     JOIN Vehicle AS v ON wr.idVehicle = v.idVehicle
@@ -91,7 +98,7 @@ if (isset($_GET['type'])) {
                     LEFT JOIN TuningSetupParts tsp ON wr.idTuningSetup = tsp.idTuningSetup
                     LEFT JOIN TuningPart tp ON tsp.idTuningPart = tp.idTuningPart
                     WHERE wr.current = 1
-                    GROUP BY wr.rowid, wr.distance, wr.current, wr.idTuningSetup, m.nameMap, v.nameVehicle, p.namePlayer, p.country"; 
+                    GROUP BY wr.idRecord, wr.distance, wr.current, wr.idTuningSetup, wr.questionable, wr.questionable_reason, m.nameMap, v.nameVehicle, p.namePlayer, p.country";
             $stmt = $db->prepare($sql);
             $stmt->execute();
             $records = $stmt->fetchAll(PDO::FETCH_ASSOC);

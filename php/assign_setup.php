@@ -15,10 +15,8 @@ if (!$logged || !$allowed) {
 
 header('Content-Type: application/json');
 
-$db_file = __DIR__ . '/../main.sqlite';
 try {
-    $db = new PDO("sqlite:" . $db_file);
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $db = get_database_connection();
 } catch (PDOException $e) {
     http_response_code(500);
     echo json_encode(['error' => 'Database connection failed']);
@@ -36,8 +34,7 @@ $recordId = (int)$input['recordId'];
 $tuningSetupId = (int)$input['tuningSetupId'];
 
 try {
-    // First check if the record exists and doesn't already have a tuning setup
-    $stmt = $db->prepare("SELECT idTuningSetup FROM WorldRecord WHERE rowid = ?");
+    $stmt = $db->prepare("SELECT idTuningSetup FROM WorldRecord WHERE idRecord = ?");
     $stmt->execute([$recordId]);
     $record = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -53,7 +50,6 @@ try {
         exit;
     }
     
-    // Check if the tuning setup exists
     $stmt = $db->prepare("SELECT idTuningSetup FROM TuningSetup WHERE idTuningSetup = ?");
     $stmt->execute([$tuningSetupId]);
     if (!$stmt->fetch()) {
@@ -62,8 +58,7 @@ try {
         exit;
     }
     
-    // Assign the tuning setup
-    $stmt = $db->prepare("UPDATE WorldRecord SET idTuningSetup = ? WHERE rowid = ?");
+    $stmt = $db->prepare("UPDATE WorldRecord SET idTuningSetup = ? WHERE idRecord = ?");
     $stmt->execute([$tuningSetupId, $recordId]);
     
     echo json_encode(['success' => true]);

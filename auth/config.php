@@ -1,59 +1,80 @@
 <?php
-$envPaths = [ __DIR__ . '/.env', dirname(__DIR__) . '/.env' ];
-foreach ($envPaths as $envPath) {
-    if (file_exists($envPath)) {
-        $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if ($line === '' || $line[0] === '#') continue;
-            if (strpos($line, '=') === false) continue;
-            [$key, $val] = array_map('trim', explode('=', $line, 2));
-            if (strlen($val) >= 2 && ($val[0] === '"' && substr($val, -1) === '"' || $val[0] === "'" && substr($val, -1) === "'")) {
-                $val = substr($val, 1, -1);
-            }
-            if (getenv($key) === false) {
-                putenv("$key=$val");
-                $_ENV[$key] = $val;
-                $_SERVER[$key] = $val;
-            }
+
+function load_dotenv(string $path): void {
+    if (!is_file($path)) {
+        return;
+    }
+
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#')) {
+            continue;
         }
-        break;
+
+        if (!preg_match('/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/', $line, $matches)) {
+            continue;
+        }
+
+        $name = $matches[1];
+        $value = $matches[2];
+
+        if ((str_starts_with($value, '"') && str_ends_with($value, '"')) || (str_starts_with($value, "'") && str_ends_with($value, "'"))) {
+            $value = substr($value, 1, -1);
+        }
+
+        $value = str_replace(['\\n', '\\r', '\\t'], ["\n", "\r", "\t"], $value);
+
+        if (getenv($name) === false) {
+            putenv("$name=$value");
+            $_ENV[$name] = $value;
+            $_SERVER[$name] = $value;
+        }
     }
 }
 
-$DISCORD_CLIENT_ID = getenv('DISCORD_CLIENT_ID') ?: '';
-$DISCORD_CLIENT_SECRET = getenv('DISCORD_CLIENT_SECRET') ?: '';
-$DISCORD_REDIRECT_URI = getenv('DISCORD_REDIRECT_URI') ?: 'http://localhost:8000/auth/discord_callback.php';
-
-$raw = getenv('ALLOWED_DISCORD_IDS') ?: '';
-$ALLOWED_DISCORD_IDS = [];
-if ($raw !== '') {
-    $ALLOWED_DISCORD_IDS = array_values(array_filter(array_map('trim', explode(',', $raw)), 'strlen'));
+function env(string $name, $default = null) {
+    $value = getenv($name);
+    return $value === false ? $default : $value;
 }
 
-$DISCORD_OAUTH_CONFIGURED = (!empty($DISCORD_CLIENT_ID) && !empty($DISCORD_CLIENT_SECRET) && !empty($DISCORD_REDIRECT_URI));
+function env_list(string $value): array {
+    $items = preg_split('/[\n,]+/', $value);
+    return array_values(array_filter(array_map('trim', $items), fn($item) => $item !== ''));
+}
 
-$HCAPTCHA_SITE_KEY = getenv('HCAPTCHA_SITE_KEY') ?: '';
-$HCAPTCHA_SECRET_KEY = getenv('HCAPTCHA_SECRET_KEY') ?: '';
+load_dotenv(__DIR__ . '/../.env');
 
-if (!headers_sent()) {
-    header('X-Content-Type-Options: nosniff');
-    header('X-Frame-Options: DENY');
-    header('Referrer-Policy: no-referrer-when-downgrade');
-    header("Permissions-Policy: interest-cohort=()");
-    header('X-Permitted-Cross-Domain-Policies: none');
+define('AUTH_SHARED_SECRET', env('AUTH_SHARED_SECRET'));
+$ALLOWED_DISCORD_IDS = env_list(env('ALLOWED_DISCORD_IDS'));
+$API_KEYS = env_list(env('API_KEYS'));
+define('HCAPTCHA_SITE_KEY', env('HCAPTCHA_SITE_KEY'));
+define('HCAPTCHA_SECRET_KEY', env('HCAPTCHA_SECRET_KEY'));
 
-    $csp = "default-src 'self'; script-src 'self' 'unsafe-inline' https://api.github.com https://cdnjs.buymeacoffee.com https://js.hcaptcha.com; connect-src 'self' https://api.github.com https://cdnjs.buymeacoffee.com https://hcaptcha.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://hcaptcha.com; font-src 'self' data:; frame-src https://hcaptcha.com;";
-    header('Content-Security-Policy: ' . $csp);
+function get_database_config(): array {
+    return [
+        'host' => env('DB_HOST'),
+        'port' => env('DB_PORT'),
+        'dbname' => env('DB_NAME'),
+        'user' => env('DB_USER'),
+        'pass' => env('DB_PASS'),
+    ];
+}
 
-    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
-        header('Strict-Transport-Security: max-age=63072000; includeSubDomains; preload');
+function get_database_connection(): PDO {
+    static $pdo = null;
+    if ($pdo instanceof PDO) {
+        return $pdo;
     }
-}
 
-ini_set('session.use_strict_mode', 1);
-ini_set('session.cookie_httponly', 1);
-if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
-    ini_set('session.cookie_secure', 1);
+    $config = get_database_config();
+    $dsn = sprintf('pgsql:host=%s;port=%s;dbname=%s', $config['host'], $config['port'], $config['dbname']);
+    $options = [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+    ];
+
+    $pdo = new PDO($dsn, $config['user'], $config['pass'], $options);
+    return $pdo;
 }
-ini_set('session.cookie_samesite', 'Lax');

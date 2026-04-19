@@ -4,7 +4,24 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Privacy Policy — HCR2 Records</title>
-    <link rel="stylesheet" href="css/style.css">
+    <script>
+    (function(){
+        var base = 'css/style.css';
+        function createLink(v){
+            var l = document.createElement('link');
+            l.rel = 'stylesheet';
+            l.href = base + '?v=' + v;
+            document.head.appendChild(l);
+        }
+        try {
+            fetch(base, {method:'HEAD'}).then(function(res){
+                var lm = res.headers.get('last-modified');
+                var v = lm ? Date.parse(lm) : Date.now();
+                createLink(v);
+            }).catch(function(){ createLink(Date.now()); });
+        } catch(e){ createLink(Date.now()); }
+    })();
+    </script>
     <style>
         .policy-container { max-width: 900px; margin: 30px auto; background:#fff; padding:20px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.06); }
         .policy-container h1 { margin-top:0; }

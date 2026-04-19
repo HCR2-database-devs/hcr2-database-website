@@ -2,11 +2,8 @@
 require_once __DIR__ . '/../auth/check_auth.php';
 ensure_authorized_json();
 
-$db_file = __DIR__ . '/../main.sqlite';
-
 try {
-    $db = new PDO("sqlite:" . $db_file);
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $db = get_database_connection();
 } catch (PDOException $e) {
     die(json_encode(array('error' => "Database connection failed: " . $e->getMessage())));
 }
@@ -25,6 +22,8 @@ $newPlayerName = $data['newPlayerName'] ?? null;
 $country = $data['country'] ?? null;
 $playerName = $data['playerName'] ?? null;
 $tuningSetupId = $data['tuningSetupId'] ?? null;
+$questionable = isset($data['questionable']) ? (int)$data['questionable'] : 0;
+$note = $data['note'] ?? $data['questionableReason'] ?? null;
 
 try {
     header('Content-Type: application/json; charset=utf-8');
@@ -43,23 +42,12 @@ try {
     $distance = (int)$distance;
 
     $db->beginTransaction();
-
-    if (!empty($newPlayerName)) {
-        $row = $db->query('SELECT COALESCE(MAX(idPlayer), 0) AS m FROM Player')->fetch(PDO::FETCH_ASSOC);
-        $newId = (int)$row['m'] + 1;
-
-        $stmt = $db->prepare("INSERT INTO Player (idPlayer, namePlayer, country) VALUES (:idPlayer, :namePlayer, :country)");
-        $stmt->execute([':idPlayer' => $newId, ':namePlayer' => $newPlayerName, ':country' => $country]);
-        $playerId = $newId;
-    }
-
-    if ((is_null($playerId) || $playerId === '') && !empty($playerName)) {
-        $stmt = $db->prepare('SELECT idPlayer FROM Player WHERE namePlayer = :name LIMIT 1');
-        $stmt->execute([':name' => $playerName]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($row) {
-            $playerId = (int)$row['idPlayer'];
-        }
+    
+    try {
+        $db->exec("ALTER TABLE WorldRecord ADD COLUMN IF NOT EXISTS questionable SMALLINT DEFAULT 0");
+        $db->exec("ALTER TABLE WorldRecord ADD COLUMN IF NOT EXISTS questionable_reason TEXT DEFAULT NULL");
+    } catch (Exception $e) {
+        // Migration step may not be supported on this schema yet.
     }
 
     if (is_null($playerId) && empty($newPlayerName)) {
@@ -79,12 +67,12 @@ try {
     }
 
     $playerId = is_null($playerId) || $playerId === '' ? null : (int)$playerId;
-
+    
     $stmt = $db->prepare("DELETE FROM WorldRecord WHERE idMap = :idMap AND idVehicle = :idVehicle");
     $stmt->execute([':idMap' => $mapId, ':idVehicle' => $vehicleId]);
 
-    $stmt = $db->prepare("INSERT INTO WorldRecord (idMap, idVehicle, idPlayer, distance, current, idTuningSetup) VALUES (:idMap, :idVehicle, :idPlayer, :distance, 1, :idTuningSetup)");
-    $stmt->execute([':idMap' => $mapId, ':idVehicle' => $vehicleId, ':idPlayer' => $playerId, ':distance' => $distance, ':idTuningSetup' => $tuningSetupId]);
+    $stmt = $db->prepare("INSERT INTO WorldRecord (idMap, idVehicle, idPlayer, distance, current, idTuningSetup, questionable, questionable_reason) VALUES (:idMap, :idVehicle, :idPlayer, :distance, 1, :idTuningSetup, :questionable, :questionable_reason)");
+    $stmt->execute([':idMap' => $mapId, ':idVehicle' => $vehicleId, ':idPlayer' => $playerId, ':distance' => $distance, ':idTuningSetup' => $tuningSetupId, ':questionable' => $questionable, ':questionable_reason' => $note]);
 
     $db->commit();
 

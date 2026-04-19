@@ -2,21 +2,13 @@
 require_once __DIR__ . '/check_auth.php';
 ensure_authorized_json();
 
-$db_file = realpath(__DIR__ . '/../main.sqlite');
 $backups_dir = __DIR__ . '/../backups';
 
 if (!file_exists($backups_dir)) @mkdir($backups_dir, 0750, true);
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'download_db') {
-    if (!file_exists($db_file)) {
-        http_response_code(404);
-        echo "Database file not found.";
-        exit;
-    }
-    header('Content-Type: application/octet-stream');
-    header('Content-Disposition: attachment; filename="main.sqlite"');
-    header('Content-Length: ' . filesize($db_file));
-    readfile($db_file);
+    http_response_code(501);
+    echo "PostgreSQL database download via this endpoint is not supported.";
     exit;
 }
 
@@ -26,12 +18,7 @@ $action = $_POST['action'] ?? null;
 
 try {
     if ($action === 'create_backup') {
-        $ts = date('Ymd-His');
-        $fname = "main-{$ts}.sqlite";
-        $dst = $backups_dir . '/' . $fname;
-        if (!copy($db_file, $dst)) throw new Exception('Failed to copy DB file.');
-        echo json_encode(['success' => true, 'filename' => $fname]);
-        exit;
+        throw new Exception('PostgreSQL backup creation is not supported by this endpoint.');
     }
 
     if ($action === 'list_backups') {
@@ -61,44 +48,16 @@ try {
     }
 
     if ($action === 'restore') {
-        $filename = $_POST['filename'] ?? '';
-        $path = realpath($backups_dir . '/' . basename($filename));
-        if (!$path || strpos($path, realpath($backups_dir)) !== 0) throw new Exception('Invalid filename');
-        if (!file_exists($path)) throw new Exception('File not found');
-        $tmp = $db_file . '.restore_tmp';
-        if (!copy($path, $tmp)) throw new Exception('Failed to copy backup to temp');
-        if (!rename($tmp, $db_file)) {
-            @unlink($tmp);
-            throw new Exception('Failed to replace database file');
-        }
-        echo json_encode(['success' => true]);
-        exit;
+        throw new Exception('PostgreSQL restore is not supported by this endpoint.');
     }
 
     if ($action === 'import') {
-        if (!isset($_FILES['sqlfile']) || !is_uploaded_file($_FILES['sqlfile']['tmp_name'])) {
-            throw new Exception('No file uploaded');
-        }
-        $content = file_get_contents($_FILES['sqlfile']['tmp_name']);
-        if ($content === false) throw new Exception('Failed to read uploaded file');
-
-        $pdo = new PDO('sqlite:' . $db_file);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $pdo->beginTransaction();
-        try {
-            $pdo->exec($content);
-            $pdo->commit();
-            echo json_encode(['success' => true]);
-            exit;
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            throw $e;
-        }
+        throw new Exception('PostgreSQL SQL import is not supported by this endpoint.');
     }
 
     if ($action === 'integrity') {
-        $pdo = new PDO('sqlite:' . $db_file);
-        $stmt = $pdo->query('PRAGMA integrity_check;');
+        $db = get_database_connection();
+        $stmt = $db->query('SELECT 1');
         $result = $stmt->fetchColumn();
         echo json_encode(['ok' => true, 'result' => $result]);
         exit;

@@ -3,11 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta property="og:title" content="HCR2 Adventure Database (unofficial)">
+    <meta property="og:description" content="Our goal is to create a comprehensive leaderboard that showcases the skills and achievements of the HCR2 community, which includes every record from leaderboards as well as challenge runs.">
+    <meta property="og:url" content="https://hcr2.xyz">
+    <meta property="og:type" content="website">
+    <meta name="theme-color" content="#007bff">
     <script>
     (function(){
         try {
             var xhr = new XMLHttpRequest();
-            xhr.open('GET', '/php/maintenance_status.php', false); // synchronous to block render briefly
+            xhr.open('GET', '/php/maintenance_status.php', false);
             xhr.setRequestHeader('Accept', 'application/json');
             xhr.send(null);
             if (xhr.status === 200) {
@@ -21,7 +26,7 @@
         } catch (e) {}
     })();
     </script>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=10">
     <title>HCR2 Database</title>
     <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
@@ -30,7 +35,6 @@
     <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
 </head>
 <body>
-    <!-- maintenance check moved to head for faster redirect -->
     <header>
         <div class="device-note" id="device-note">💻 Works best on laptop / PC for full functionality</div>
         <div class="header-inner">
@@ -41,15 +45,12 @@
                     <div style="font-size:16px; opacity:0.9;">Community world records & stats</div>
                 </div>
             </div>
-
-            <!-- Mobile menu toggle button (visible on small screens) -->
             <button id="mobile-menu-btn" class="mobile-menu-btn" aria-expanded="false" aria-controls="mobile-menu" onclick="toggleMobileMenu()">
                 <span class="sr-only">Open menu</span>
                 ☰
             </button>
 
-            <!-- header-right is now the togglable mobile menu -->
-            <nav id="mobile-menu" class="header-right" aria-hidden="true">
+            <nav id="mobile-menu" class="header-right">
                 <div class="header-buttons" aria-hidden="false">
                     <button onclick="fetchData('maps')">Get Maps</button>
                     <button onclick="fetchData('vehicles')">Get Vehicles</button>
@@ -60,19 +61,20 @@
                     <button onclick="togglePublicSubmitForm()">Submit Record</button>
                     <span id="news-btn-container"><button onclick="toggleNewsModal()">News</button></span>
 
-                    <button id="login-btn" class="discord-btn" onclick="location.href='auth/discord_login.php'">
+                    <button id="login-btn" class="discord-btn" onclick="location.href='https://auth.hcr2.xyz/login'">
                         <img class="discord-logo" src="img/Discord-Symbol-Blurple.png" alt="Discord">
                         <span>Sign in with Discord</span>
                     </button>
 
                     <button id="admin-btn" style="display:none;">Admin</button>
                     <button id="logout-btn" onclick="location.href='auth/logout.php'" style="display:none;">Logout</button>
-                    <button id="dark-mode-toggle" class="dark-mode-btn" onclick="toggleDarkMode()" aria-label="Toggle dark mode" title="Toggle dark mode">🌙</button>
+                    
                 </div>
             </nav>
+            <button id="dark-mode-toggle" class="dark-mode-btn" aria-label="Toggle dark mode" title="Toggle dark mode" onclick="toggleDarkMode()">🌙</button>
         </div>
 
-        <div id="auth-warning" style="color:orange; padding:8px 0; text-align:center;"></div>
+        <div id="auth-warning" style="color:orange; padding:8px 0; text-align:left;"></div>
     </header>
 
     <main>
@@ -101,6 +103,9 @@
             <p id="viewing-text" style="max-width: 800px; margin: 0 auto; font-size: 16px; line-height: 1.5;">
                 To view records, go to  the "Get Records" section. The records will be displayed in a table format, showing the map name, vehicle name, player name, and the distance achieved. Select a map / vehicle of your choice from the checkboxes to filter the records by map and / or vehicle, enter a specific distance value to filter records that are lower or higher than the specified value, or type in a specific player name to search for their records. You can also sort the records by distance to see the highest or lowest records first.
             </p>
+        	<p style="max-width: 800px; margin: 0 auto; font-size: 14px; line-height: 1.5; color: #666;">
+                <strong>❓ Questionable Records:</strong> A question mark (❓) next to a record indicates that it was trained using TAS (Tool-Assisted Speedrun) techniques or that its legitimacy is uncertain. These records are included for reference but may be distinguished from standard records. You can filter to view only questionable records using the "Show only Questionable ❓" checkbox in the filter options.
+            </p>
             <h2>Submitting Records ✍️</h2>
             <p id="viewing-text-2" style="max-width: 800px; margin: 0 auto; font-size: 16px; line-height: 1.5;">
                 To submit a record, click on the "Submit Record" button. Fill out the form with the required information, including the map name, vehicle name, distance achieved, player name, and country (optional). Once you submit the form, the record will be sent for admin review. If approved, it will be added to the database and displayed in the records section.
@@ -128,7 +133,6 @@
                 <button class="modal-close" onclick="togglePublicSubmitForm()" aria-label="Close">✕</button>
                 <h2 id="public-submit-title">Submit a Record (for admin review)</h2>
                 <form id="public-submit-form" onsubmit="submitPublicRecord(event)">
-                    <!-- Hidden timestamp field to detect bots that submit too quickly -->
                     <input type="hidden" id="form-load-time" value="">
                     <label>Map</label>
                     <select id="public-map-select" required></select>
@@ -142,10 +146,8 @@
                     <input type="text" id="public-player-country">
                     <label>Tuning parts (choose 3 or 4)</label>
                     <div id="public-tuning-parts" style="text-align:left; max-height:180px; overflow:auto; border:1px solid rgba(0,0,0,0.06); padding:8px; border-radius:8px; background:transparent;"></div>
-                    <!-- hCaptcha verification -->
                     <div id="hcaptcha-widget" data-sitekey="" required></div>
                     <input type="hidden" id="h-captcha-response" name="h_captcha_response">
-                    <!-- Multiple honeypot fields to catch bots (should all remain empty) -->
                     <div style="position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden;">
                         <label for="hp_email">Email (honeypot)</label>
                         <input type="email" id="hp_email" name="hp_email" autocomplete="off" tabindex="-1" aria-hidden="true">
@@ -164,7 +166,6 @@
                 <p id="public-submit-message" style="margin-top:10px;"></p>
             </div>
         </div>
-        <!-- News modal -->
         <div id="news-overlay" class="modal-overlay" style="display:none;">
             <div class="modal-panel form-container" role="dialog" aria-modal="true" aria-labelledby="news-title">
                 <button class="modal-close" onclick="toggleNewsModal()" aria-label="Close">✕</button>
@@ -173,6 +174,14 @@
                     <p>Loading news...</p>
                 </div>
                 <div style="text-align:right; margin-top:12px;"><button class="close-news-btn" onclick="toggleNewsModal()">Close</button></div>
+            </div>
+        </div>
+        <div id="note-overlay" class="modal-overlay" style="display:none;">
+            <div class="modal-panel form-container" role="dialog" aria-modal="true" aria-labelledby="note-title">
+                <button class="modal-close" onclick="hideNoteModal()" aria-label="Close">✕</button>
+                <h2 id="note-title">Record Note</h2>
+                <div id="note-content" style="max-height:60vh; overflow:auto; text-align:left; white-space: pre-wrap;"></div>
+                <div style="text-align:right; margin-top:12px;"><button class="close-note-btn" onclick="hideNoteModal()">Close</button></div>
             </div>
         </div>
         <footer id="footer">
@@ -187,6 +196,6 @@
             </p>
         </footer>
     </main>
-<script src="js/script.js"></script>
+<script src="js/script.js?v=10"></script>
 </body>
 </html>

@@ -1,16 +1,22 @@
 <?php
-require_once __DIR__ . '/../auth/config.php';
-if (session_status() === PHP_SESSION_NONE) session_start();
+ini_set('session.cookie_domain', '.hcr2.xyz');
+ini_set('session.cookie_path', '/');
+ini_set('session.cookie_secure', 1);
+ini_set('session.cookie_httponly', 1);
+ini_set('session.cookie_samesite', 'Lax');
 
-$logged = isset($_SESSION['discord']) && isset($_SESSION['discord']['id']);
-$allowed = false;
-if ($logged && !empty($ALLOWED_DISCORD_IDS)) {
-    $allowed = in_array((string)$_SESSION['discord']['id'], $ALLOWED_DISCORD_IDS, true);
-}
-if (!$logged || !$allowed) {
-    header('Location: /index.html');
+require_once __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../auth/check_auth.php';
+
+$user = ensure_authorized();
+
+global $ALLOWED_DISCORD_IDS;
+if (!in_array((string)$user['sub'], $ALLOWED_DISCORD_IDS, true)) {
+    http_response_code(403);
+    echo "<h1>403 Forbidden</h1><p>You are logged in as " . htmlspecialchars($user['username']) . ", but you are not an admin.</p>";
     exit;
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -32,11 +38,19 @@ if (!$logged || !$allowed) {
     <div class="topbar">
         <h1>Admin Panel — Edit/Add/Delete Records</h1>
         <div>
-            <span>Logged in as <?php echo htmlspecialchars($_SESSION['discord']['username'] ?? $_SESSION['discord']['id']); ?></span>
-            &nbsp;|&nbsp;<a href="/auth/logout.php">Logout</a>
+            <span>
+                Logged in as
+                <?php
+                echo htmlspecialchars(
+                    $user['username'] ?? $user['sub']
+                );
+                ?>
+            </span>
+            &nbsp;|&nbsp;<a href="/logout">Logout</a>
             &nbsp;|&nbsp;<a href="/index.html">Back to Public</a>
         </div>
     </div>
+
 
     <div class="form-container">
         <h2>Submit a New Record ✅</h2>
@@ -48,6 +62,7 @@ if (!$logged || !$allowed) {
             <label>Distance</label>
             <input type="number" id="distance-input" required>
             <label>Tuning Setup (optional)</label>
+            <input type="text" id="tuning-setup-filter" placeholder="Filter by part name or use part: prefix (e.g., 'magnet' or 'part:magnet')..." oninput="filterTuningSetups()" style="margin-bottom: 4px;">
             <select id="tuning-setup-select"></select>
             <label>Existing Player</label>
             <input type="text" id="player-filter" placeholder="Filter players..." oninput="filterPlayers()">
@@ -56,6 +71,12 @@ if (!$logged || !$allowed) {
             <input type="text" id="new-player-input" oninput="newPlayerTyped()">
             <label>Country</label>
             <input type="text" id="country-input">
+            <label style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="questionable-input" style="width: auto;">
+                Mark as Questionable (TAS or uncertain legitimacy)
+            </label>
+            <label>Note (optional)</label>
+            <textarea id="questionable-reason-submit" placeholder="add any notes for record (shows for everyone)" style="width:100%; padding:10px; border-radius:6px; border:1px solid #ccc; min-height:50px; resize:vertical; font-family:Arial,sans-serif;"></textarea>
             <button type="submit">Submit Record</button>
         </form>
         <p id="form-message"></p>
@@ -64,19 +85,44 @@ if (!$logged || !$allowed) {
     <div class="form-container">
         <h2>Delete a Record ❌</h2>
         <form id="delete-form" onsubmit="deleteRecord(event)">
+            <label>Filter Record</label>
+            <input type="text" id="delete-filter" placeholder="Filter by distance, map, vehicle, or player..." oninput="filterDeleteRecords()">
             <label>Record</label>
             <select id="record-select" required><option value="">Select a record</option></select>
             <button type="submit">Delete Record</button>
         </form>
         <p id="delete-message"></p>
     </div>
-
+    
+    <div class="form-container">
+        <h2>Mark Records as Questionable ❓</h2>
+        <form id="questionable-form" onsubmit="markQuestionable(event)">
+            <label>Filter Record</label>
+            <input type="text" id="questionable-filter-input" placeholder="Filter by distance, map, vehicle, or player..." oninput="filterQuestionableRecords()">
+            <label>Record</label>
+            <select id="questionable-record-select" required><option value="">Select a record</option></select>
+            <label>Status</label>
+            <select id="questionable-status-select" required>
+                <option value="">Select status</option>
+                <option value="0">Mark as Verified ✓</option>
+                <option value="1">Mark as Questionable ❓</option>
+            </select>
+            <label>Note (optional)</label>
+            <textarea id="questionable-reason-input" placeholder="add any notes for records" style="width:100%; padding:10px; border-radius:6px; border:1px solid #ccc; min-height:60px; resize:vertical; font-family:Arial,sans-serif;"></textarea>
+            <button type="submit">Update Status</button>
+        </form>
+        <p id="questionable-message"></p>
+    </div>
+    
     <div class="form-container">
         <h2>Assign Tuning Setup to Existing Record 🔧</h2>
         <form id="assign-setup-form" onsubmit="assignSetup(event)">
+            <label>Filter Record (without tuning setup)</label>
+            <input type="text" id="assign-filter" placeholder="Filter by distance, map, vehicle, or player..." oninput="filterAssignRecords()">
             <label>Record (without tuning setup)</label>
             <select id="assign-record-select" required><option value="">Select a record</option></select>
             <label>Tuning Setup</label>
+            <input type="text" id="assign-tuning-setup-filter" placeholder="Filter by part name or use part: prefix (e.g., 'magnet' or 'part:magnet')..." oninput="filterAssignTuningSetups()" style="margin-bottom: 4px;">
             <select id="assign-tuning-setup-select" required><option value="">Select a setup</option></select>
             <button type="submit">Assign Setup</button>
         </form>
@@ -85,9 +131,12 @@ if (!$logged || !$allowed) {
 
     <div class="form-container">
         <h2>Add a Vehicle ➕</h2>
-        <form id="add-vehicle-form" onsubmit="addVehicle(event)">
+        <form id="add-vehicle-form" onsubmit="addVehicle(event)" enctype="multipart/form-data">
             <label>Vehicle Name</label>
             <input type="text" id="vehicle-name-input" required placeholder="e.g., Jeep">
+            <label>Icon (SVG - optional)</label>
+            <input type="file" id="vehicle-icon-input" accept=".svg,image/svg+xml" style="cursor: pointer;">
+            <small style="display: block; margin: -6px 0 8px 0; color: #666;">Upload a .svg icon file. Will be saved as: vehicle_name.svg</small>
             <button type="submit">Add Vehicle</button>
         </form>
         <p id="add-vehicle-message"></p>
@@ -95,19 +144,25 @@ if (!$logged || !$allowed) {
 
     <div class="form-container">
         <h2>Add a Map ➕</h2>
-        <form id="add-map-form" onsubmit="addMap(event)">
+        <form id="add-map-form" onsubmit="addMap(event)" enctype="multipart/form-data">
             <label>Map Name</label>
             <input type="text" id="map-name-input" required placeholder="e.g., Forest Trials">
+            <label>Icon (SVG - optional)</label>
+            <input type="file" id="map-icon-input" accept=".svg,image/svg+xml" style="cursor: pointer;">
+            <small style="display: block; margin: -6px 0 8px 0; color: #666;">Upload a .svg icon file. Will be saved as: map_name.svg</small>
             <button type="submit">Add Map</button>
         </form>
         <p id="add-map-message"></p>
     </div>
-
+    
     <div class="form-container">
         <h2>Add Tuning Part ➕</h2>
-        <form id="add-tuning-part-form" onsubmit="addTuningPart(event)">
+        <form id="add-tuning-part-form" onsubmit="addTuningPart(event)" enctype="multipart/form-data">
             <label>Tuning Part Name</label>
             <input type="text" id="tuning-part-name-input" required placeholder="e.g., Turbo">
+            <label>Icon (SVG - optional)</label>
+            <input type="file" id="tuning-part-icon-input" accept=".svg,image/svg+xml" style="cursor: pointer;">
+            <small style="display: block; margin: -6px 0 8px 0; color: #666;">Upload a .svg icon file. Will be saved as: part_name.svg</small>
             <button type="submit">Add Tuning Part</button>
         </form>
         <p id="add-tuning-part-message"></p>
@@ -183,6 +238,8 @@ function esc(input) {
 }
 
 let allPlayers = [];
+let allRecords = [];
+let allTuningSetups = [];
 
 async function fetchJSON(url) {
     const u = url + (url.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
@@ -208,12 +265,14 @@ function populateFormOptions() {
         allPlayers.forEach(p => sel.appendChild(new Option(p.namePlayer, p.idPlayer)));
     });
     fetchJSON('/php/load_data.php?type=tuning_setups').then(data => {
+        allTuningSetups = data || [];
         const sel = document.getElementById('tuning-setup-select');
         sel.innerHTML = '<option value="">No tuning setup</option>';
-        (data || []).forEach(s => {
+        (allTuningSetups || []).forEach(s => {
             const parts = s.parts ? s.parts.map(p => p.nameTuningPart).join(', ') : '';
             sel.appendChild(new Option(`Setup ${s.idTuningSetup}: ${parts}`, s.idTuningSetup));
         });
+        document.getElementById('tuning-setup-filter').value = '';
     });
     fetchJSON('/php/load_data.php?type=tuning_parts').then(data => {
         const container = document.getElementById('tuning-parts-checkboxes');
@@ -230,36 +289,31 @@ function populateFormOptions() {
 
 function populateDeleteOptions() {
     fetchJSON('/php/load_data.php?type=records').then(data => {
+        allRecords = data || [];
         const sel = document.getElementById('record-select');
         sel.innerHTML = '<option value="">Select a record</option>';
-        (data || []).forEach(r => {
+        (allRecords || []).forEach(r => {
             const opt = document.createElement('option');
             opt.value = r.idRecord;
             opt.textContent = `${r.distance} - ${r.map_name} - ${r.vehicle_name} - ${r.player_name}`;
             sel.appendChild(opt);
         });
+        document.getElementById('delete-filter').value = '';
+        populateQuestionableOptions();
     });
 }
 
-function populateAssignSetupOptions() {
-    fetchJSON('/php/load_data.php?type=records').then(data => {
-        const sel = document.getElementById('assign-record-select');
-        sel.innerHTML = '<option value="">Select a record</option>';
-        (data || []).filter(r => !r.idTuningSetup).forEach(r => {
-            const opt = document.createElement('option');
-            opt.value = r.idRecord;
-            opt.textContent = `${r.distance} - ${r.map_name} - ${r.vehicle_name} - ${r.player_name}`;
-            sel.appendChild(opt);
-        });
+function populateQuestionableOptions() {
+    const sel = document.getElementById('questionable-record-select');
+    sel.innerHTML = '<option value="">Select a record</option>';
+    (allRecords || []).forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.idRecord;
+        const status = r.questionable === 1 ? '❓' : '✓';
+        opt.textContent = `${status} ${r.distance} - ${r.map_name} - ${r.vehicle_name} - ${r.player_name}`;
+        sel.appendChild(opt);
     });
-    fetchJSON('/php/load_data.php?type=tuning_setups').then(data => {
-        const sel = document.getElementById('assign-tuning-setup-select');
-        sel.innerHTML = '<option value="">Select a setup</option>';
-        (data || []).forEach(s => {
-            const parts = s.parts ? s.parts.map(p => p.nameTuningPart).join(', ') : '';
-            sel.appendChild(new Option(`Setup ${s.idTuningSetup}: ${parts}`, s.idTuningSetup));
-        });
-    });
+    document.getElementById('questionable-filter-input').value = '';
 }
 
 function filterPlayers() {
@@ -267,6 +321,80 @@ function filterPlayers() {
     const sel = document.getElementById('player-select');
     sel.innerHTML = '<option value="">Select existing player</option>';
     allPlayers.filter(p => p.namePlayer.toLowerCase().includes(q)).forEach(p => sel.appendChild(new Option(p.namePlayer, p.idPlayer)));
+}
+
+function filterDeleteRecords() {
+    const q = document.getElementById('delete-filter').value.toLowerCase();
+    const sel = document.getElementById('record-select');
+    sel.innerHTML = '<option value="">Select a record</option>';
+    (allRecords || []).filter(r => {
+        const text = `${r.distance} ${r.map_name} ${r.vehicle_name} ${r.player_name}`.toLowerCase();
+        return text.includes(q);
+    }).forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.idRecord;
+        opt.textContent = `${r.distance} - ${r.map_name} - ${r.vehicle_name} - ${r.player_name}`;
+        sel.appendChild(opt);
+    });
+}
+
+function filterQuestionableRecords() {
+    const q = document.getElementById('questionable-filter-input').value.toLowerCase();
+    const sel = document.getElementById('questionable-record-select');
+    sel.innerHTML = '<option value="">Select a record</option>';
+    (allRecords || []).filter(r => {
+        const text = `${r.distance} ${r.map_name} ${r.vehicle_name} ${r.player_name}`.toLowerCase();
+        return text.includes(q);
+    }).forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.idRecord;
+        const status = r.questionable === 1 ? '❓' : '✓';
+        opt.textContent = `${status} ${r.distance} - ${r.map_name} - ${r.vehicle_name} - ${r.player_name}`;
+        sel.appendChild(opt);
+    });
+}
+
+function filterTuningSetups() {
+    const q = document.getElementById('tuning-setup-filter').value.toLowerCase().trim();
+    const sel = document.getElementById('tuning-setup-select');
+    sel.innerHTML = '<option value="">No tuning setup</option>';
+    
+    (allTuningSetups || []).filter(s => {
+        if (!q) return true;
+        const parts = s.parts ? s.parts.map(p => p.nameTuningPart).join(', ').toLowerCase() : '';
+        const setupInfo = `setup ${s.idTuningSetup} ${parts}`.toLowerCase();
+        
+        // Support "part:turbo" syntax
+        if (q.startsWith('part:')) {
+            const partQuery = q.substring(5);
+            return parts.includes(partQuery);
+        }
+        return setupInfo.includes(q);
+    }).forEach(s => {
+        const parts = s.parts ? s.parts.map(p => p.nameTuningPart).join(', ') : '';
+        sel.appendChild(new Option(`Setup ${s.idTuningSetup}: ${parts}`, s.idTuningSetup));
+    });
+}
+
+function filterAssignTuningSetups() {
+    const q = document.getElementById('assign-tuning-setup-filter').value.toLowerCase().trim();
+    const sel = document.getElementById('assign-tuning-setup-select');
+    sel.innerHTML = '<option value="">Select a setup</option>';
+    
+    (allTuningSetups || []).filter(s => {
+        if (!q) return true;
+        const parts = s.parts ? s.parts.map(p => p.nameTuningPart).join(', ').toLowerCase() : '';
+        const setupInfo = `setup ${s.idTuningSetup} ${parts}`.toLowerCase();
+        
+        if (q.startsWith('part:')) {
+            const partQuery = q.substring(5);
+            return parts.includes(partQuery);
+        }
+        return setupInfo.includes(q);
+    }).forEach(s => {
+        const parts = s.parts ? s.parts.map(p => p.nameTuningPart).join(', ') : '';
+        sel.appendChild(new Option(`Setup ${s.idTuningSetup}: ${parts}`, s.idTuningSetup));
+    });
 }
 
 function handlePlayerSelection() {
@@ -300,6 +428,8 @@ function submitRecord(e) {
     const playerId = document.getElementById('player-select').value;
     const newPlayerName = document.getElementById('new-player-input').value;
     const country = document.getElementById('country-input').value;
+    const questionable = document.getElementById('questionable-input').checked ? 1 : 0;
+    const questionableReason = document.getElementById('questionable-reason-submit').value.trim();
     const selectedPlayerOption = document.getElementById('player-select').selectedOptions[0];
     const selectedPlayerName = selectedPlayerOption ? selectedPlayerOption.textContent : '';
 
@@ -313,7 +443,7 @@ function submitRecord(e) {
     }
 
     const hasPlayerId = (playerId !== null && playerId !== undefined && playerId !== '');
-    const formData = hasPlayerId ? { mapId, vehicleId, distance, tuningSetupId: tuningSetupId || null, playerId, playerName: selectedPlayerName } : { mapId, vehicleId, distance, tuningSetupId: tuningSetupId || null, playerId: null, newPlayerName, country };
+    const formData = hasPlayerId ? { mapId, vehicleId, distance, tuningSetupId: tuningSetupId || null, playerId, playerName: selectedPlayerName, questionable, questionableReason: questionableReason || null } : { mapId, vehicleId, distance, tuningSetupId: tuningSetupId || null, playerId: null, newPlayerName, country, questionable, questionableReason: questionableReason || null };
 
     fetch('/php/submit_record.php', {
         method: 'POST',
@@ -321,7 +451,15 @@ function submitRecord(e) {
         credentials: 'same-origin',
         body: JSON.stringify(formData)
     }).then(async resp => {
-        const data = await resp.json().catch(()=>({ error: 'Invalid server response' }));
+        const text = await resp.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (err) {
+            console.error('Invalid JSON response from submit_record:', text);
+            showFormMessage('Server returned invalid response: ' + text, true);
+            return;
+        }
         if (!resp.ok) {
             showFormMessage(data.error || 'Server error', true);
             return;
@@ -336,7 +474,10 @@ function submitRecord(e) {
         } else {
             showFormMessage(data.error || 'Unknown error', true);
         }
-    }).catch(()=> showFormMessage('Error submitting record.', true));
+    }).catch(err => {
+        console.error('Fetch error when submitting record:', err);
+        showFormMessage('Error submitting record: ' + err.message, true);
+    });
 }
 
 function deleteRecord(e) {
@@ -366,18 +507,130 @@ function deleteRecord(e) {
     }).catch(()=> showDeleteMessage('Error deleting record.', true));
 }
 
-// Assign tuning setup to existing record
+function markQuestionable(e) {
+    e.preventDefault();
+    const recordId = document.getElementById('questionable-record-select').value;
+    const status = document.getElementById('questionable-status-select').value;
+    const reason = document.getElementById('questionable-reason-input').value.trim();
+    if (!recordId || status === '') {
+        showQuestionableMessage('Please select a record and status.', true);
+        return;
+    }
+    fetch('/php/set_questionable.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ recordId, questionable: parseInt(status), note: reason || null })
+    }).then(async resp => {
+        const text = await resp.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (err) {
+            console.error('Invalid JSON response from set_questionable:', text);
+            showQuestionableMessage('Server returned invalid response: ' + text, true);
+            return;
+        }
+        if (!resp.ok) {
+            showQuestionableMessage(data.error || 'Server error', true);
+            return;
+        }
+        if (data.success) {
+            const msg = status === '1' ? 'Record marked as questionable ❓' : 'Record marked as verified ✓';
+            showQuestionableMessage(msg, false);
+            document.getElementById('questionable-form').reset();
+            populateDeleteOptions();
+            setTimeout(() => document.getElementById('questionable-message').textContent = '', 3000);
+        } else {
+            showQuestionableMessage(data.error || 'Unknown error', true);
+        }
+    }).catch(err => {
+        console.error('Fetch error when marking questionable:', err);
+        showQuestionableMessage('Error updating record: ' + err.message, true);
+    });
+}
+
+function showQuestionableMessage(msg, isError) {
+    const el = document.getElementById('questionable-message');
+    el.textContent = msg;
+    el.style.color = isError ? 'red' : 'green';
+}
+
+function populateAssignSetupOptions() {
+    fetchJSON('/php/load_data.php?type=records').then(data => {
+        const sel = document.getElementById('assign-record-select');
+        sel.innerHTML = '<option value="">Select a record</option>';
+        (data || []).filter(r => !r.idTuningSetup).forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r.idRecord;
+            opt.textContent = `${r.distance} - ${r.map_name} - ${r.vehicle_name} - ${r.player_name}`;
+            sel.appendChild(opt);
+        });
+    });
+    if (allTuningSetups.length > 0) {
+        const sel = document.getElementById('assign-tuning-setup-select');
+        sel.innerHTML = '<option value="">Select a setup</option>';
+        (allTuningSetups || []).forEach(s => {
+            const parts = s.parts ? s.parts.map(p => p.nameTuningPart).join(', ') : '';
+            sel.appendChild(new Option(`Setup ${s.idTuningSetup}: ${parts}`, s.idTuningSetup));
+        });
+        document.getElementById('assign-tuning-setup-filter').value = '';
+    } else {
+        fetchJSON('/php/load_data.php?type=tuning_setups').then(data => {
+            allTuningSetups = data || [];
+            const sel = document.getElementById('assign-tuning-setup-select');
+            sel.innerHTML = '<option value="">Select a setup</option>';
+            (allTuningSetups || []).forEach(s => {
+                const parts = s.parts ? s.parts.map(p => p.nameTuningPart).join(', ') : '';
+                sel.appendChild(new Option(`Setup ${s.idTuningSetup}: ${parts}`, s.idTuningSetup));
+            });
+            document.getElementById('assign-tuning-setup-filter').value = '';
+        });
+    }
+}
+    
+function showFormMessage(msg, isError) {
+    const el = document.getElementById('form-message');
+    el.textContent = msg;
+    el.style.color = isError ? 'red' : 'green';
+}
+function showDeleteMessage(msg, isError) {
+    const el = document.getElementById('delete-message');
+    el.textContent = msg;
+    el.style.color = isError ? 'red' : 'green';
+}
+
+function filterAssignRecords() {
+    const q = document.getElementById('assign-filter').value.toLowerCase();
+    const sel = document.getElementById('assign-record-select');
+    sel.innerHTML = '<option value="">Select a record</option>';
+    fetchJSON('/php/load_data.php?type=records').then(data => {
+        (data || []).filter(r => !r.idTuningSetup).filter(r => {
+            const text = `${r.distance} ${r.map_name} ${r.vehicle_name} ${r.player_name}`.toLowerCase();
+            return text.includes(q);
+        }).forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r.idRecord;
+            opt.textContent = `${r.distance} - ${r.map_name} - ${r.vehicle_name} - ${r.player_name}`;
+            sel.appendChild(opt);
+        });
+    });
+}
 
 function assignSetup(e) {
     e.preventDefault();
     const recordId = document.getElementById('assign-record-select').value;
     const tuningSetupId = document.getElementById('assign-tuning-setup-select').value;
     
-    if (!recordId || !tuningSetupId) {
-        showAssignMessage('Please select both a record and a tuning setup.', true);
+    if (!recordId) {
+        showAssignMessage('Please select a record.', true);
         return;
     }
-
+    if (!tuningSetupId) {
+        showAssignMessage('Please select a tuning setup.', true);
+        return;
+    }
+    
     fetch('/php/assign_setup.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -391,29 +644,14 @@ function assignSetup(e) {
         }
         if (data.success) {
             showAssignMessage('Tuning setup assigned successfully!', false);
-            document.getElementById('assign-setup-form').reset();
             populateAssignSetupOptions();
             populateDeleteOptions();
+            document.getElementById('assign-setup-form').reset();
+            setTimeout(() => document.getElementById('assign-message').textContent = '', 5000);
         } else {
             showAssignMessage(data.error || 'Unknown error', true);
         }
     }).catch(()=> showAssignMessage('Error assigning setup.', true));
-}
-
-function showFormMessage(msg, isError) {
-    const el = document.getElementById('form-message');
-    el.textContent = msg;
-    el.style.color = isError ? 'red' : 'green';
-}
-function showDeleteMessage(msg, isError) {
-    const el = document.getElementById('delete-message');
-    el.textContent = msg;
-    el.style.color = isError ? 'red' : 'green';
-}
-function showAssignMessage(msg, isError) {
-    const el = document.getElementById('assign-message');
-    el.textContent = msg;
-    el.style.color = isError ? 'red' : 'green';
 }
 
 function addVehicle(e) {
@@ -423,11 +661,16 @@ function addVehicle(e) {
         showAddVehicleMessage('Please enter a vehicle name.', true);
         return;
     }
+    const formData = new FormData();
+    formData.append('vehicleName', vehicleName);
+    const iconFile = document.getElementById('vehicle-icon-input').files[0];
+    if (iconFile) {
+        formData.append('icon', iconFile);
+    }
     fetch('/php/add_vehicle.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ vehicleName })
+        body: formData
     }).then(async resp => {
         const data = await resp.json().catch(()=>({ error: 'Invalid server response' }));
         if (!resp.ok) {
@@ -435,7 +678,7 @@ function addVehicle(e) {
             return;
         }
         if (data.success) {
-            showAddVehicleMessage('Vehicle added successfully!', false);
+            showAddVehicleMessage('Vehicle added successfully!' + (data.iconMessage ? ' ' + data.iconMessage : ''), false);
             document.getElementById('add-vehicle-form').reset();
             populateFormOptions();
         } else {
@@ -451,11 +694,16 @@ function addMap(e) {
         showAddMapMessage('Please enter a map name.', true);
         return;
     }
+    const formData = new FormData();
+    formData.append('mapName', mapName);
+    const iconFile = document.getElementById('map-icon-input').files[0];
+    if (iconFile) {
+        formData.append('icon', iconFile);
+    }
     fetch('/php/add_map.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ mapName })
+        body: formData
     }).then(async resp => {
         const data = await resp.json().catch(()=>({ error: 'Invalid server response' }));
         if (!resp.ok) {
@@ -463,7 +711,7 @@ function addMap(e) {
             return;
         }
         if (data.success) {
-            showAddMapMessage('Map added successfully!', false);
+            showAddMapMessage('Map added successfully!' + (data.iconMessage ? ' ' + data.iconMessage : ''), false);
             document.getElementById('add-map-form').reset();
             populateFormOptions();
         } else {
@@ -484,6 +732,12 @@ function showAddMapMessage(msg, isError) {
     el.style.color = isError ? 'red' : 'green';
 }
 
+function showAssignMessage(msg, isError) {
+    const el = document.getElementById('assign-message');
+    el.textContent = msg;
+    el.style.color = isError ? 'red' : 'green';
+}
+
 function addTuningPart(e) {
     e.preventDefault();
     const partName = document.getElementById('tuning-part-name-input').value.trim();
@@ -491,11 +745,16 @@ function addTuningPart(e) {
         showAddTuningPartMessage('Please enter a tuning part name.', true);
         return;
     }
+    const formData = new FormData();
+    formData.append('partName', partName);
+    const iconFile = document.getElementById('tuning-part-icon-input').files[0];
+    if (iconFile) {
+        formData.append('icon', iconFile);
+    }
     fetch('/php/add_tuning_part.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ partName })
+        body: formData
     }).then(async resp => {
         const data = await resp.json().catch(()=>({ error: 'Invalid server response' }));
         if (!resp.ok) {
@@ -503,7 +762,7 @@ function addTuningPart(e) {
             return;
         }
         if (data.success) {
-            showAddTuningPartMessage('Tuning part added successfully!', false);
+            showAddTuningPartMessage('Tuning part added successfully!' + (data.iconMessage ? ' ' + data.iconMessage : ''), false);
             document.getElementById('add-tuning-part-form').reset();
             populateFormOptions();
         } else {
@@ -702,11 +961,11 @@ async function listBackups() {
         const data = await res.json();
         const list = Array.isArray(data.backups) ? data.backups : [];
         if (list.length === 0) { el.textContent = 'No backups found.'; return; }
-        let html = '<table class="admin-backups-table"><thead><tr><th>Name</th><th>Size</th><th>Modified</th><th>Actions</th></tr></thead><tbody>';
+        let html = '<table style="width:100%; border-collapse: collapse;"><tr><th>Name</th><th>Size</th><th>Modified</th><th>Actions</th></tr>';
         list.forEach(b => {
-            html += `<tr><td data-label="Name">${b.name}</td><td data-label="Size">${b.size}</td><td data-label="Modified">${b.mtime}</td><td data-label="Actions"><button onclick="restoreBackup('${b.name}')">Restore</button> <button onclick="deleteBackup('${b.name}')" style="background:#ccc;color:#000;">Delete</button></td></tr>`;
+            html += `<tr style="border-top:1px solid #eee;"><td>${b.name}</td><td>${b.size}</td><td>${b.mtime}</td><td><button onclick="restoreBackup('${b.name}')">Restore</button> <button onclick="deleteBackup('${b.name}')" style="background:#ccc;color:#000;">Delete</button></td></tr>`;
         });
-        html += '</tbody></table>';
+        html += '</table>';
         el.innerHTML = html;
     } catch (err) { console.error(err); el.textContent = 'Failed to load backups.'; }
 }

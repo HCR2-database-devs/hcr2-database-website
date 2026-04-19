@@ -2,11 +2,8 @@
 require_once __DIR__ . '/../auth/check_auth.php';
 ensure_authorized_json();
 
-$db_file = __DIR__ . '/../main.sqlite';
-
 try {
-    $db = new PDO("sqlite:" . $db_file);
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $db = get_database_connection();
 } catch (PDOException $e) {
     die(json_encode(array('error' => "Database connection failed: " . $e->getMessage())));
 }
@@ -28,7 +25,6 @@ sort($partIds);
 try {
     $db->beginTransaction();
 
-    // Check if a setup with these exact parts already exists
     $inPlaceholders = str_repeat('?,', count($partIds) - 1) . '?';
     $stmt = $db->prepare("
         SELECT idTuningSetup
@@ -56,12 +52,10 @@ try {
         exit;
     }
 
-    // Insert new setup
     $stmt = $db->prepare("INSERT INTO TuningSetup DEFAULT VALUES");
     $stmt->execute();
     $setupId = $db->lastInsertId();
 
-    // Insert parts
     $stmt = $db->prepare("INSERT INTO TuningSetupParts (idTuningSetup, idTuningPart) VALUES (?, ?)");
     foreach ($partIds as $partId) {
         $stmt->execute([$setupId, $partId]);
