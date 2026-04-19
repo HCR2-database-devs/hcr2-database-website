@@ -140,25 +140,6 @@ if (count($tuningParts) < 3 || count($tuningParts) > 4) {
     exit;
 }
 try {
-    $db->exec("CREATE TABLE IF NOT EXISTS PendingSubmission (
-        id SERIAL PRIMARY KEY,
-        idMap INTEGER,
-        idVehicle INTEGER,
-        distance INTEGER,
-        playerName TEXT,
-        playerCountry TEXT,
-        tuningParts TEXT,
-        submitterIp TEXT,
-        status TEXT DEFAULT 'pending',
-        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )");
-
-    try {
-        $db->exec("ALTER TABLE PendingSubmission ADD COLUMN IF NOT EXISTS tuningParts TEXT");
-    } catch (Exception $e) {
-        error_log('PendingSubmission migration: ' . $e->getMessage());
-    }
-
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
     if ($ip) {
         $rstmt = $db->prepare("SELECT COUNT(1) AS c FROM PendingSubmission WHERE submitterIp = :ip AND submitted_at >= NOW() - INTERVAL '1 hour'");
@@ -183,8 +164,7 @@ try {
 
     echo json_encode(['success' => true, 'message' => 'Submission received and is pending review by admins.']);
 } catch (PDOException $e) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
+    generic_database_error('public_submit failed: ' . $e->getMessage());
 }
 
 ?>

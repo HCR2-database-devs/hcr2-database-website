@@ -5,7 +5,7 @@ ensure_authorized_json();
 try {
     $db = get_database_connection();
 } catch (PDOException $e) {
-    die(json_encode(array('error' => "Database connection failed: " . $e->getMessage())));
+    generic_database_error('add_tuning_setup connection failed: ' . $e->getMessage());
 }
 
 $raw = file_get_contents('php://input');
@@ -28,18 +28,18 @@ try {
     $inPlaceholders = str_repeat('?,', count($partIds) - 1) . '?';
     $stmt = $db->prepare("
         SELECT idTuningSetup
-        FROM TuningSetup
+        FROM _tuningsetup
         WHERE idTuningSetup IN (
             SELECT idTuningSetup
-            FROM TuningSetupParts
+            FROM _tuningsetupparts
             WHERE idTuningPart IN ($inPlaceholders)
             GROUP BY idTuningSetup
             HAVING COUNT(*) = ?
         )
         AND NOT EXISTS (
             SELECT 1
-            FROM TuningSetupParts tsp
-            WHERE tsp.idTuningSetup = TuningSetup.idTuningSetup
+            FROM _tuningsetupparts tsp
+            WHERE tsp.idTuningSetup = _tuningsetup.idTuningSetup
             AND tsp.idTuningPart NOT IN ($inPlaceholders)
         )
     ");
@@ -52,11 +52,11 @@ try {
         exit;
     }
 
-    $stmt = $db->prepare("INSERT INTO TuningSetup DEFAULT VALUES");
+    $stmt = $db->prepare("INSERT INTO _tuningsetup DEFAULT VALUES");
     $stmt->execute();
     $setupId = $db->lastInsertId();
 
-    $stmt = $db->prepare("INSERT INTO TuningSetupParts (idTuningSetup, idTuningPart) VALUES (?, ?)");
+    $stmt = $db->prepare("INSERT INTO _tuningsetupparts (idTuningSetup, idTuningPart) VALUES (?, ?)");
     foreach ($partIds as $partId) {
         $stmt->execute([$setupId, $partId]);
     }
@@ -64,7 +64,9 @@ try {
     $db->commit();
     echo json_encode(['success' => true]);
 } catch (PDOException $e) {
-    $db->rollBack();
-    echo json_encode(['error' => "Database error: " . $e->getMessage()]);
+    if ($db->inTransaction()) {
+        $db->rollBack();
+    }
+    generic_database_error('add_tuning_setup failed: ' . $e->getMessage());
 }
 ?>

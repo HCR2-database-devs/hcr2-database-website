@@ -5,7 +5,7 @@ ensure_authorized_json();
 try {
     $db = get_database_connection();
 } catch (PDOException $e) {
-    die(json_encode(array('error' => "Database connection failed: " . $e->getMessage())));
+    generic_database_error('add_map connection failed: ' . $e->getMessage());
 }
 
 header('Content-Type: application/json; charset=utf-8');
@@ -26,17 +26,17 @@ try {
 
     $mapName = trim($mapName);
 
-    $check = $db->prepare('SELECT idMap FROM Map WHERE nameMap = :name LIMIT 1');
+    $check = $db->prepare('SELECT idMap FROM _map WHERE nameMap = :name LIMIT 1');
     $check->execute([':name' => $mapName]);
     if ($check->fetch()) {
         echo json_encode(['error' => 'Map already exists in database.']);
         exit;
     }
 
-    $row = $db->query('SELECT COALESCE(MAX(idMap), 0) AS m FROM Map')->fetch(PDO::FETCH_ASSOC);
+    $row = $db->query('SELECT COALESCE(MAX(idMap), 0) AS m FROM _map')->fetch(PDO::FETCH_ASSOC);
     $newId = (int)$row['m'] + 1;
 
-    $stmt = $db->prepare('INSERT INTO Map (idMap, nameMap) VALUES (:idMap, :nameMap)');
+    $stmt = $db->prepare('INSERT INTO _map (idMap, nameMap) VALUES (:idMap, :nameMap)');
     $stmt->execute([':idMap' => $newId, ':nameMap' => $mapName]);
 
     $iconMessage = '';
@@ -77,6 +77,6 @@ try {
 
     echo json_encode(['success' => true, 'idMap' => $newId, 'nameMap' => $mapName, 'iconMessage' => $iconMessage]);
 } catch (PDOException $e) {
-    echo json_encode(['error' => "Database error: " . $e->getMessage()]);
+    generic_database_error('add_map failed: ' . $e->getMessage());
 }
 ?>

@@ -5,7 +5,7 @@ ensure_authorized_json();
 try {
     $db = get_database_connection();
 } catch (PDOException $e) {
-    die(json_encode(array('error' => "Database connection failed: " . $e->getMessage())));
+    generic_database_error('add_tuning_part connection failed: ' . $e->getMessage());
 }
 
 header('Content-Type: application/json; charset=utf-8');
@@ -24,13 +24,13 @@ if (empty($partName)) {
 }
 
 try {
-    $stmt = $db->prepare("SELECT idTuningPart FROM TuningPart WHERE nameTuningPart = :name");
+    $stmt = $db->prepare("SELECT idTuningPart FROM _tuningpart WHERE nameTuningPart = :name");
     $stmt->execute([':name' => $partName]);
     if ($stmt->fetch()) {
         echo json_encode(['error' => 'A tuning part with this name already exists.']);
         exit;
     }
-    $stmt = $db->prepare("INSERT INTO TuningPart (nameTuningPart) VALUES (:name)");
+    $stmt = $db->prepare("INSERT INTO _tuningpart (nameTuningPart) VALUES (:name)");
     $stmt->execute([':name' => $partName]);
     $iconMessage = '';
     if (!empty($_FILES['icon']['tmp_name'])) {
@@ -69,6 +69,6 @@ try {
     }
     echo json_encode(['success' => true, 'iconMessage' => $iconMessage]);
 } catch (PDOException $e) {
-    echo json_encode(['error' => "Database error: " . $e->getMessage()]);
+    generic_database_error('add_tuning_part failed: ' . $e->getMessage());
 }
 ?>

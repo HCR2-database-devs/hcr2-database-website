@@ -1,19 +1,18 @@
 <?php
 
+require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/maintenance_helpers.php';
 enforce_maintenance_json();
-
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 
 try {
     $db = get_database_connection();
 } catch (PDOException $e) {
-    echo json_encode(array('error' => "Database connection failed: " . $e->getMessage()));
-    exit;
+    generic_database_error('load_data connection failed: ' . $e->getMessage());
 }
 
 function get_data($db, $table, $select = '*', $where = '', $order = '', $limit = '') {
-    $allowed_tables = ['Map', 'Vehicle', 'Player', 'TuningPart'];
+    $allowed_tables = ['_map', '_vehicle', '_player', '_tuningpart'];
     if (!in_array($table, $allowed_tables)) {
         return json_encode(array('error' => 'Invalid table'));
     }
@@ -37,24 +36,24 @@ if (isset($_GET['type'])) {
     $type = $_GET['type'];
     switch ($type) {
         case 'maps':
-            echo get_data($db, 'Map');
+            echo get_data($db, '_map');
             break;
         case 'vehicles':
-            echo get_data($db, 'Vehicle');
+            echo get_data($db, '_vehicle');
             break;
         case 'players':
-            echo get_data($db, 'Player');
+            echo get_data($db, '_player');
             break;
         case 'tuning_parts':
-            echo get_data($db, 'TuningPart', '*', '', 'nameTuningPart');
+            echo get_data($db, '_tuningpart', '*', '', 'nameTuningPart');
             break;
         case 'tuning_setups':
             $sql = "
                 SELECT ts.idTuningSetup,
                        string_agg(tp.nameTuningPart, ', ') as parts
-                FROM TuningSetup ts
-                JOIN TuningSetupParts tsp ON ts.idTuningSetup = tsp.idTuningSetup
-                JOIN TuningPart tp ON tsp.idTuningPart = tp.idTuningPart
+                FROM _tuningsetup ts
+                JOIN _tuningsetupparts tsp ON ts.idTuningSetup = tsp.idTuningSetup
+                JOIN _tuningpart tp ON tsp.idTuningPart = tp.idTuningPart
                 GROUP BY ts.idTuningSetup
                 ORDER BY ts.idTuningSetup
             ";
@@ -74,11 +73,6 @@ if (isset($_GET['type'])) {
             echo json_encode($data);
             break;
         case 'records':
-            try {
-                $db->exec("ALTER TABLE WorldRecord ADD COLUMN IF NOT EXISTS questionable SMALLINT DEFAULT 0");
-                $db->exec("ALTER TABLE WorldRecord ADD COLUMN IF NOT EXISTS questionable_reason TEXT DEFAULT NULL");
-            } catch (Exception $e) {
-            }
             $sql = "SELECT
                         wr.idRecord AS idRecord,
                         wr.distance,
@@ -91,12 +85,12 @@ if (isset($_GET['type'])) {
                         p.namePlayer AS player_name,
                         p.country AS player_country,
                         string_agg(tp.nameTuningPart, ', ') as tuning_parts
-                    FROM WorldRecord AS wr
-                    JOIN Map AS m ON wr.idMap = m.idMap
-                    JOIN Vehicle AS v ON wr.idVehicle = v.idVehicle
-                    JOIN Player AS p ON wr.idPlayer = p.idPlayer
-                    LEFT JOIN TuningSetupParts tsp ON wr.idTuningSetup = tsp.idTuningSetup
-                    LEFT JOIN TuningPart tp ON tsp.idTuningPart = tp.idTuningPart
+                    FROM _worldrecord AS wr
+                    JOIN _map AS m ON wr.idMap = m.idMap
+                    JOIN _vehicle AS v ON wr.idVehicle = v.idVehicle
+                    JOIN _player AS p ON wr.idPlayer = p.idPlayer
+                    LEFT JOIN _tuningsetupparts tsp ON wr.idTuningSetup = tsp.idTuningSetup
+                    LEFT JOIN _tuningpart tp ON tsp.idTuningPart = tp.idTuningPart
                     WHERE wr.current = 1
                     GROUP BY wr.idRecord, wr.distance, wr.current, wr.idTuningSetup, wr.questionable, wr.questionable_reason, m.nameMap, v.nameVehicle, p.namePlayer, p.country";
             $stmt = $db->prepare($sql);

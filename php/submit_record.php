@@ -5,7 +5,7 @@ ensure_authorized_json();
 try {
     $db = get_database_connection();
 } catch (PDOException $e) {
-    die(json_encode(array('error' => "Database connection failed: " . $e->getMessage())));
+    generic_database_error('submit_record connection failed: ' . $e->getMessage());
 }
 
 $raw = file_get_contents('php://input');
@@ -43,13 +43,6 @@ try {
 
     $db->beginTransaction();
     
-    try {
-        $db->exec("ALTER TABLE WorldRecord ADD COLUMN IF NOT EXISTS questionable SMALLINT DEFAULT 0");
-        $db->exec("ALTER TABLE WorldRecord ADD COLUMN IF NOT EXISTS questionable_reason TEXT DEFAULT NULL");
-    } catch (Exception $e) {
-        // Migration step may not be supported on this schema yet.
-    }
-
     if (is_null($playerId) && empty($newPlayerName)) {
         $db->rollBack();
         echo json_encode(['error' => 'No valid player selected or provided.']);
@@ -57,7 +50,7 @@ try {
     }
 
     if (!is_null($playerId)) {
-        $check = $db->prepare('SELECT 1 FROM Player WHERE idPlayer = :id LIMIT 1');
+        $check = $db->prepare('SELECT 1 FROM _player WHERE idPlayer = :id LIMIT 1');
         $check->execute([':id' => $playerId]);
         if (!$check->fetch()) {
             $db->rollBack();
@@ -68,27 +61,27 @@ try {
 
     $playerId = is_null($playerId) || $playerId === '' ? null : (int)$playerId;
     
-    $stmt = $db->prepare("DELETE FROM WorldRecord WHERE idMap = :idMap AND idVehicle = :idVehicle");
+    $stmt = $db->prepare("DELETE FROM _worldrecord WHERE idMap = :idMap AND idVehicle = :idVehicle");
     $stmt->execute([':idMap' => $mapId, ':idVehicle' => $vehicleId]);
 
-    $stmt = $db->prepare("INSERT INTO WorldRecord (idMap, idVehicle, idPlayer, distance, current, idTuningSetup, questionable, questionable_reason) VALUES (:idMap, :idVehicle, :idPlayer, :distance, 1, :idTuningSetup, :questionable, :questionable_reason)");
+    $stmt = $db->prepare("INSERT INTO _worldrecord (idMap, idVehicle, idPlayer, distance, current, idTuningSetup, questionable, questionable_reason) VALUES (:idMap, :idVehicle, :idPlayer, :distance, 1, :idTuningSetup, :questionable, :questionable_reason)");
     $stmt->execute([':idMap' => $mapId, ':idVehicle' => $vehicleId, ':idPlayer' => $playerId, ':distance' => $distance, ':idTuningSetup' => $tuningSetupId, ':questionable' => $questionable, ':questionable_reason' => $note]);
 
     $db->commit();
 
-    $mapStmt = $db->prepare('SELECT nameMap FROM Map WHERE idMap = :idMap LIMIT 1');
+    $mapStmt = $db->prepare('SELECT nameMap FROM _map WHERE idMap = :idMap LIMIT 1');
     $mapStmt->execute([':idMap' => $mapId]);
     $mapRow = $mapStmt->fetch(PDO::FETCH_ASSOC);
     $mapName = $mapRow ? $mapRow['nameMap'] : 'Unknown';
 
-    $vehicleStmt = $db->prepare('SELECT nameVehicle FROM Vehicle WHERE idVehicle = :idVehicle LIMIT 1');
+    $vehicleStmt = $db->prepare('SELECT nameVehicle FROM _vehicle WHERE idVehicle = :idVehicle LIMIT 1');
     $vehicleStmt->execute([':idVehicle' => $vehicleId]);
     $vehicleRow = $vehicleStmt->fetch(PDO::FETCH_ASSOC);
     $vehicleName = $vehicleRow ? $vehicleRow['nameVehicle'] : 'Unknown';
 
     $playerName = 'Unknown';
     if (!is_null($playerId)) {
-        $playerStmt = $db->prepare('SELECT namePlayer FROM Player WHERE idPlayer = :idPlayer LIMIT 1');
+        $playerStmt = $db->prepare('SELECT namePlayer FROM _player WHERE idPlayer = :idPlayer LIMIT 1');
         $playerStmt->execute([':idPlayer' => $playerId]);
         $playerRow = $playerStmt->fetch(PDO::FETCH_ASSOC);
         $playerName = $playerRow ? $playerRow['namePlayer'] : 'Unknown';
@@ -105,6 +98,6 @@ try {
         'distance' => $distance
     ]);
 } catch (PDOException $e) {
-    echo json_encode(['error' => "Database error: " . $e->getMessage()]);
+    generic_database_error('submit_record failed: ' . $e->getMessage());
 }
 ?>

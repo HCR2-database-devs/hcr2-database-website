@@ -15,20 +15,17 @@ if (empty($_COOKIE['WC_TOKEN'])) {
     error_log('[AUTH] WC_TOKEN cookie is missing or empty');
     echo json_encode([
         'logged' => false,
-        'allowed' => false,
-        'debug' => 'No WC_TOKEN cookie found'
+        'allowed' => false
     ]);
     exit;
 }
-error_log('[AUTH] WC_TOKEN cookie received, verifying...');
 $payload = verify_token($_COOKIE['WC_TOKEN'], AUTH_SHARED_SECRET);
 
 if (!$payload) {
     error_log('[AUTH] Token verification failed');
     echo json_encode([
         'logged' => false,
-        'allowed' => false,
-        'debug' => 'Token verification failed'
+        'allowed' => false
     ]);
     exit;
 }

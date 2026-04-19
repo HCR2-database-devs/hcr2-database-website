@@ -30,10 +30,7 @@ try {
 
     try {
         $pdo = get_database_connection();
-        $pdo->exec("ALTER TABLE WorldRecord ADD COLUMN IF NOT EXISTS questionable_reason TEXT DEFAULT NULL");
-        $pdo->exec("ALTER TABLE WorldRecord ADD COLUMN IF NOT EXISTS questionable SMALLINT DEFAULT 0");
-
-        $checkStmt = $pdo->prepare('SELECT idRecord FROM WorldRecord WHERE idRecord = ?');
+        $checkStmt = $pdo->prepare('SELECT idRecord FROM _worldrecord WHERE idRecord = ?');
         $checkStmt->execute([$recordId]);
         if (!$checkStmt->fetch()) {
             http_response_code(404);
@@ -41,7 +38,7 @@ try {
             exit;
         }
 
-        $updateStmt = $pdo->prepare('UPDATE WorldRecord SET questionable = ?, questionable_reason = ? WHERE idRecord = ?');
+        $updateStmt = $pdo->prepare('UPDATE _worldrecord SET questionable = ?, questionable_reason = ? WHERE idRecord = ?');
         $updateStmt->execute([$questionable, $note, $recordId]);
 
         http_response_code(200);
@@ -51,12 +48,10 @@ try {
         ]);
 
     } catch (PDOException $e) {
-        http_response_code(500);
-        echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
+        generic_database_error('set_questionable failed: ' . $e->getMessage());
     }
 
 } catch (PDOException $e) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
+    generic_database_error('set_questionable parse failed: ' . $e->getMessage());
 }
 ?>

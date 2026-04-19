@@ -39,13 +39,57 @@ function env(string $name, $default = null) {
 }
 
 function env_list(string $value): array {
-    $items = preg_split('/[\n,]+/', $value);
+    $items = preg_split('/[\n,]+/', (string)$value);
     return array_values(array_filter(array_map('trim', $items), fn($item) => $item !== ''));
 }
 
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+ini_set('session.cookie_secure', '1');
+ini_set('session.cookie_httponly', '1');
+ini_set('session.cookie_samesite', 'Lax');
+
 load_dotenv(__DIR__ . '/../.env');
 
-define('AUTH_SHARED_SECRET', env('AUTH_SHARED_SECRET'));
+function require_env(string $name): string {
+    $value = env($name);
+    if ($value === null || $value === '') {
+        error_log("Missing required environment variable: $name");
+        throw new RuntimeException("Configuration error: $name is not set");
+    }
+    return $value;
+}
+
+function safe_json_error(string $message, int $statusCode = 500): void {
+    if (!headers_sent()) {
+        header('Content-Type: application/json; charset=utf-8');
+        http_response_code($statusCode);
+    }
+    echo json_encode(['error' => $message]);
+    exit;
+}
+
+function generic_database_error(string $context = ''): void {
+    if ($context !== '') {
+        error_log('[DB] ' . $context);
+    }
+    safe_json_error('Database error', 500);
+}
+
+function send_security_headers(): void {
+    if (headers_sent()) {
+        return;
+    }
+    header('X-Frame-Options: DENY');
+    header('X-Content-Type-Options: nosniff');
+    header('Referrer-Policy: same-origin');
+    header('X-XSS-Protection: 1; mode=block');
+    header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+}
+
+send_security_headers();
+
+define('AUTH_SHARED_SECRET', require_env('AUTH_SHARED_SECRET'));
 $ALLOWED_DISCORD_IDS = env_list(env('ALLOWED_DISCORD_IDS'));
 $API_KEYS = env_list(env('API_KEYS'));
 define('HCAPTCHA_SITE_KEY', env('HCAPTCHA_SITE_KEY'));

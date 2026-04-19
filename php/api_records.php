@@ -86,12 +86,12 @@ $sql = "SELECT
         p.namePlayer as player_name,
         p.country as player_country,
         string_agg(tp.nameTuningPart, ', ') as tuning_parts
-    FROM WorldRecord wr
-    JOIN Map m ON wr.idMap = m.idMap
-    JOIN Vehicle v ON wr.idVehicle = v.idVehicle
-    LEFT JOIN Player p ON wr.idPlayer = p.idPlayer
-    LEFT JOIN TuningSetupParts tsp ON wr.idTuningSetup = tsp.idTuningSetup
-    LEFT JOIN TuningPart tp ON tsp.idTuningPart = tp.idTuningPart
+    FROM _worldrecord wr
+    JOIN _map m ON wr.idMap = m.idMap
+    JOIN _vehicle v ON wr.idVehicle = v.idVehicle
+    LEFT JOIN _player p ON wr.idPlayer = p.idPlayer
+    LEFT JOIN _tuningsetupparts tsp ON wr.idTuningSetup = tsp.idTuningSetup
+    LEFT JOIN _tuningpart tp ON tsp.idTuningPart = tp.idTuningPart
     " . (count($where) ? 'WHERE ' . implode(' AND ', $where) : '') . "
     GROUP BY wr.idRecord
     ORDER BY wr.idRecord DESC

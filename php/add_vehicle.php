@@ -5,7 +5,7 @@ ensure_authorized_json();
 try {
     $db = get_database_connection();
 } catch (PDOException $e) {
-    die(json_encode(array('error' => "Database connection failed: " . $e->getMessage())));
+    generic_database_error('add_vehicle connection failed: ' . $e->getMessage());
 }
 
 header('Content-Type: application/json; charset=utf-8');
@@ -26,17 +26,17 @@ try {
 
     $vehicleName = trim($vehicleName);
 
-    $check = $db->prepare('SELECT idVehicle FROM Vehicle WHERE nameVehicle = :name LIMIT 1');
+    $check = $db->prepare('SELECT idVehicle FROM _vehicle WHERE nameVehicle = :name LIMIT 1');
     $check->execute([':name' => $vehicleName]);
     if ($check->fetch()) {
         echo json_encode(['error' => 'Vehicle already exists in database.']);
         exit;
     }
 
-    $row = $db->query('SELECT COALESCE(MAX(idVehicle), 0) AS m FROM Vehicle')->fetch(PDO::FETCH_ASSOC);
+    $row = $db->query('SELECT COALESCE(MAX(idVehicle), 0) AS m FROM _vehicle')->fetch(PDO::FETCH_ASSOC);
     $newId = (int)$row['m'] + 1;
 
-    $stmt = $db->prepare('INSERT INTO Vehicle (idVehicle, nameVehicle) VALUES (:idVehicle, :nameVehicle)');
+    $stmt = $db->prepare('INSERT INTO _vehicle (idVehicle, nameVehicle) VALUES (:idVehicle, :nameVehicle)');
     $stmt->execute([':idVehicle' => $newId, ':nameVehicle' => $vehicleName]);
 
     $iconMessage = '';
@@ -76,6 +76,6 @@ try {
     }
     echo json_encode(['success' => true, 'idVehicle' => $newId, 'nameVehicle' => $vehicleName, 'iconMessage' => $iconMessage]);
 } catch (PDOException $e) {
-    echo json_encode(['error' => "Database error: " . $e->getMessage()]);
+    generic_database_error('add_vehicle failed: ' . $e->getMessage());
 }
 ?>

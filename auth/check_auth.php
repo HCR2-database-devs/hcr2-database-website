@@ -22,7 +22,11 @@ function verify_token($jwt, $secret) {
     if (!hash_equals($calc, $sig)) return false;
 
     $payload = base64url_decode($p);
-    if (!$payload || ($payload['exp'] ?? 0) < time() - 30) return false;
+    if (!is_array($payload) || empty($payload['sub']) || empty($payload['exp'])) {
+        return false;
+    }
+
+    if ((int)$payload['exp'] < time()) return false;
 
     return $payload;
 }

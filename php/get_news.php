@@ -6,23 +6,13 @@ header('Content-Type: application/json; charset=utf-8');
 try {
     $db = get_database_connection();
 } catch (PDOException $e) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Database connection failed']);
-    exit;
+    generic_database_error('get_news connection failed: ' . $e->getMessage());
 }
 
 $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
 if ($limit <= 0 || $limit > 100) $limit = 10;
 
 try {
-    $db->exec("CREATE TABLE IF NOT EXISTS News (
-        id SERIAL PRIMARY KEY,
-        title TEXT NOT NULL,
-        content TEXT NOT NULL,
-        author TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )");
-
     $stmt = $db->prepare('SELECT id, title, content, author, created_at FROM News ORDER BY created_at DESC LIMIT :limit');
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmt->execute();
@@ -30,6 +20,5 @@ try {
 
     echo json_encode(['news' => $rows]);
 } catch (PDOException $e) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
+    generic_database_error('get_news failed: ' . $e->getMessage());
 }

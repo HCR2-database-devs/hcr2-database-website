@@ -18,9 +18,7 @@ header('Content-Type: application/json');
 try {
     $db = get_database_connection();
 } catch (PDOException $e) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Database connection failed']);
-    exit;
+    generic_database_error('assign_setup connection failed: ' . $e->getMessage());
 }
 
 $input = json_decode(file_get_contents('php://input'), true);
@@ -34,7 +32,7 @@ $recordId = (int)$input['recordId'];
 $tuningSetupId = (int)$input['tuningSetupId'];
 
 try {
-    $stmt = $db->prepare("SELECT idTuningSetup FROM WorldRecord WHERE idRecord = ?");
+    $stmt = $db->prepare("SELECT idTuningSetup FROM _worldrecord WHERE idRecord = ?");
     $stmt->execute([$recordId]);
     $record = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -50,7 +48,7 @@ try {
         exit;
     }
     
-    $stmt = $db->prepare("SELECT idTuningSetup FROM TuningSetup WHERE idTuningSetup = ?");
+    $stmt = $db->prepare("SELECT idTuningSetup FROM _tuningsetup WHERE idTuningSetup = ?");
     $stmt->execute([$tuningSetupId]);
     if (!$stmt->fetch()) {
         http_response_code(404);
@@ -58,13 +56,12 @@ try {
         exit;
     }
     
-    $stmt = $db->prepare("UPDATE WorldRecord SET idTuningSetup = ? WHERE idRecord = ?");
+    $stmt = $db->prepare("UPDATE _worldrecord SET idTuningSetup = ? WHERE idRecord = ?");
     $stmt->execute([$tuningSetupId, $recordId]);
     
     echo json_encode(['success' => true]);
     
 } catch (PDOException $e) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
+    generic_database_error('assign_setup failed: ' . $e->getMessage());
 }
 ?>

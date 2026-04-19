@@ -5,9 +5,7 @@ header('Content-Type: application/json; charset=utf-8');
 try {
     $db = get_database_connection();
 } catch (PDOException $e) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Database connection failed']);
-    exit;
+    generic_database_error('post_news connection failed: ' . $e->getMessage());
 }
 
 $raw = file_get_contents('php://input');
@@ -31,14 +29,6 @@ if (isset($_SESSION['discord']) && isset($_SESSION['discord']['username'])) {
 }
 
 try {
-    $db->exec("CREATE TABLE IF NOT EXISTS News (
-        id SERIAL PRIMARY KEY,
-        title TEXT NOT NULL,
-        content TEXT NOT NULL,
-        author TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )");
-
     $stmt = $db->prepare('INSERT INTO News (title, content, author) VALUES (:title, :content, :author)');
     $stmt->execute([
         ':title' => $title_safe,
@@ -48,6 +38,5 @@ try {
 
     echo json_encode(['success' => true]);
 } catch (PDOException $e) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
+    generic_database_error('post_news failed: ' . $e->getMessage());
 }
