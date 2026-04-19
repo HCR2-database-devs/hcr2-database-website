@@ -244,7 +244,31 @@ let allTuningSetups = [];
 async function fetchJSON(url) {
     const u = url + (url.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
     const res = await fetch(u, { credentials: 'same-origin' });
-    return res.json();
+    const text = await res.text();
+    if (!res.ok) {
+        let message = 'Server error ' + res.status;
+        if (text) {
+            try {
+                const parsed = JSON.parse(text);
+                if (parsed && parsed.error) {
+                    message += ': ' + parsed.error;
+                } else {
+                    message += ': ' + text;
+                }
+            } catch (e) {
+                message += ': ' + text;
+            }
+        }
+        throw new Error(message);
+    }
+    if (!text) {
+        throw new Error('Empty JSON response from server');
+    }
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        throw new Error('Invalid JSON response: ' + e.message + (text ? ' - ' + text : ''));
+    }
 }
 
 function populateFormOptions() {

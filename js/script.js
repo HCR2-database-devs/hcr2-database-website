@@ -10,9 +10,33 @@ function cachedFetchJson(url, ttl = 60000) {
     if (existing && (now - existing.ts) < ttl) {
         return Promise.resolve(existing.value);
     }
-    return fetch(url, {cache: 'no-store'}).then(r => r.json()).then(j => {
-        window._dataCache[key] = { ts: Date.now(), value: j };
-        return j;
+    return fetch(url, { cache: 'no-store' }).then(response => {
+        return response.text().then(text => {
+            if (!response.ok) {
+                let message = 'Server error ' + response.status;
+                if (text) {
+                    try {
+                        const parsed = JSON.parse(text);
+                        if (parsed && parsed.error) {
+                            message += ': ' + parsed.error;
+                        }
+                    } catch (e) {
+                        message += ': ' + text;
+                    }
+                }
+                throw new Error(message);
+            }
+            if (!text) {
+                throw new Error('Empty JSON response from server');
+            }
+            try {
+                const json = JSON.parse(text);
+                window._dataCache[key] = { ts: Date.now(), value: json };
+                return json;
+            } catch (e) {
+                throw new Error('Invalid JSON response: ' + e.message + (text ? ' - ' + text : ''));
+            }
+        });
     });
 }
 
