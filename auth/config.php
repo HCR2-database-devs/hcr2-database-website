@@ -60,20 +60,24 @@ function require_env(string $name): string {
     return $value;
 }
 
-function safe_json_error(string $message, int $statusCode = 500): void {
-    if (!headers_sent()) {
-        header('Content-Type: application/json; charset=utf-8');
-        http_response_code($statusCode);
+if (!function_exists('safe_json_error')) {
+    function safe_json_error(string $message, int $statusCode = 500): void {
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            http_response_code($statusCode);
+        }
+        echo json_encode(['error' => $message]);
+        exit;
     }
-    echo json_encode(['error' => $message]);
-    exit;
 }
 
-function generic_database_error(string $context = ''): void {
-    if ($context !== '') {
-        error_log('[DB] ' . $context);
+if (!function_exists('generic_database_error')) {
+    function generic_database_error(string $context = ''): void {
+        if ($context !== '') {
+            error_log('[DB] ' . $context);
+        }
+        safe_json_error('Database error', 500);
     }
-    safe_json_error('Database error', 500);
 }
 
 function send_security_headers(): void {
