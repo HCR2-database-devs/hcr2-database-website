@@ -35,7 +35,7 @@ services:
       DB_USER: hcr2_dev
       DB_PASS: hcr2_dev_password
     ports:
-      - "8080:8080"
+      - "18080:8080"
     volumes:
       - ../..:/app
     depends_on:

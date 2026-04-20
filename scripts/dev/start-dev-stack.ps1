@@ -9,4 +9,4 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Output "PostgreSQL: 127.0.0.1:54329"
-Write-Output "Legacy PHP: http://127.0.0.1:8080"
+Write-Output "Legacy PHP: http://127.0.0.1:18080"

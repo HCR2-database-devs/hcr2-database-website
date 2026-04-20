@@ -107,6 +107,24 @@ Historical SQLite snapshot readability:
 - table counts were collected,
 - icon coverage against map/vehicle/tuning-part names was complete.
 
+Legacy runtime regression against local PostgreSQL demo data:
+
+```powershell
+.\scripts\dev\reset-dev-database.ps1
+.\scripts\dev\start-dev-stack.ps1
+python scripts\dev\test_legacy_regression.py
+```
+
+Latest known result:
+
+- public index, CSS and logo passed,
+- maintenance status passed,
+- read-only public data routes for maps, vehicles, players, tuning parts, tuning setups and records passed,
+- news and hCaptcha site-key routes passed,
+- auth status passed for logged-out and signed development admin-token cases,
+- admin pending list and integrity check passed,
+- known PostgreSQL/API issues are marked as expected failures in `legacy-regression-check.md`.
+
 ## What Is Actually Validated
 
 Validated with tests:
@@ -129,6 +147,9 @@ Validated with tests:
 - legacy auth status logged-out shape.
 - React/Vite/TypeScript production build.
 - React Router and TanStack Query compile successfully.
+- local PostgreSQL dev schema can be initialized and seeded.
+- legacy PHP runtime can read the local PostgreSQL demo data.
+- legacy admin read-only status can be checked with a signed development token.
 
 Validated with static checks:
 
@@ -139,29 +160,28 @@ Validated with static checks:
 
 Not validated:
 
-- live PostgreSQL access,
-- legacy PHP runtime behavior,
+- production PostgreSQL access,
 - migrated FastAPI SQL behavior against production/staging data,
 - React visual parity,
 - full React UI behavior,
-- admin migration,
-- hCaptcha behavior,
+- migrated admin behavior,
+- successful hCaptcha submission behavior,
 - external Discord login,
 - end-to-end flows.
 
 ## Tests Not Executable Yet
 
-Database integration:
+Production database integration:
 
-- not executable because there is no local/staging PostgreSQL `.env`, no verified production schema dump and no sanitized fixture database.
+- not executable because there is no verified production schema dump and no production/staging fixture database. A local PostgreSQL demo database now exists for development checks.
 
-Legacy runtime end-to-end:
+Legacy browser end-to-end:
 
-- not executable without real `.env` values and a PostgreSQL database.
+- not fully executable yet because browser-level admin navigation and full public submission success still need safe hCaptcha/auth handling.
 
 hCaptcha:
 
-- not executable without development hCaptcha credentials or mocked verification.
+- successful submission is not executable without development hCaptcha credentials or mocked verification.
 
 Discord OAuth:
 
@@ -169,34 +189,32 @@ Discord OAuth:
 
 Visual regression:
 
-- not executable because React UI does not exist yet.
+- not executable because React UI parity pages and visual baselines are not complete yet.
 
 ## Blocking Items
 
 Critical blockers:
 
-1. no local PostgreSQL database configuration,
-2. no verified production schema dump,
-3. no local auth-token generation workflow,
-4. no hCaptcha development or mock setup,
-5. no database-backed contract tests for the new read-only routes,
-6. no visual regression baseline for React parity.
+1. no verified production schema dump,
+2. no hCaptcha development or mock setup,
+3. no database-backed contract tests for the migrated FastAPI read-only routes against representative PostgreSQL data,
+4. no visual regression baseline for React parity,
+5. known legacy PostgreSQL incompatibility in `php/api_records.php`,
+6. known legacy include-path issue in `php/delete_record.php`.
 
 Important non-critical blockers:
 
-1. no Docker/compose setup,
-2. no seed or fixture script,
-3. no visual regression workflow,
-4. PostgreSQL backup/import/restore behavior is not finalized.
+1. visual regression workflow is not defined,
+2. PostgreSQL backup/import/restore behavior is not finalized,
+3. browser-level admin checks are not automated,
+4. production casing behavior must be confirmed before changing PHP aliases.
 
 ## Needed From Project Owner
 
 To fully validate the migration, the project needs:
 
-- safe PostgreSQL credentials for local or staging testing,
 - production schema dump or read-only schema inspection,
 - representative seed data or sanitized fixtures,
-- `AUTH_SHARED_SECRET` for local signed-cookie tests or a development auth plan,
 - hCaptcha development credentials or approval to mock verification,
 - decision on whether historical SQLite backups should remain in Git,
 - decision on PostgreSQL backup/import/restore expectations.
@@ -208,9 +226,9 @@ To fully validate the migration, the project needs:
 | Legacy preservation | High | Legacy files remain in place and parse. |
 | Documentation | High | Consolidated runbooks exist and are English-only. |
 | Backend scaffold | High | Health, config, security and route wiring tests pass. |
-| Backend read-only migration | Medium | Routes, services and SQL repositories exist; live database validation is still missing. |
+| Backend read-only migration | Medium | Routes, services and SQL repositories exist; production/staging database validation is still missing. |
 | Backend write/admin migration | Low | Public submissions and admin features are not implemented yet. |
 | Frontend scaffold | Medium | React/Vite builds and initial routes exist; full UI parity is pending. |
 | Admin migration | Low | Admin remains legacy-only. |
-| Integration | Low | No migrated frontend and no live database-backed validation. |
-| End-to-end readiness | Low | Missing frontend, DB config, secrets and browser-level validation. |
+| Integration | Medium-Low | Local legacy/PostgreSQL integration exists; migrated frontend/backend integration remains incomplete. |
+| End-to-end readiness | Low | Missing frontend parity, production schema validation, hCaptcha handling and browser-level validation. |

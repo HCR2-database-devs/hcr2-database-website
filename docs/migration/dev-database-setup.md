@@ -18,11 +18,12 @@ Files:
 - `scripts/dev/reset-dev-database.ps1`
 - `scripts/dev/stop-dev-stack.ps1`
 - `scripts/dev/make-dev-wc-token.ps1`
+- `scripts/dev/test_legacy_regression.py`
 
 Services:
 
 - PostgreSQL 16 on host port `54329`.
-- PHP 8.3 legacy server with `pdo_pgsql` on `http://127.0.0.1:8080`.
+- PHP 8.3 legacy server with `pdo_pgsql` on `http://127.0.0.1:18080`.
 
 The Docker PHP service is intentional. The local Windows PHP detected during this pass is PHP 7.4 and does not include `pdo_pgsql`; the legacy code requires PHP 8+ functions such as `str_starts_with` and needs PostgreSQL PDO support.
 
@@ -34,7 +35,7 @@ The Docker PHP service is intentional. The local Windows PHP detected during thi
 
 Expected local URLs:
 
-- legacy PHP: `http://127.0.0.1:8080`
+- legacy PHP: `http://127.0.0.1:18080`
 - PostgreSQL: `127.0.0.1:54329`
 
 ## Reset And Reseed The Database
@@ -47,6 +48,18 @@ This removes the Docker PostgreSQL volume and recreates the database from:
 
 - `infra/dev/postgres/init/001_schema.sql`
 - `infra/dev/postgres/init/002_seed_demo.sql`
+
+## Run Legacy Regression Checks
+
+After the stack is running, execute:
+
+```powershell
+python scripts\dev\test_legacy_regression.py
+```
+
+The script checks the public legacy pages, static assets, read-only data routes, auth status, safe admin read routes, and known failure modes that still need deliberate migration fixes.
+
+Expected known failures are documented in `legacy-regression-check.md`; they are reported as `XFAIL` only when the exact known failure signature is still present, so unexpected changes still fail the script.
 
 ## Stop The Dev Stack
 
