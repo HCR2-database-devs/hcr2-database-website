@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hcr2-dev-postgres
+    environment:
+      POSTGRES_DB: hcr2_dev
+      POSTGRES_USER: hcr2_dev
+      POSTGRES_PASSWORD: hcr2_dev_password
+    ports:
+      - "54329:5432"
+    volumes:
+      - hcr2_dev_postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hcr2_dev -d hcr2_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  legacy:
+    build:
+      context: ../..
+      dockerfile: infra/dev/php/Dockerfile
+    container_name: hcr2-dev-legacy
+    working_dir: /app
+    environment:
+      AUTH_SHARED_SECRET: dev-only-hcr2-secret
+      ALLOWED_DISCORD_IDS: dev-admin
+      API_KEYS: dev-api-key
+      HCAPTCHA_SITE_KEY: dev-hcaptcha-site-key
+      HCAPTCHA_SECRET_KEY: dev-hcaptcha-secret-key
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: hcr2_dev
+      DB_USER: hcr2_dev
+      DB_PASS: hcr2_dev_password
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../..:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["php", "-S", "0.0.0.0:8080", "-t", "/app"]
+
+volumes:
+  hcr2_dev_postgres_data:
