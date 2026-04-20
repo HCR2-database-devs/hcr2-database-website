@@ -1,4 +1,4 @@
-import type { LegacyRow, NewsItem, PublicDataView } from "../types/api";
+import type { DataRow, NewsItem, PublicDataView } from "../types/api";
 import { fetchJson } from "./api";
 
 const dataEndpoints: Record<PublicDataView, string> = {
@@ -11,7 +11,7 @@ const dataEndpoints: Record<PublicDataView, string> = {
 };
 
 export function getPublicData(view: PublicDataView) {
-  return fetchJson<LegacyRow[]>(dataEndpoints[view]);
+  return fetchJson<DataRow[]>(dataEndpoints[view]);
 }
 
 export function getNews(limit = 10) {

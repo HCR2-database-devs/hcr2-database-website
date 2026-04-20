@@ -125,6 +125,20 @@ async function checkApiSurface() {
     (data) => data.logged === true && data.allowed === true && data.id === "dev-admin",
     { headers: { Cookie: `WC_TOKEN=${makeDevToken()}` } },
   );
+
+  const submitResponse = await fetch(`${backendBaseUrl}/php/public_submit.php`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  });
+  const submitPayload = await submitResponse.json();
+  if (
+    submitResponse.status !== 400 ||
+    submitPayload.error !== "hCaptcha verification failed. Please try again."
+  ) {
+    throw new Error("Public submission hCaptcha rejection did not match the legacy shape");
+  }
+  console.log("OK backend public submit hcaptcha rejection");
 }
 
 function sendCommand(ws, id, method, params = {}) {
@@ -227,6 +241,17 @@ async function waitForText(page, text) {
   throw new Error(`Timed out waiting for text ${JSON.stringify(text)}. Body was: ${body}`);
 }
 
+async function waitForExpression(page, expression, message) {
+  const deadline = Date.now() + 10000;
+  while (Date.now() < deadline) {
+    if (await page.evaluate(expression)) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error(message);
+}
+
 async function checkUiSurface() {
   const port = Number(process.env.CHROME_DEBUG_PORT ?? "9322");
   const userDataDir = await mkdtemp(path.join(tmpdir(), "hcr2-chrome-"));
@@ -258,19 +283,19 @@ async function checkUiSurface() {
       page.problems = [];
       await page.command("Page.navigate", { url: `${frontendBaseUrl}${route}` });
       await waitForText(page, text);
+      await waitForExpression(
+        page,
+        "Boolean(document.querySelector('img#logo') && document.querySelector('img#logo').complete && document.querySelector('img#logo').naturalWidth > 0)",
+        `Logo did not load on ${route}`,
+      );
       const details = await page.evaluate(`(() => {
-        const logo = document.querySelector('img#logo');
         return {
-          logoLoaded: Boolean(logo && logo.complete && logo.naturalWidth > 0),
           hasDarkModeButton: Boolean(document.querySelector('#dark-mode-toggle')),
           rowCount: document.querySelectorAll('tbody tr').length,
           hasErrorText: document.body.innerText.includes('Database error') || document.body.innerText.includes('Request failed')
         };
       })()`);
 
-      if (!details.logoLoaded) {
-        throw new Error(`Logo did not load on ${route}`);
-      }
       if (!details.hasDarkModeButton) {
         throw new Error(`Dark mode button is missing on ${route}`);
       }
@@ -288,6 +313,36 @@ async function checkUiSurface() {
 
     await page.command("Page.navigate", { url: `${frontendBaseUrl}/records` });
     await waitForText(page, "12345");
+    await page.evaluate(`(() => {
+      const input = document.querySelector('#search-bar');
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      setter.call(input, 'Forest');
+      input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: 'Forest' }));
+    })()`);
+    await waitForText(page, "23456");
+    await waitForExpression(
+      page,
+      "!document.body.innerText.includes('Demo Driver')",
+      "Records search filter did not hide non-matching rows",
+    );
+    await page.evaluate(`(() => {
+      const select = document.querySelector('#sort-select');
+      select.value = 'dist-desc';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`);
+    console.log("OK UI records filters");
+
+    await page.evaluate(`document.querySelector('#news-btn-container button').click()`);
+    await waitForText(page, "Demo database ready");
+    await page.evaluate(`document.querySelector('.close-news-btn').click()`);
+    console.log("OK UI news modal");
+
+    await page.evaluate(
+      `Array.from(document.querySelectorAll('button')).find((button) => button.textContent.trim() === 'Submit Record').click()`,
+    );
+    await waitForText(page, "Submit a Record (for admin review)");
+    console.log("OK UI public submit modal");
+
     const before = await page.evaluate("document.documentElement.getAttribute('data-theme')");
     await page.evaluate("document.querySelector('#dark-mode-toggle').click()");
     const after = await page.evaluate("document.documentElement.getAttribute('data-theme')");

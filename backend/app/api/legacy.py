@@ -1,9 +1,14 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
-from app.api.dependencies import get_auth_service, get_news_service, get_public_data_service
+from app.api.dependencies import (
+    get_auth_service,
+    get_news_service,
+    get_public_data_service,
+    get_public_submission_service,
+)
 from app.api.responses import DATABASE_ERROR_TYPES, database_error_response, legacy_error_response
 from app.core.config import Settings, get_settings
 from app.services.auth_service import AuthService
@@ -13,12 +18,17 @@ from app.services.public_data_service import (
     MissingLoadDataType,
     PublicDataService,
 )
+from app.services.public_submission_service import PublicSubmissionService
 
 router = APIRouter()
 
 PublicDataServiceDep = Annotated[PublicDataService, Depends(get_public_data_service)]
 NewsServiceDep = Annotated[NewsService, Depends(get_news_service)]
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
+PublicSubmissionServiceDep = Annotated[
+    PublicSubmissionService,
+    Depends(get_public_submission_service),
+]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 
@@ -53,6 +63,24 @@ def legacy_get_hcaptcha_sitekey(settings: SettingsDep) -> Any:
     if not settings.hcaptcha_site_key:
         return legacy_error_response("hCaptcha is not configured", status_code=500)
     return {"sitekey": settings.hcaptcha_site_key}
+
+
+@router.post("/php/public_submit.php", response_model=None)
+async def legacy_public_submit(
+    request: Request,
+    service: PublicSubmissionServiceDep,
+) -> JSONResponse:
+    content_type = request.headers.get("content-type", "")
+    if content_type.startswith("application/json"):
+        data = await request.json()
+    else:
+        form = await request.form()
+        data = dict(form)
+    if not isinstance(data, dict):
+        data = {}
+
+    result = service.submit(data, request.client.host if request.client else "")
+    return JSONResponse(content=result.payload, status_code=result.status_code)
 
 
 @router.get("/auth/status.php", response_model=None)

@@ -3,7 +3,7 @@
 Date: 2026-04-20
 Branch: `refactor/fastapi-react-migration`
 
-This report records the first end-to-end functional verification of the migrated stack: PostgreSQL demo database, FastAPI backend, React/Vite frontend, and the remaining legacy PHP routes used for comparison.
+This report records the current end-to-end functional verification of the migrated stack: PostgreSQL demo database, FastAPI backend, React/Vite frontend, and the remaining PHP routes used for comparison.
 
 ## Runtime Context
 
@@ -37,10 +37,14 @@ Coverage:
 - FastAPI health,
 - FastAPI CORS for the local Vite origin,
 - FastAPI `/api/v1` maps, vehicles, players, tuning parts, tuning setups, records, news and hCaptcha site key,
+- FastAPI public submission hCaptcha rejection shape,
 - Vite proxy for the same read-only API routes,
 - FastAPI auth status for logged-out and signed development admin-cookie cases,
 - React routes `/`, `/maps`, `/vehicles`, `/players`, `/tuning-parts`, `/tuning-setups`, `/records`, `/stats`, `/privacy`, `/maintenance`,
 - rendered demo data in browser,
+- records filters, sorting and CSV export control wiring,
+- news modal,
+- public submission modal,
 - logo asset loading,
 - dark mode toggle setting `data-theme="dark"`.
 
@@ -59,7 +63,7 @@ cd backend
 .\.venv\Scripts\python -m pytest
 ```
 
-Result: `22 passed`.
+Result: `23 passed`.
 
 Backend lint:
 
@@ -135,29 +139,32 @@ Impact: the route now reaches authorization and returns the legacy success shape
 - FastAPI starts with development env values.
 - FastAPI read-only public data routes return real PostgreSQL demo data.
 - FastAPI legacy-compatible read-only routes return real PostgreSQL demo data.
+- FastAPI public submission endpoint preserves the hCaptcha rejection behavior and implements the same safe validation path before database insertion.
 - FastAPI auth status works for logged-out and signed development admin-token cases.
 - CORS allows the local Vite origin.
 - Vite proxies API calls to FastAPI.
 - React public shell renders in a real browser.
 - React public data pages render maps, vehicles, players, tuning parts, tuning setups and records.
+- React records page has search, map, vehicle, tuning-part, distance, status and sort controls plus CSV export.
+- React news modal loads database news.
+- React public submission modal loads maps, vehicles and tuning parts and posts to the FastAPI-compatible endpoint.
 - React stats page computes visible stats from FastAPI records.
 - React dark mode toggle changes the legacy `data-theme` contract.
 - Critical frontend assets load from `frontend/public`.
 - Legacy regression checks pass against the same demo database.
 
-## Still Not Fully Migrated
+## Not Safe To Isolate Yet
 
-- Full legacy records UI behavior is not ported yet: filters, sorting, detailed record table formatting and export-like behaviors still belong to legacy JavaScript.
-- News modal is not ported; the React header button remains disabled.
-- Public submission modal and successful hCaptcha submission flow are not ported.
-- Admin UI is not migrated to React/FastAPI.
-- Mutating admin operations are not migrated to FastAPI.
+- Admin UI is still not migrated to React/FastAPI.
+- Mutating admin operations are still not migrated to FastAPI.
+- Successful public submission still needs valid development hCaptcha credentials or an approved hCaptcha mock; the rejection path is verified.
 - Browser-level visual parity checks are not automated yet.
 - Production/staging PostgreSQL schema parity is not proven; the current validation uses the local inferred demo schema.
 
+Because admin behavior remains only in PHP, moving `php/`, `auth/`, `js/`, `css/`, `index.html`, and `index.php` into `a_supprimer/` would currently remove a real product capability. That cleanup should wait until admin routes and UI are replaced or explicitly declared out of scope by the project owner.
+
 ## Remaining Reasons
 
-- The migration deliberately prioritized read-only public routes before write/admin behavior.
 - hCaptcha success needs development credentials or an approved mock strategy.
 - Discord OAuth login still depends on the external auth provider; local tests use signed development cookies.
 - Visual parity needs stable screenshots/baselines before legacy UI can be replaced with confidence.
@@ -167,9 +174,9 @@ Impact: the route now reaches authorization and returns the legacy success shape
 
 | Area | Completion | Notes |
 | --- | ---: | --- |
-| Migrated backend implemented scope | 90% | Read-only public data, news, hCaptcha site key and auth status work against local PostgreSQL. |
-| Overall backend migration | 45% | Write flows, admin operations and production schema validation remain. |
-| Migrated frontend implemented scope | 80% | Current React pages render and load data; many legacy UI behaviors are still intentionally pending. |
-| Overall frontend migration | 30% | The public shell exists, but full records UX, modals, submissions and admin are not ported. |
-| Front/back/database integration for migrated read-only flows | 85% | Verified through FastAPI, Vite proxy and browser-rendered React pages. |
-| Legacy still required | Yes | Admin, submissions, full public records interactions, news modal and visual parity baseline remain legacy-dependent. |
+| Migrated backend implemented scope | 95% | Public data, news, hCaptcha site key, auth status and public submission rejection path work against local PostgreSQL. |
+| Overall backend migration | 55% | Admin operations and production schema validation remain. |
+| Migrated frontend implemented scope | 90% | Current React public pages render, filter records, show news and open public submission. |
+| Overall frontend migration | 55% | Admin UI and visual parity automation remain. |
+| Front/back/database integration for public flows | 90% | Verified through FastAPI, Vite proxy and browser-rendered React pages. |
+| Legacy still required | Yes | Admin UI and admin write operations remain legacy-dependent. |

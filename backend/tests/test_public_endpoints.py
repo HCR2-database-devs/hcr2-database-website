@@ -7,6 +7,7 @@ from app.core.config import Settings, get_settings
 from app.main import create_app
 from app.services.news_service import normalize_legacy_news_limit
 from app.services.public_data_service import InvalidLoadDataType, MissingLoadDataType
+from app.services.public_submission_service import SubmissionResult
 
 
 class FakePublicDataService:
@@ -25,10 +26,19 @@ class FakeNewsService:
         return {"news": [{"id": 1, "title": "News", "limit": raw_limit}]}
 
 
+class FakeSubmissionService:
+    def submit(self, data: dict[str, Any], submitter_ip: str) -> SubmissionResult:
+        return SubmissionResult(
+            status_code=400,
+            payload={"error": "hCaptcha verification failed. Please try again."},
+        )
+
+
 def _client() -> TestClient:
     app = create_app()
     app.dependency_overrides[dependencies.get_public_data_service] = FakePublicDataService
     app.dependency_overrides[dependencies.get_news_service] = FakeNewsService
+    app.dependency_overrides[dependencies.get_public_submission_service] = FakeSubmissionService
     return TestClient(app)
 
 
@@ -89,3 +99,10 @@ def test_auth_status_without_cookie_matches_legacy_logged_out_shape() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"logged": False, "allowed": False}
+
+
+def test_public_submit_hcaptcha_failure_matches_legacy_shape() -> None:
+    response = _client().post("/php/public_submit.php", json={})
+
+    assert response.status_code == 400
+    assert response.json() == {"error": "hCaptcha verification failed. Please try again."}

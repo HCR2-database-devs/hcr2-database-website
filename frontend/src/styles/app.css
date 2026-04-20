@@ -40,6 +40,45 @@
   font-weight: 700;
 }
 
+.frontend-muted {
+  color: #666;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.frontend-pre-wrap {
+  white-space: pre-wrap;
+}
+
+.frontend-modal-actions {
+  margin-top: 12px;
+  text-align: right;
+}
+
+.frontend-fieldset {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin: 8px 0;
+  padding: 10px;
+  text-align: left;
+}
+
+.frontend-fieldset label {
+  display: inline-flex;
+  gap: 6px;
+  margin-right: 12px;
+}
+
+.hp-field {
+  display: none;
+}
+
+.news-item {
+  border-bottom: 1px solid #eee;
+  padding: 12px;
+  text-align: left;
+}
+
 .table-scroll {
   overflow-x: auto;
 }

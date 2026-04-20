@@ -40,8 +40,8 @@ export function HomePage() {
       <h2>Viewing Records</h2>
       <p className="frontend-copy">
         To view records, open the Get Records section. The records are displayed in a table format,
-        showing the map name, vehicle name, player name and achieved distance. Full legacy filters,
-        sorting and exports are still pending in the React migration.
+        showing the map name, vehicle name, player name and achieved distance. Use the filters,
+        sorting controls and CSV export to narrow the record list.
       </p>
     </section>
   );

@@ -1,4 +1,4 @@
-export type LegacyRow = Record<string, unknown>;
+export type DataRow = Record<string, unknown>;
 
 export type AuthStatus = {
   logged: boolean;

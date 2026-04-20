@@ -1,7 +1,7 @@
-import type { LegacyRow } from "../../types/api";
+import type { DataRow } from "../../types/api";
 
 type DataTableProps = {
-  rows: LegacyRow[];
+  rows: DataRow[];
 };
 
 function formatValue(value: unknown): string {
@@ -40,7 +40,19 @@ export function DataTable({ rows }: DataTableProps) {
         </thead>
         <tbody>
           {rows.map((row, index) => (
-            <tr key={String(row.idRecord ?? row.idMap ?? row.idVehicle ?? row.idPlayer ?? index)}>
+            <tr
+              key={String(
+                row.idRecord ??
+                  row.idrecord ??
+                  row.idMap ??
+                  row.idmap ??
+                  row.idVehicle ??
+                  row.idvehicle ??
+                  row.idPlayer ??
+                  row.idplayer ??
+                  index
+              )}
+            >
               {columns.map((column) => (
                 <td key={column}>{formatValue(row[column])}</td>
               ))}
