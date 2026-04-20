@@ -12,8 +12,15 @@ Documentation:
 - Target architecture.
 - Roadmap.
 - Test and blocker summary.
+- Git history cleanup plan.
 
-Backend scaffold:
+Git hygiene:
+
+- SQLite snapshots removed from the current Git index.
+- `.gitignore` hardened for local database snapshots, `.env.*`, frontend dependencies and build output.
+- history rewrite procedure documented but not executed.
+
+Backend:
 
 - FastAPI app factory.
 - `/health`.
@@ -21,10 +28,17 @@ Backend scaffold:
 - Pydantic settings.
 - environment list parsing.
 - PostgreSQL DSN construction.
+- PostgreSQL connection helper.
 - `WC_TOKEN` verification helper.
 - admin allowlist helper.
-- basic database configuration object.
-- backend tests for health, config and security helpers.
+- public read-only repositories.
+- public read-only services.
+- Pydantic schemas for public data, news, auth and hCaptcha.
+- clean public data endpoints.
+- legacy `load_data.php` compatibility endpoint.
+- auth status/logout compatibility routes.
+- news and hCaptcha site key routes.
+- backend tests for health, config, security, service dispatch and route wiring.
 
 Legacy preservation:
 
@@ -35,14 +49,6 @@ Legacy preservation:
 
 Backend:
 
-- database connection lifecycle,
-- repositories,
-- Pydantic schemas,
-- business services,
-- public read-only data endpoints,
-- legacy `load_data.php` compatibility endpoint,
-- auth status/logout routes,
-- news and hCaptcha routes,
 - public submission route,
 - admin routes,
 - maintenance routes,
@@ -76,7 +82,7 @@ Operations:
 
 ## Phase 1 - Documentation Consolidation
 
-Status: current phase.
+Status: done.
 
 Tasks:
 
@@ -95,7 +101,11 @@ Tasks:
 - document files that may require history rewrite,
 - do not rewrite history without explicit, coordinated approval.
 
+Status: current-index cleanup done; history rewrite not executed.
+
 ## Phase 3 - FastAPI Read-Only Backend
+
+Status: route wiring done; live PostgreSQL validation pending.
 
 Priority order:
 
@@ -120,6 +130,8 @@ Non-goals for this phase:
 - no legacy route removal.
 
 ## Phase 4 - FastAPI Low-Risk Public Utilities
+
+Status: route wiring done; live PostgreSQL and real-cookie validation pending.
 
 Priority order:
 

@@ -16,14 +16,18 @@ The migration is intentionally progressive. The legacy application is still pres
 
 The refactor has started with the safest pieces:
 
-- Existing architecture audit and migration documentation.
-- Isolated FastAPI backend scaffold in `backend/`.
+- Consolidated migration runbooks in `docs/migration/`.
+- Git tracking cleanup for local database snapshots.
+- Isolated FastAPI backend in `backend/`.
 - Centralized backend configuration.
 - Basic security helpers for the existing `WC_TOKEN` model.
-- Database configuration placeholder for the existing PostgreSQL setup.
-- Health endpoints and backend tests.
+- PostgreSQL connection helper using the existing environment contract.
+- Repository/service/schema layers for public read-only data.
+- Legacy-compatible FastAPI routes for public data, auth status/logout, news and hCaptcha site key.
+- Clean `/api/v1/...` routes for the future React frontend.
+- Backend tests and Ruff linting.
 
-No legacy PHP endpoint has been replaced yet.
+No legacy PHP file has been removed yet.
 No public visual output has been intentionally changed.
 
 ## Repository Layout
@@ -34,11 +38,11 @@ No public visual output has been intentionally changed.
 |   |-- app/
 |   |   |-- api/             # Versioned API routers
 |   |   |-- core/            # Settings, errors and security helpers
-|   |   |-- db/              # Database configuration/session helpers
+|   |   |-- db/              # Database configuration and connection helpers
 |   |   |-- models/          # Future database models
-|   |   |-- repositories/    # Future data access layer
-|   |   |-- schemas/         # Future Pydantic schemas
-|   |   |-- services/        # Future business services
+|   |   |-- repositories/    # SQL data access layer
+|   |   |-- schemas/         # Pydantic schemas
+|   |   |-- services/        # Business/service layer
 |   |   `-- utils/
 |   |-- tests/
 |   |-- pyproject.toml
@@ -50,7 +54,7 @@ No public visual output has been intentionally changed.
 |-- css/                     # Legacy styles
 |-- js/                      # Legacy public JavaScript
 |-- img/                     # Public assets and icons
-|-- backups/                 # Historical SQLite snapshots
+|-- backups/                 # Local-only historical SQLite snapshots, ignored by Git
 |-- index.php                # Legacy public entry point
 |-- index.html               # Legacy public page
 |-- maintenance.html
@@ -65,10 +69,11 @@ The migration documentation is in `docs/migration/`:
 - `02-target-architecture.md`
 - `03-migration-roadmap.md`
 - `04-test-and-blockers.md`
+- `history-cleanup-plan.md`
 
 These files define the baseline behavior that must be preserved while the project is rebuilt.
 
-## Backend Scaffold
+## Migrated Backend
 
 The new backend lives in `backend/`.
 
@@ -80,7 +85,31 @@ Implemented so far:
 - Pydantic settings.
 - Environment parsing compatible with the legacy `.env` style.
 - `WC_TOKEN` verification helper.
-- Basic database configuration object.
+- PostgreSQL connection helper.
+- Public read-only repositories and services.
+- Pydantic schemas for migrated public contracts.
+- Legacy compatibility routes:
+  - `/php/load_data.php?type=maps`
+  - `/php/load_data.php?type=vehicles`
+  - `/php/load_data.php?type=players`
+  - `/php/load_data.php?type=tuning_parts`
+  - `/php/load_data.php?type=tuning_setups`
+  - `/php/load_data.php?type=records`
+  - `/auth/status.php`
+  - `/auth/logout.php`
+  - `/php/get_news.php`
+  - `/php/get_hcaptcha_sitekey.php`
+- Clean API routes:
+  - `/api/v1/maps`
+  - `/api/v1/vehicles`
+  - `/api/v1/players`
+  - `/api/v1/tuning-parts`
+  - `/api/v1/tuning-setups`
+  - `/api/v1/records`
+  - `/api/v1/auth/status`
+  - `/api/v1/auth/logout`
+  - `/api/v1/news`
+  - `/api/v1/hcaptcha/sitekey`
 - Pytest and Ruff setup.
 
 Run it locally:
@@ -161,19 +190,12 @@ After the new backend and frontend fully replace the legacy behavior, the follow
 - `js/script.js` after the public React UI is complete.
 - Legacy standalone HTML pages once React routes cover them.
 - Duplicate or unused CSS after visual parity is verified.
-- Historical SQLite snapshots in `backups/` if they are no longer needed as archives.
+- Local SQLite snapshots in `backups/` are now ignored by Git. A coordinated history rewrite is still required if the historical database files must be fully purged from repository history.
 
 Deletion must happen only after route usage, tests and visual checks confirm that the replacement is complete.
 
 ## Next Migration Step
 
-The next safe technical step is to port the public read-only data endpoints to FastAPI:
+The next safe technical step is to validate the new read-only FastAPI endpoints against a safe PostgreSQL database, then start the React/Vite frontend scaffold.
 
-- maps
-- vehicles
-- players
-- tuning parts
-- tuning setups
-- records
-
-Those endpoints should first match the legacy JSON contracts before the frontend is changed.
+The legacy PHP app remains the user-facing product until the React frontend reaches visual and behavioral parity.

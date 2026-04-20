@@ -10,21 +10,25 @@ This document is the compact baseline for the migration. It describes the legacy
 The product is still primarily the legacy PHP/HTML/CSS/vanilla JavaScript application. The migration branch currently contains:
 
 - the full legacy app,
-- migration documentation,
-- an isolated FastAPI backend scaffold,
+- consolidated migration documentation,
+- a Git history cleanup plan,
+- an isolated FastAPI backend,
 - backend health endpoints,
 - backend configuration and security helpers,
-- backend tests for health, configuration and JWT helpers.
+- PostgreSQL connection helper,
+- public read-only repositories, services and schemas,
+- legacy-compatible FastAPI routes for `load_data.php`, auth status/logout, news and hCaptcha site key,
+- clean `/api/v1/...` routes for the future React frontend,
+- backend tests for health, configuration, JWT helpers and public route wiring.
 
 The branch does not yet contain:
 
 - a React/Vite/TypeScript frontend,
-- FastAPI business endpoints,
-- FastAPI repositories/services for legacy data,
+- migrated public submission behavior,
 - migrated admin features,
 - front/back integration.
 
-The current migration confidence is high for the scaffold and low for product-level replacement.
+The current migration confidence is high for the backend scaffold and route wiring, medium for read-only backend compatibility, and low for full product replacement because live database and frontend validation are still missing.
 
 ## Legacy Architecture
 
@@ -40,8 +44,8 @@ The current migration confidence is high for the scaffold and low for product-le
 |-- css/style.css             # Primary legacy styling and dark mode
 |-- css/style_dark_mode.css   # Legacy extra stylesheet, not linked by index.html
 |-- img/                      # Public assets and game icons
-|-- backups/                  # Historical SQLite snapshots
-|-- backend/                  # New FastAPI scaffold
+|-- backups/                  # Local-only historical SQLite snapshots, ignored by Git
+|-- backend/                  # New FastAPI backend
 `-- docs/migration/           # Migration runbooks
 ```
 
@@ -63,14 +67,14 @@ Important legacy files:
 | `/index.html` | Public page shell | Legacy HTML |
 | `/privacy.html` | Privacy page | Legacy HTML |
 | `/maintenance.html` | Maintenance page | Legacy HTML |
-| `/php/load_data.php?type=maps` | Maps data | Legacy PHP |
-| `/php/load_data.php?type=vehicles` | Vehicles data | Legacy PHP |
-| `/php/load_data.php?type=players` | Players data | Legacy PHP |
-| `/php/load_data.php?type=tuning_parts` | Tuning parts data | Legacy PHP |
-| `/php/load_data.php?type=tuning_setups` | Tuning setup data | Legacy PHP |
-| `/php/load_data.php?type=records` | Current records | Legacy PHP |
-| `/php/get_news.php` | Public news | Legacy PHP |
-| `/php/get_hcaptcha_sitekey.php` | hCaptcha site key | Legacy PHP |
+| `/php/load_data.php?type=maps` | Maps data | Legacy PHP + FastAPI compatibility |
+| `/php/load_data.php?type=vehicles` | Vehicles data | Legacy PHP + FastAPI compatibility |
+| `/php/load_data.php?type=players` | Players data | Legacy PHP + FastAPI compatibility |
+| `/php/load_data.php?type=tuning_parts` | Tuning parts data | Legacy PHP + FastAPI compatibility |
+| `/php/load_data.php?type=tuning_setups` | Tuning setup data | Legacy PHP + FastAPI compatibility |
+| `/php/load_data.php?type=records` | Current records | Legacy PHP + FastAPI compatibility |
+| `/php/get_news.php` | Public news | Legacy PHP + FastAPI compatibility |
+| `/php/get_hcaptcha_sitekey.php` | hCaptcha site key | Legacy PHP + FastAPI compatibility |
 | `/php/public_submit.php` | Public record submission | Legacy PHP |
 | `/php/api_records.php` | API-key records endpoint | Legacy PHP |
 
@@ -79,8 +83,8 @@ Important legacy files:
 | Route | Purpose | Current owner |
 | --- | --- | --- |
 | `/php/admin.php` | Admin UI | Legacy PHP |
-| `/auth/status.php` | Login/admin status | Legacy PHP |
-| `/auth/logout.php` | Logout | Legacy PHP |
+| `/auth/status.php` | Login/admin status | Legacy PHP + FastAPI compatibility |
+| `/auth/logout.php` | Logout | Legacy PHP + FastAPI compatibility |
 | `/php/submit_record.php` | Create/replace record | Legacy PHP |
 | `/php/delete_record.php` | Delete record | Legacy PHP |
 | `/php/set_questionable.php` | Update verification status | Legacy PHP |

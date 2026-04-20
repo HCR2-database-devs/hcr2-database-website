@@ -16,7 +16,7 @@ cd backend
 Latest known result:
 
 ```text
-9 passed
+21 passed
 ```
 
 Backend lint:
@@ -44,6 +44,13 @@ Verified response:
 ```text
 GET /health -> 200
 {"status":"ok","service":"HCR2 Records API","version":"0.1.0"}
+```
+
+FastAPI compatibility smoke test:
+
+```text
+GET /php/load_data.php?type=unknown -> 200
+{"error":"Invalid data type"}
 ```
 
 PHP syntax validation:
@@ -81,10 +88,17 @@ Validated with tests:
 - environment list parsing.
 - PostgreSQL DSN construction.
 - `DATABASE_URL` precedence.
+- database connection helper rejects missing configuration.
 - `WC_TOKEN` HMAC verification.
 - invalid token signature rejection.
 - expired token rejection.
 - admin allowlist helper.
+- public data service dispatch for maps, vehicles, players, tuning parts, tuning setups and records.
+- legacy `load_data.php` compatibility errors for missing and invalid types.
+- clean `/api/v1/maps` route wiring.
+- legacy news route wiring.
+- legacy hCaptcha site key route wiring.
+- legacy auth status logged-out shape.
 
 Validated with static checks:
 
@@ -97,7 +111,7 @@ Not validated:
 
 - live PostgreSQL access,
 - legacy PHP runtime behavior,
-- migrated FastAPI business behavior,
+- migrated FastAPI SQL behavior against production/staging data,
 - frontend build,
 - React UI,
 - admin migration,
@@ -113,7 +127,7 @@ Frontend install/build/type-check:
 
 Database integration:
 
-- not executable because there is no local/staging PostgreSQL `.env` and no FastAPI repositories yet.
+- not executable because there is no local/staging PostgreSQL `.env`, no verified production schema dump and no sanitized fixture database.
 
 Legacy runtime end-to-end:
 
@@ -136,11 +150,11 @@ Visual regression:
 Critical blockers:
 
 1. no React frontend scaffold,
-2. no FastAPI business endpoints,
-3. no local PostgreSQL database configuration,
-4. no verified production schema dump,
-5. no local auth-token generation workflow,
-6. no hCaptcha development or mock setup.
+2. no local PostgreSQL database configuration,
+3. no verified production schema dump,
+4. no local auth-token generation workflow,
+5. no hCaptcha development or mock setup,
+6. no database-backed contract tests for the new read-only routes.
 
 Important non-critical blockers:
 
@@ -167,9 +181,10 @@ To fully validate the migration, the project needs:
 | --- | --- | --- |
 | Legacy preservation | High | Legacy files remain in place and parse. |
 | Documentation | High | Consolidated runbooks exist and are English-only. |
-| Backend scaffold | High | Health, config and security tests pass. |
-| Backend business migration | Low | Business endpoints are not implemented yet. |
+| Backend scaffold | High | Health, config, security and route wiring tests pass. |
+| Backend read-only migration | Medium | Routes, services and SQL repositories exist; live database validation is still missing. |
+| Backend write/admin migration | Low | Public submissions and admin features are not implemented yet. |
 | Frontend migration | Low | React frontend does not exist yet. |
 | Admin migration | Low | Admin remains legacy-only. |
-| Integration | Low | No migrated frontend and no migrated business APIs. |
-| End-to-end readiness | Low | Missing frontend, DB config, secrets and business routes. |
+| Integration | Low | No migrated frontend and no live database-backed validation. |
+| End-to-end readiness | Low | Missing frontend, DB config, secrets and browser-level validation. |
