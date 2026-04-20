@@ -93,7 +93,9 @@ $sql = "SELECT
     LEFT JOIN _tuningsetupparts tsp ON wr.idTuningSetup = tsp.idTuningSetup
     LEFT JOIN _tuningpart tp ON tsp.idTuningPart = tp.idTuningPart
     " . (count($where) ? 'WHERE ' . implode(' AND ', $where) : '') . "
-    GROUP BY wr.idRecord
+    GROUP BY wr.idRecord, wr.idMap, wr.idVehicle, wr.idPlayer, wr.distance,
+        wr.current, wr.idTuningSetup, wr.questionable, wr.questionable_reason,
+        m.nameMap, v.nameVehicle, p.namePlayer, p.country
     ORDER BY wr.idRecord DESC
     LIMIT :limit OFFSET :offset";
 

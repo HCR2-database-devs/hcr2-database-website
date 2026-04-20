@@ -210,12 +210,11 @@ def main() -> int:
             require_json_value(["error"], "Unauthorized: invalid API key"),
         ),
         Check(
-            "api records authorized known PostgreSQL group-by failure",
+            "api records authorized",
             "GET",
             "/php/api_records.php?api_key=dev-api-key",
-            500,
-            require_json_value(["error"], "Database query failed"),
-            expected_failure=True,
+            200,
+            require_json_list_length_at_least(["records"], 1),
         ),
         Check(
             "admin pending list",
@@ -244,14 +243,13 @@ def main() -> int:
             headers=json_headers,
         ),
         Check(
-            "delete record known include-path failure",
+            "delete record authorized no-op",
             "POST",
             "/php/delete_record.php",
             200,
-            require_text("Failed opening required"),
-            body=json.dumps({"recordId": 1}).encode(),
+            require_json_value(["success"], True),
+            body=json.dumps({"recordId": 999999}).encode(),
             headers={**admin_cookie, **json_headers},
-            expected_failure=True,
         ),
     ]
 
