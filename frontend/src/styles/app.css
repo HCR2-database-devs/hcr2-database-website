@@ -115,3 +115,79 @@
 .stats-grid strong {
   font-size: 28px;
 }
+
+.admin-page {
+  margin: 0 auto;
+  max-width: 1180px;
+  padding: 0 12px 40px;
+}
+
+.admin-grid {
+  align-items: start;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.admin-page .form-container {
+  max-width: none;
+}
+
+.admin-page textarea {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+  margin: 8px 0;
+  min-height: 64px;
+  padding: 10px;
+  resize: vertical;
+  width: 100%;
+}
+
+.admin-inline {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.admin-inline input {
+  margin: 0;
+  width: auto;
+}
+
+.admin-checkboxes {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  margin: 8px 0;
+  text-align: left;
+}
+
+.admin-checkboxes label {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.admin-checkboxes input {
+  margin: 0;
+  width: auto;
+}
+
+.admin-actions,
+.admin-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-table-actions button {
+  margin: 0;
+  width: auto;
+}
+
+.admin-notice {
+  color: #167a32;
+  font-weight: 700;
+}

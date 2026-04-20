@@ -75,6 +75,34 @@ function makeDevToken() {
   return `${header}.${payload}.${signature}`;
 }
 
+function adminHeaders() {
+  return {
+    Cookie: `WC_TOKEN=${makeDevToken()}`,
+    "Content-Type": "application/json",
+  };
+}
+
+async function adminJson(route, init = {}) {
+  const response = await fetch(`${backendBaseUrl}${route}`, {
+    ...init,
+    headers: {
+      ...adminHeaders(),
+      ...(init.headers ?? {}),
+    },
+  });
+  const text = await response.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`Admin route ${route} returned invalid JSON: ${text.slice(0, 300)}`);
+  }
+  if (!response.ok) {
+    throw new Error(`Admin route ${route} returned HTTP ${response.status}: ${text}`);
+  }
+  return data;
+}
+
 async function checkJson(name, baseUrl, route, validator, init) {
   const response = await fetch(`${baseUrl}${route}`, init);
   const text = await response.text();
@@ -139,6 +167,118 @@ async function checkApiSurface() {
     throw new Error("Public submission hCaptcha rejection did not match the legacy shape");
   }
   console.log("OK backend public submit hcaptcha rejection");
+}
+
+async function checkAdminApiSurface() {
+  const suffix = Date.now();
+
+  const pending = await adminJson("/api/v1/admin/pending");
+  if (!Array.isArray(pending.pending) || !pending.pending.some((item) => item.id === 1)) {
+    throw new Error("Admin pending list did not expose the seeded pending submission");
+  }
+  console.log("OK admin pending list");
+
+  const map = await adminJson("/api/v1/admin/maps", {
+    method: "POST",
+    body: JSON.stringify({ mapName: `Admin Smoke Map ${suffix}` }),
+  });
+  const vehicle = await adminJson("/api/v1/admin/vehicles", {
+    method: "POST",
+    body: JSON.stringify({ vehicleName: `Admin Smoke Vehicle ${suffix}` }),
+  });
+  const part = await adminJson("/api/v1/admin/tuning-parts", {
+    method: "POST",
+    body: JSON.stringify({ partName: `Admin Smoke Part ${suffix}` }),
+  });
+  if (!map.success || !vehicle.success || !part.success) {
+    throw new Error("Admin catalog additions did not return success");
+  }
+  console.log("OK admin catalog additions");
+
+  const setup = await adminJson("/api/v1/admin/tuning-setups", {
+    method: "POST",
+    body: JSON.stringify({ partIds: [1, 2, part.idTuningPart] }),
+  });
+  if (!setup.success || !setup.idTuningSetup) {
+    throw new Error("Admin tuning setup creation did not return a setup id");
+  }
+  console.log("OK admin tuning setup creation");
+
+  const record = await adminJson("/api/v1/admin/records", {
+    method: "POST",
+    body: JSON.stringify({
+      mapId: map.idMap,
+      vehicleId: vehicle.idVehicle,
+      distance: 55555,
+      playerId: 1,
+      tuningSetupId: setup.idTuningSetup,
+      questionable: 0,
+    }),
+  });
+  if (!record.success || !record.idRecord) {
+    throw new Error("Admin record submit did not return a record id");
+  }
+  console.log("OK admin record submit");
+
+  await adminJson("/api/v1/admin/records/questionable", {
+    method: "PATCH",
+    body: JSON.stringify({ recordId: record.idRecord, questionable: 1, note: "Smoke test note" }),
+  });
+  console.log("OK admin questionable status");
+
+  await adminJson("/api/v1/admin/records/tuning-setup", {
+    method: "PATCH",
+    body: JSON.stringify({ recordId: 2, tuningSetupId: 1 }),
+  });
+  console.log("OK admin tuning setup assignment");
+
+  await adminJson("/api/v1/admin/records/delete", {
+    method: "POST",
+    body: JSON.stringify({ recordId: record.idRecord }),
+  });
+  console.log("OK admin record delete");
+
+  await adminJson("/api/v1/admin/pending/approve", {
+    method: "POST",
+    body: JSON.stringify({ id: 1 }),
+  });
+  const pendingAfterApprove = await adminJson("/api/v1/admin/pending");
+  if (pendingAfterApprove.pending.some((item) => item.id === 1)) {
+    throw new Error("Admin pending approval did not remove item 1 from the pending list");
+  }
+  console.log("OK admin pending approval");
+
+  const title = `Admin smoke news ${suffix}`;
+  await adminJson("/api/v1/admin/news", {
+    method: "POST",
+    body: JSON.stringify({ title, content: "Created by migrated admin smoke test." }),
+  });
+  await checkJson(
+    "backend admin news post visible publicly",
+    backendBaseUrl,
+    "/api/v1/news?limit=20",
+    (data) => Array.isArray(data.news) && data.news.some((item) => item.title === title),
+  );
+
+  await adminJson("/api/v1/admin/maintenance", {
+    method: "PATCH",
+    body: JSON.stringify({ action: "enable" }),
+  });
+  const maintenanceOn = await adminJson("/api/v1/admin/maintenance", { method: "GET" });
+  if (maintenanceOn.maintenance !== true) {
+    throw new Error("Admin maintenance enable did not persist");
+  }
+  await adminJson("/api/v1/admin/maintenance", {
+    method: "PATCH",
+    body: JSON.stringify({ action: "disable" }),
+  });
+  console.log("OK admin maintenance controls");
+
+  const integrity = await adminJson("/api/v1/admin/integrity", { method: "GET" });
+  if (!integrity.ok || !integrity.counts || integrity.counts._worldrecord < 1) {
+    throw new Error(`Admin integrity returned unexpected payload: ${JSON.stringify(integrity)}`);
+  }
+  console.log("OK admin integrity check");
 }
 
 function sendCommand(ws, id, method, params = {}) {
@@ -350,6 +490,25 @@ async function checkUiSurface() {
       throw new Error("Dark mode toggle did not set data-theme=dark");
     }
     console.log("OK UI dark mode toggle");
+
+    page.problems = [];
+    await page.command("Network.setCookie", {
+      name: "WC_TOKEN",
+      value: makeDevToken(),
+      url: frontendBaseUrl,
+      path: "/",
+    });
+    await page.command("Page.navigate", { url: `${frontendBaseUrl}/admin` });
+    await waitForText(page, "Submit or Replace Record");
+    await waitForText(page, "Maintenance Mode");
+    await page.evaluate(
+      `Array.from(document.querySelectorAll('button')).find((button) => button.textContent.trim() === 'Run Integrity Check').click()`,
+    );
+    await waitForText(page, "Integrity check completed.");
+    if (page.problems.length) {
+      throw new Error(`Browser problems on /admin: ${page.problems.join("; ")}`);
+    }
+    console.log("OK UI admin page");
     ws.close();
   } finally {
     chrome.kill();
@@ -373,4 +532,5 @@ async function checkUiSurface() {
 }
 
 await checkApiSurface();
+await checkAdminApiSurface();
 await checkUiSurface();

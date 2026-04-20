@@ -69,14 +69,13 @@ export function Header() {
               )}
 
               {authStatus?.allowed && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    window.location.href = "/php/admin.php";
-                  }}
-                >
-                  Admin
-                </button>
+                <NavLink to="/admin">
+                  {({ isActive }) => (
+                    <button type="button" data-active={isActive}>
+                      Admin
+                    </button>
+                  )}
+                </NavLink>
               )}
 
               {authStatus?.logged && (
