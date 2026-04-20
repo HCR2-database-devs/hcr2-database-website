@@ -11,7 +11,7 @@ The public migration was functional, but admin workflows still depended on PHP.
 - React `/admin` page with access guard and admin forms.
 - Header admin navigation now points to the React route.
 - Smoke coverage for public and admin workflows.
-- Deprecated PHP/HTML/CSS/JS stack moved to `a_supprimer/`.
+- Deprecated PHP/HTML/CSS/JS stack moved to `to_delete/`.
 
 ## Validated
 
@@ -62,4 +62,4 @@ These operations should stay in operational tooling, not browser admin flows.
 
 The useful public and admin application workflows are now served by FastAPI, React and PostgreSQL.
 
-The deprecated stack can stay isolated in `a_supprimer/` until it is deleted from the repository in a later cleanup commit or PR.
+The deprecated stack can stay isolated in `to_delete/` until it is deleted from the repository in a later cleanup commit or PR.

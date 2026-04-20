@@ -18,7 +18,7 @@ frontend/                React/Vite app, public assets and styles
 infra/dev/               Local PostgreSQL dev database
 scripts/dev/             Local setup, reset and smoke-test scripts
 docs/                    Final migration and cutover notes
-a_supprimer/             Deprecated PHP/HTML/JS stack kept only for later deletion
+to_delete/               Deprecated PHP/HTML/JS stack kept only for later deletion
 ```
 
 ## Main Features
@@ -56,6 +56,6 @@ Local URLs:
 
 ## Deprecated Stack
 
-The old PHP/HTML/CSS/vanilla JS stack has been moved to `a_supprimer/`.
+The old PHP/HTML/CSS/vanilla JS stack has been moved to `to_delete/`.
 
 It is not part of the official runtime anymore. Keep it only as a short-term reference until the team is comfortable deleting it.
