@@ -61,12 +61,10 @@ No public visual output has been intentionally changed.
 
 The migration documentation is in `docs/migration/`:
 
-- `existing-architecture-audit.md`
-- `routes-and-flows.md`
-- `backend-mapping.md`
-- `frontend-mapping.md`
-- `database-mapping.md`
-- `migration-plan.md`
+- `01-current-state.md`
+- `02-target-architecture.md`
+- `03-migration-roadmap.md`
+- `04-test-and-blockers.md`
 
 These files define the baseline behavior that must be preserved while the project is rebuilt.
 
