@@ -25,7 +25,10 @@ The refactor has started with the safest pieces:
 - Repository/service/schema layers for public read-only data.
 - Legacy-compatible FastAPI routes for public data, auth status/logout, news and hCaptcha site key.
 - Clean `/api/v1/...` routes for the future React frontend.
+- React/Vite/TypeScript frontend scaffold in `frontend/`.
+- React Router, TanStack Query, legacy CSS/assets and initial public views.
 - Backend tests and Ruff linting.
+- Frontend install and production build.
 
 No legacy PHP file has been removed yet.
 No public visual output has been intentionally changed.
@@ -47,6 +50,11 @@ No public visual output has been intentionally changed.
 |   |-- tests/
 |   |-- pyproject.toml
 |   `-- README.md
+|-- frontend/                # New React/Vite/TypeScript frontend scaffold
+|   |-- public/              # Copied legacy CSS and assets for parity-first migration
+|   |-- src/
+|   |-- package.json
+|   `-- vite.config.ts
 |-- docs/
 |   `-- migration/           # Migration audit, mappings and plan
 |-- auth/                    # Legacy auth/admin PHP endpoints
@@ -158,6 +166,32 @@ CORS_ORIGINS
 
 Use `.env.example` and `backend/.env.example` as references.
 
+## Frontend Scaffold
+
+The new frontend lives in `frontend/`.
+
+Implemented so far:
+
+- Vite + React + TypeScript.
+- React Router routes for the public shell and public data views.
+- TanStack Query client.
+- Centralized API fetch helper.
+- Auth status polling.
+- Dark mode persistence using the legacy `data-theme` contract.
+- Copied legacy `css/style.css` and `img/` assets under `frontend/public/`.
+- Initial pages for home, maps, vehicles, players, tuning parts, tuning setups, records, stats, privacy and maintenance.
+
+Run it locally:
+
+```powershell
+cd frontend
+npm install
+npm run build
+npm run dev
+```
+
+By default Vite proxies `/api`, `/auth`, `/php` and `/health` to `http://127.0.0.1:8000`. Use `frontend/.env.example` as the reference for frontend variables.
+
 ## Legacy Application
 
 The legacy application is still the functional product.
@@ -190,12 +224,13 @@ After the new backend and frontend fully replace the legacy behavior, the follow
 - `js/script.js` after the public React UI is complete.
 - Legacy standalone HTML pages once React routes cover them.
 - Duplicate or unused CSS after visual parity is verified.
+- Copied frontend assets/CSS can be deduplicated after the final asset serving strategy is chosen.
 - Local SQLite snapshots in `backups/` are now ignored by Git. A coordinated history rewrite is still required if the historical database files must be fully purged from repository history.
 
 Deletion must happen only after route usage, tests and visual checks confirm that the replacement is complete.
 
 ## Next Migration Step
 
-The next safe technical step is to validate the new read-only FastAPI endpoints against a safe PostgreSQL database, then start the React/Vite frontend scaffold.
+The next safe technical step is to validate the new read-only FastAPI endpoints against a safe PostgreSQL database, then continue porting the legacy public UI behaviors into React.
 
 The legacy PHP app remains the user-facing product until the React frontend reaches visual and behavioral parity.

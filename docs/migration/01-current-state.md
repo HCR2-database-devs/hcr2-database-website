@@ -19,16 +19,21 @@ The product is still primarily the legacy PHP/HTML/CSS/vanilla JavaScript applic
 - public read-only repositories, services and schemas,
 - legacy-compatible FastAPI routes for `load_data.php`, auth status/logout, news and hCaptcha site key,
 - clean `/api/v1/...` routes for the future React frontend,
+- a React/Vite/TypeScript frontend scaffold,
+- React Router and TanStack Query wiring,
+- copied legacy CSS/assets for a parity-first frontend migration,
+- initial React public shell and public data views,
 - backend tests for health, configuration, JWT helpers and public route wiring.
 
 The branch does not yet contain:
 
-- a React/Vite/TypeScript frontend,
 - migrated public submission behavior,
+- full legacy records filtering/sorting/export behavior in React,
+- full news modal behavior in React,
 - migrated admin features,
-- front/back integration.
+- browser-level visual regression validation.
 
-The current migration confidence is high for the backend scaffold and route wiring, medium for read-only backend compatibility, and low for full product replacement because live database and frontend validation are still missing.
+The current migration confidence is high for the backend scaffold and route wiring, medium for read-only backend compatibility, medium for the frontend scaffold/build, and low for full product replacement because live database, visual parity and admin validation are still missing.
 
 ## Legacy Architecture
 
@@ -46,6 +51,7 @@ The current migration confidence is high for the backend scaffold and route wiri
 |-- img/                      # Public assets and game icons
 |-- backups/                  # Local-only historical SQLite snapshots, ignored by Git
 |-- backend/                  # New FastAPI backend
+|-- frontend/                 # New React/Vite frontend scaffold
 `-- docs/migration/           # Migration runbooks
 ```
 

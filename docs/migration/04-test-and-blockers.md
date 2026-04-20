@@ -53,6 +53,34 @@ GET /php/load_data.php?type=unknown -> 200
 {"error":"Invalid data type"}
 ```
 
+Frontend install:
+
+```powershell
+cd frontend
+npm install
+```
+
+Latest known result:
+
+```text
+added 77 packages
+found 0 vulnerabilities
+```
+
+Frontend build:
+
+```powershell
+cd frontend
+npm run build
+```
+
+Latest known result:
+
+```text
+tsc -b && vite build
+built successfully
+```
+
 PHP syntax validation:
 
 ```powershell
@@ -99,6 +127,8 @@ Validated with tests:
 - legacy news route wiring.
 - legacy hCaptcha site key route wiring.
 - legacy auth status logged-out shape.
+- React/Vite/TypeScript production build.
+- React Router and TanStack Query compile successfully.
 
 Validated with static checks:
 
@@ -112,18 +142,14 @@ Not validated:
 - live PostgreSQL access,
 - legacy PHP runtime behavior,
 - migrated FastAPI SQL behavior against production/staging data,
-- frontend build,
-- React UI,
+- React visual parity,
+- full React UI behavior,
 - admin migration,
 - hCaptcha behavior,
 - external Discord login,
 - end-to-end flows.
 
 ## Tests Not Executable Yet
-
-Frontend install/build/type-check:
-
-- not executable because `frontend/` and `package.json` do not exist yet.
 
 Database integration:
 
@@ -149,12 +175,12 @@ Visual regression:
 
 Critical blockers:
 
-1. no React frontend scaffold,
-2. no local PostgreSQL database configuration,
-3. no verified production schema dump,
-4. no local auth-token generation workflow,
-5. no hCaptcha development or mock setup,
-6. no database-backed contract tests for the new read-only routes.
+1. no local PostgreSQL database configuration,
+2. no verified production schema dump,
+3. no local auth-token generation workflow,
+4. no hCaptcha development or mock setup,
+5. no database-backed contract tests for the new read-only routes,
+6. no visual regression baseline for React parity.
 
 Important non-critical blockers:
 
@@ -184,7 +210,7 @@ To fully validate the migration, the project needs:
 | Backend scaffold | High | Health, config, security and route wiring tests pass. |
 | Backend read-only migration | Medium | Routes, services and SQL repositories exist; live database validation is still missing. |
 | Backend write/admin migration | Low | Public submissions and admin features are not implemented yet. |
-| Frontend migration | Low | React frontend does not exist yet. |
+| Frontend scaffold | Medium | React/Vite builds and initial routes exist; full UI parity is pending. |
 | Admin migration | Low | Admin remains legacy-only. |
 | Integration | Low | No migrated frontend and no live database-backed validation. |
 | End-to-end readiness | Low | Missing frontend, DB config, secrets and browser-level validation. |

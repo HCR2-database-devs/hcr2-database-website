@@ -40,6 +40,18 @@ Backend:
 - news and hCaptcha site key routes.
 - backend tests for health, config, security, service dispatch and route wiring.
 
+Frontend:
+
+- Vite + React + TypeScript scaffold.
+- React Router.
+- TanStack Query.
+- frontend API client.
+- auth status polling.
+- dark mode state using the legacy `data-theme` contract.
+- copied legacy CSS and assets under `frontend/public/`.
+- initial public shell and public data views.
+- production build.
+
 Legacy preservation:
 
 - legacy PHP/HTML/CSS/JS files remain in place.
@@ -57,19 +69,9 @@ Backend:
 
 Frontend:
 
-- `frontend/` scaffold,
-- React/Vite/TypeScript,
-- React Router,
-- TanStack Query,
-- legacy CSS import,
-- asset strategy,
-- public shell,
-- public data views,
 - records filters and export,
-- stats,
 - public submission,
-- news,
-- privacy/maintenance pages,
+- full news modal behavior,
 - admin UI.
 
 Operations:
@@ -145,6 +147,8 @@ Priority order:
 
 ## Phase 5 - React/Vite Frontend Scaffold
 
+Status: initial scaffold done; visual parity and full behavior are pending.
+
 Tasks:
 
 - create `frontend/`,
@@ -157,6 +161,8 @@ Tasks:
 - port public shell, header, footer and navigation.
 
 ## Phase 6 - React Public Views
+
+Status: initial public data views exist; full legacy behavior is pending.
 
 Priority order:
 
