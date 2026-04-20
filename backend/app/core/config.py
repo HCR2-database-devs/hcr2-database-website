@@ -1,11 +1,11 @@
 import re
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 from urllib.parse import quote_plus
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
@@ -40,16 +40,19 @@ class Settings(BaseSettings):
     database_url: str | None = Field(default=None, validation_alias="DATABASE_URL")
 
     auth_shared_secret: str | None = Field(default=None, validation_alias="AUTH_SHARED_SECRET")
-    allowed_discord_ids: list[str] = Field(
+    allowed_discord_ids: Annotated[list[str], NoDecode] = Field(
         default_factory=list,
         validation_alias="ALLOWED_DISCORD_IDS",
     )
-    api_keys: list[str] = Field(default_factory=list, validation_alias="API_KEYS")
+    api_keys: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        validation_alias="API_KEYS",
+    )
 
     hcaptcha_site_key: str | None = Field(default=None, validation_alias="HCAPTCHA_SITE_KEY")
     hcaptcha_secret_key: str | None = Field(default=None, validation_alias="HCAPTCHA_SECRET_KEY")
 
-    cors_origins: list[str] = Field(
+    cors_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"],
         validation_alias="CORS_ORIGINS",
     )
@@ -74,4 +77,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

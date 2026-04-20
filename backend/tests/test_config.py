@@ -13,6 +13,18 @@ def test_settings_parse_comma_separated_lists() -> None:
     assert settings.cors_origins == ["http://localhost:5173", "http://127.0.0.1:5173"]
 
 
+def test_settings_parse_comma_separated_lists_from_environment(monkeypatch) -> None:
+    monkeypatch.setenv("ALLOWED_DISCORD_IDS", "dev-admin,qa-admin")
+    monkeypatch.setenv("API_KEYS", "dev-api-key")
+    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+
+    settings = Settings()
+
+    assert settings.allowed_discord_ids == ["dev-admin", "qa-admin"]
+    assert settings.api_keys == ["dev-api-key"]
+    assert settings.cors_origins == ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+
 def test_settings_build_postgres_dsn_from_legacy_database_variables() -> None:
     settings = Settings(
         DB_HOST="db.example.test",
