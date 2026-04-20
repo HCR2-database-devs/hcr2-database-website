@@ -12,7 +12,6 @@ export default defineConfig(({ mode }) => {
       proxy: {
         "/api": backendTarget,
         "/auth": backendTarget,
-        "/php": backendTarget,
         "/health": backendTarget
       }
     }

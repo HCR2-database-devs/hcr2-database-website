@@ -3,27 +3,27 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 
-class LegacyRow(BaseModel):
+class ApiRow(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
-class MapItem(LegacyRow):
+class MapItem(ApiRow):
     idMap: int
     nameMap: str
 
 
-class VehicleItem(LegacyRow):
+class VehicleItem(ApiRow):
     idVehicle: int
     nameVehicle: str
 
 
-class PlayerItem(LegacyRow):
+class PlayerItem(ApiRow):
     idPlayer: int
     namePlayer: str
     country: str | None = None
 
 
-class TuningPartItem(LegacyRow):
+class TuningPartItem(ApiRow):
     idTuningPart: int
     nameTuningPart: str
 
@@ -32,12 +32,12 @@ class TuningSetupPart(BaseModel):
     nameTuningPart: str
 
 
-class TuningSetupItem(LegacyRow):
+class TuningSetupItem(ApiRow):
     idTuningSetup: int
     parts: list[TuningSetupPart]
 
 
-class RecordItem(LegacyRow):
+class RecordItem(ApiRow):
     idRecord: int
     distance: int
     current: int | bool
@@ -51,7 +51,7 @@ class RecordItem(LegacyRow):
     tuning_parts: str | None = None
 
 
-class LegacyError(BaseModel):
+class ApiError(BaseModel):
     error: str
 
 

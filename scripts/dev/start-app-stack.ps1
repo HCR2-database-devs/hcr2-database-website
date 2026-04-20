@@ -119,8 +119,7 @@ try {
     throw "Vite is reachable but the FastAPI proxy cannot load demo data."
 }
 
-Write-Output "Migrated stack ready:"
+Write-Output "Application stack ready:"
 Write-Output "- PostgreSQL: 127.0.0.1:54329"
-Write-Output "- Legacy PHP: http://127.0.0.1:18080"
 Write-Output "- FastAPI: http://127.0.0.1:8000"
 Write-Output "- React/Vite: http://127.0.0.1:5173"

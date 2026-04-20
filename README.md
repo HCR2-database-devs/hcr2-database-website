@@ -1,247 +1,61 @@
 # HCR2 Adventure Records Database
 
-Unofficial Hill Climb Racing 2 adventure records website and database.
+Unofficial Hill Climb Racing 2 adventure records website.
 
-This branch is currently being migrated from a legacy PHP, HTML, CSS and vanilla JavaScript application toward a cleaner architecture based on:
+The application is now built on one official stack:
 
-- FastAPI for the backend API
-- React, Vite and TypeScript for the frontend
-- React Router for frontend routing
-- TanStack Query for API calls and caching
-- PostgreSQL for the active database
+- FastAPI backend
+- React + Vite + TypeScript frontend
+- React Router
+- TanStack Query
+- PostgreSQL
 
-The migration is intentionally progressive. The legacy application is still present and must keep working until each replacement part is verified.
-
-## Current Refactor Status
-
-The refactor has started with the safest pieces:
-
-- Consolidated migration runbooks in `docs/migration/`.
-- Git tracking cleanup for local database snapshots.
-- Isolated FastAPI backend in `backend/`.
-- Centralized backend configuration.
-- Basic security helpers for the existing `WC_TOKEN` model.
-- PostgreSQL connection helper using the existing environment contract.
-- Repository/service/schema layers for public read-only data.
-- Legacy-compatible FastAPI routes for public data, auth status/logout, news and hCaptcha site key.
-- Clean `/api/v1/...` routes for the future React frontend.
-- React/Vite/TypeScript frontend scaffold in `frontend/`.
-- React Router, TanStack Query, legacy CSS/assets and initial public views.
-- Backend tests and Ruff linting.
-- Frontend install and production build.
-- Local PostgreSQL dev database, FastAPI, React/Vite and legacy regression checks.
-
-No legacy PHP file has been removed yet.
-No public visual output has been intentionally changed.
-
-## Repository Layout
+## Project Layout
 
 ```text
-.
-|-- backend/                 # New FastAPI backend scaffold
-|   |-- app/
-|   |   |-- api/             # Versioned API routers
-|   |   |-- core/            # Settings, errors and security helpers
-|   |   |-- db/              # Database configuration and connection helpers
-|   |   |-- models/          # Future database models
-|   |   |-- repositories/    # SQL data access layer
-|   |   |-- schemas/         # Pydantic schemas
-|   |   |-- services/        # Business/service layer
-|   |   `-- utils/
-|   |-- tests/
-|   |-- pyproject.toml
-|   `-- README.md
-|-- frontend/                # New React/Vite/TypeScript frontend scaffold
-|   |-- public/              # Copied legacy CSS and assets for parity-first migration
-|   |-- src/
-|   |-- package.json
-|   `-- vite.config.ts
-|-- docs/
-|   `-- migration/           # Migration audit, mappings and plan
-|-- auth/                    # Legacy auth/admin PHP endpoints
-|-- php/                     # Legacy PHP endpoints and admin page
-|-- css/                     # Legacy styles
-|-- js/                      # Legacy public JavaScript
-|-- img/                     # Public assets and icons
-|-- backups/                 # Local-only historical SQLite snapshots, ignored by Git
-|-- index.php                # Legacy public entry point
-|-- index.html               # Legacy public page
-|-- maintenance.html
-`-- privacy.html
+backend/                 FastAPI API, services, repositories and tests
+frontend/                React/Vite app, public assets and styles
+infra/dev/               Local PostgreSQL dev database
+scripts/dev/             Local setup, reset and smoke-test scripts
+docs/                    Final migration and cutover notes
+a_supprimer/             Deprecated PHP/HTML/JS stack kept only for later deletion
 ```
 
-## Migration Documentation
+## Main Features
 
-The migration documentation is in `docs/migration/`:
+- Public data views for maps, vehicles, players, tuning parts, tuning setups and records.
+- Records search, filters, sorting and CSV export.
+- Public news modal.
+- Public record submission for admin review.
+- Discord-cookie based admin access.
+- Admin workflows for records, catalog data, pending submissions, news, maintenance and DB integrity.
+- Local PostgreSQL demo database with seed data.
 
-- `01-current-state.md`
-- `02-target-architecture.md`
-- `03-migration-roadmap.md`
-- `04-test-and-blockers.md`
-- `dev-database-setup.md`
-- `legacy-regression-check.md`
-- `system-functional-check.md`
-- `history-cleanup-plan.md`
-
-These files define the baseline behavior that must be preserved while the project is rebuilt.
-
-## Migrated Backend
-
-The new backend lives in `backend/`.
-
-Implemented so far:
-
-- FastAPI app factory.
-- `/health`
-- `/api/v1/health`
-- Pydantic settings.
-- Environment parsing compatible with the legacy `.env` style.
-- `WC_TOKEN` verification helper.
-- PostgreSQL connection helper.
-- Public read-only repositories and services.
-- Pydantic schemas for migrated public contracts.
-- Legacy compatibility routes:
-  - `/php/load_data.php?type=maps`
-  - `/php/load_data.php?type=vehicles`
-  - `/php/load_data.php?type=players`
-  - `/php/load_data.php?type=tuning_parts`
-  - `/php/load_data.php?type=tuning_setups`
-  - `/php/load_data.php?type=records`
-  - `/auth/status.php`
-  - `/auth/logout.php`
-  - `/php/get_news.php`
-  - `/php/get_hcaptcha_sitekey.php`
-- Clean API routes:
-  - `/api/v1/maps`
-  - `/api/v1/vehicles`
-  - `/api/v1/players`
-  - `/api/v1/tuning-parts`
-  - `/api/v1/tuning-setups`
-  - `/api/v1/records`
-  - `/api/v1/auth/status`
-  - `/api/v1/auth/logout`
-  - `/api/v1/news`
-  - `/api/v1/hcaptcha/sitekey`
-- Pytest and Ruff setup.
-
-Run it locally with the full development stack:
+## Quick Start
 
 ```powershell
-.\scripts\dev\start-migrated-stack.ps1
-node scripts\dev\test_migrated_system.mjs
+.\scripts\dev\reset-dev-database.ps1
+.\scripts\dev\start-app-stack.ps1 -RestartFastApi -RestartFrontend
+node .\scripts\dev\test_system_smoke.mjs
 ```
 
-Run backend-only checks:
+Local URLs:
 
-```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev]"
-python -m pytest
-python -m ruff check .
-python -m uvicorn app.main:app --reload
-```
+- Frontend: `http://127.0.0.1:5173`
+- Backend: `http://127.0.0.1:8000`
+- Backend health: `http://127.0.0.1:8000/health`
+- PostgreSQL: `127.0.0.1:54329`
 
-Health checks:
+## Documentation
 
-- `http://127.0.0.1:8000/health`
-- `http://127.0.0.1:8000/api/v1/health`
+- [SETUP.md](SETUP.md) explains installation and environment setup.
+- [DEV.md](DEV.md) lists useful development commands.
+- [ADMIN.md](ADMIN.md) explains admin access and workflows.
+- [docs/final-migration-status.md](docs/final-migration-status.md) records what was validated.
+- [docs/final-cutover-scope.md](docs/final-cutover-scope.md) records what is intentionally outside the app cutover.
 
-## Environment
+## Deprecated Stack
 
-Root legacy variables:
+The old PHP/HTML/CSS/vanilla JS stack has been moved to `a_supprimer/`.
 
-```text
-DB_HOST
-DB_PORT
-DB_NAME
-DB_USER
-DB_PASS
-AUTH_SHARED_SECRET
-ALLOWED_DISCORD_IDS
-API_KEYS
-HCAPTCHA_SITE_KEY
-HCAPTCHA_SECRET_KEY
-```
-
-The backend scaffold also supports:
-
-```text
-APP_NAME
-APP_VERSION
-ENVIRONMENT
-DATABASE_URL
-CORS_ORIGINS
-```
-
-Use `.env.example` and `backend/.env.example` as references.
-
-## Frontend Scaffold
-
-The new frontend lives in `frontend/`.
-
-Implemented so far:
-
-- Vite + React + TypeScript.
-- React Router routes for the public shell and public data views.
-- TanStack Query client.
-- Centralized API fetch helper.
-- Auth status polling.
-- Dark mode persistence using the legacy `data-theme` contract.
-- Copied legacy `css/style.css` and `img/` assets under `frontend/public/`.
-- Initial pages for home, maps, vehicles, players, tuning parts, tuning setups, records, stats, privacy and maintenance.
-
-Run it locally:
-
-```powershell
-cd frontend
-npm install
-npm run build
-npm run dev
-```
-
-By default Vite proxies `/api`, `/auth`, `/php` and `/health` to `http://127.0.0.1:8000`. Use `frontend/.env.example` as the reference for frontend variables.
-
-## Legacy Application
-
-The legacy application is still the functional product.
-
-Important legacy entry points:
-
-- `index.php`
-- `index.html`
-- `php/load_data.php`
-- `php/admin.php`
-- `auth/status.php`
-- `auth/check_auth.php`
-
-Important legacy assets:
-
-- `css/style.css`
-- `js/script.js`
-- `img/`
-
-During the migration, this code should stay in place until the FastAPI and React replacements are complete and verified.
-
-## What Will Be Removed Later
-
-Nothing in this list should be deleted yet.
-
-After the new backend and frontend fully replace the legacy behavior, the following legacy pieces should be reviewed for removal or archival:
-
-- PHP endpoints in `php/` and `auth/` that have confirmed FastAPI replacements.
-- `php/admin.php` after the React admin area is complete.
-- `js/script.js` after the public React UI is complete.
-- Legacy standalone HTML pages once React routes cover them.
-- Duplicate or unused CSS after visual parity is verified.
-- Copied frontend assets/CSS can be deduplicated after the final asset serving strategy is chosen.
-- Local SQLite snapshots in `backups/` are now ignored by Git. A coordinated history rewrite is still required if the historical database files must be fully purged from repository history.
-
-Deletion must happen only after route usage, tests and visual checks confirm that the replacement is complete.
-
-## Next Migration Step
-
-The new read-only FastAPI endpoints and initial React public views now run against the local PostgreSQL demo database. The next safe technical step is to continue porting the missing public UI behavior, especially full records filtering/sorting, news modal, submission flow, and then admin UI.
-
-The legacy PHP app remains the user-facing product until the React frontend reaches visual and behavioral parity.
+It is not part of the official runtime anymore. Keep it only as a short-term reference until the team is comfortable deleting it.

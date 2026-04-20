@@ -1,7 +1,7 @@
 [project]
 name = "hcr2-records-backend"
 version = "0.1.0"
-description = "FastAPI backend for the HCR2 records database migration."
+description = "FastAPI backend for the HCR2 records database."
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
@@ -28,4 +28,3 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
-

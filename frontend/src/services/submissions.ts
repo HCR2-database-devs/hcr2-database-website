@@ -17,7 +17,7 @@ export type PublicRecordSubmission = {
 };
 
 export function submitPublicRecord(payload: PublicRecordSubmission) {
-  return fetchJson<{ success?: boolean; message?: string }>("/php/public_submit.php", {
+  return fetchJson<{ success?: boolean; message?: string }>("/api/v1/submissions", {
     method: "POST",
     body: JSON.stringify(payload),
     headers: {

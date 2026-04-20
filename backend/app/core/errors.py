@@ -7,6 +7,5 @@ class ApiError(Exception):
     status_code: int = 400
 
 
-def legacy_error(message: str) -> dict[str, str]:
+def api_error(message: str) -> dict[str, str]:
     return {"error": message}
-

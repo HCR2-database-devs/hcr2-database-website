@@ -9,7 +9,7 @@ from app.api.dependencies import (
     get_public_data_service,
     get_public_submission_service,
 )
-from app.api.responses import DATABASE_ERROR_TYPES, database_error_response, legacy_error_response
+from app.api.responses import DATABASE_ERROR_TYPES, database_error_response, error_response
 from app.core.config import Settings, get_settings
 from app.services.auth_service import AuthService
 from app.services.news_service import NewsService
@@ -33,22 +33,22 @@ SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 
 @router.get("/php/load_data.php", response_model=None)
-def legacy_load_data(
+def compatibility_load_data(
     service: PublicDataServiceDep,
     data_type: Annotated[str | None, Query(alias="type")] = None,
 ) -> Any:
     try:
         return service.load_data(data_type)
     except MissingLoadDataType as exc:
-        return legacy_error_response(str(exc))
+        return error_response(str(exc))
     except InvalidLoadDataType as exc:
-        return legacy_error_response(str(exc))
+        return error_response(str(exc))
     except DATABASE_ERROR_TYPES as exc:
         return database_error_response(exc)
 
 
 @router.get("/php/get_news.php", response_model=None)
-def legacy_get_news(
+def compatibility_get_news(
     service: NewsServiceDep,
     limit: Annotated[str | None, Query()] = None,
 ) -> Any:
@@ -59,14 +59,14 @@ def legacy_get_news(
 
 
 @router.get("/php/get_hcaptcha_sitekey.php", response_model=None)
-def legacy_get_hcaptcha_sitekey(settings: SettingsDep) -> Any:
+def compatibility_get_hcaptcha_sitekey(settings: SettingsDep) -> Any:
     if not settings.hcaptcha_site_key:
-        return legacy_error_response("hCaptcha is not configured", status_code=500)
+        return error_response("hCaptcha is not configured", status_code=500)
     return {"sitekey": settings.hcaptcha_site_key}
 
 
 @router.post("/php/public_submit.php", response_model=None)
-async def legacy_public_submit(
+async def compatibility_public_submit(
     request: Request,
     service: PublicSubmissionServiceDep,
 ) -> JSONResponse:
@@ -84,7 +84,7 @@ async def legacy_public_submit(
 
 
 @router.get("/auth/status.php", response_model=None)
-def legacy_auth_status(
+def compatibility_auth_status(
     request: Request,
     service: AuthServiceDep,
 ) -> dict[str, Any]:
@@ -92,7 +92,7 @@ def legacy_auth_status(
 
 
 @router.get("/auth/logout.php")
-def legacy_auth_logout(
+def compatibility_auth_logout(
     oauth_state: Annotated[str | None, Query()] = None,
     code: Annotated[str | None, Query()] = None,
 ) -> RedirectResponse:

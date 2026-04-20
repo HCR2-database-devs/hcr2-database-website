@@ -29,7 +29,7 @@ class FakePublicDataRepository:
         return [{"idRecord": 1, "distance": 1234, "map_name": "Countryside"}]
 
 
-def test_public_data_service_dispatches_legacy_types() -> None:
+def test_public_data_service_dispatches_public_types() -> None:
     service = PublicDataService(FakePublicDataRepository())
 
     assert service.load_data("maps")[0]["nameMap"] == "Countryside"
@@ -40,14 +40,14 @@ def test_public_data_service_dispatches_legacy_types() -> None:
     assert service.load_data("records")[0]["distance"] == 1234
 
 
-def test_public_data_service_preserves_legacy_missing_type_error() -> None:
+def test_public_data_service_preserves_missing_type_error() -> None:
     service = PublicDataService(FakePublicDataRepository())
 
     with pytest.raises(MissingLoadDataType, match="No data type specified"):
         service.load_data(None)
 
 
-def test_public_data_service_preserves_legacy_invalid_type_error() -> None:
+def test_public_data_service_preserves_invalid_type_error() -> None:
     service = PublicDataService(FakePublicDataRepository())
 
     with pytest.raises(InvalidLoadDataType, match="Invalid data type"):
