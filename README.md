@@ -29,6 +29,7 @@ The refactor has started with the safest pieces:
 - React Router, TanStack Query, legacy CSS/assets and initial public views.
 - Backend tests and Ruff linting.
 - Frontend install and production build.
+- Local PostgreSQL dev database, FastAPI, React/Vite and legacy regression checks.
 
 No legacy PHP file has been removed yet.
 No public visual output has been intentionally changed.
@@ -77,6 +78,9 @@ The migration documentation is in `docs/migration/`:
 - `02-target-architecture.md`
 - `03-migration-roadmap.md`
 - `04-test-and-blockers.md`
+- `dev-database-setup.md`
+- `legacy-regression-check.md`
+- `system-functional-check.md`
 - `history-cleanup-plan.md`
 
 These files define the baseline behavior that must be preserved while the project is rebuilt.
@@ -120,7 +124,14 @@ Implemented so far:
   - `/api/v1/hcaptcha/sitekey`
 - Pytest and Ruff setup.
 
-Run it locally:
+Run it locally with the full development stack:
+
+```powershell
+.\scripts\dev\start-migrated-stack.ps1
+node scripts\dev\test_migrated_system.mjs
+```
+
+Run backend-only checks:
 
 ```powershell
 cd backend
@@ -231,6 +242,6 @@ Deletion must happen only after route usage, tests and visual checks confirm tha
 
 ## Next Migration Step
 
-The next safe technical step is to validate the new read-only FastAPI endpoints against a safe PostgreSQL database, then continue porting the legacy public UI behaviors into React.
+The new read-only FastAPI endpoints and initial React public views now run against the local PostgreSQL demo database. The next safe technical step is to continue porting the missing public UI behavior, especially full records filtering/sorting, news modal, submission flow, and then admin UI.
 
 The legacy PHP app remains the user-facing product until the React frontend reaches visual and behavioral parity.

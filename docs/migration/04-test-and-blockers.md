@@ -123,7 +123,7 @@ Latest known result:
 - news and hCaptcha site-key routes passed,
 - auth status passed for logged-out and signed development admin-token cases,
 - admin pending list and integrity check passed,
-- known PostgreSQL/API issues are marked as expected failures in `legacy-regression-check.md`.
+- previously identified PostgreSQL/API legacy issues now pass in the regression script.
 
 ## What Is Actually Validated
 
@@ -150,6 +150,8 @@ Validated with tests:
 - local PostgreSQL dev schema can be initialized and seeded.
 - legacy PHP runtime can read the local PostgreSQL demo data.
 - legacy admin read-only status can be checked with a signed development token.
+- legacy `api_records.php` authorized access works against PostgreSQL demo data.
+- legacy `delete_record.php` authorization and response path work for a safe no-op record id.
 
 Validated with static checks:
 
@@ -197,10 +199,8 @@ Critical blockers:
 
 1. no verified production schema dump,
 2. no hCaptcha development or mock setup,
-3. no database-backed contract tests for the migrated FastAPI read-only routes against representative PostgreSQL data,
-4. no visual regression baseline for React parity,
-5. known legacy PostgreSQL incompatibility in `php/api_records.php`,
-6. known legacy include-path issue in `php/delete_record.php`.
+3. no production/staging database-backed contract tests for the migrated FastAPI read-only routes,
+4. no visual regression baseline for React parity.
 
 Important non-critical blockers:
 
@@ -230,5 +230,5 @@ To fully validate the migration, the project needs:
 | Backend write/admin migration | Low | Public submissions and admin features are not implemented yet. |
 | Frontend scaffold | Medium | React/Vite builds and initial routes exist; full UI parity is pending. |
 | Admin migration | Low | Admin remains legacy-only. |
-| Integration | Medium-Low | Local legacy/PostgreSQL integration exists; migrated frontend/backend integration remains incomplete. |
-| End-to-end readiness | Low | Missing frontend parity, production schema validation, hCaptcha handling and browser-level validation. |
+| Integration | Medium | Local legacy/PostgreSQL and migrated frontend/FastAPI/PostgreSQL checks now pass for migrated read-only flows. |
+| End-to-end readiness | Medium-Low | Missing frontend parity, production schema validation, hCaptcha success handling and full admin migration. |

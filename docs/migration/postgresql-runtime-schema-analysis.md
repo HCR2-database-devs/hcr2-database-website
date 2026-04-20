@@ -229,7 +229,7 @@ Important behavior:
 - `auth/admin_pending.php` also deletes by map/vehicle before approving a pending submission.
 - `auth/admin_pending.php` inserts a world record with `RETURNING idRecord`.
 - `php/load_data.php` requires `questionable_reason`, even though the old SQLite snapshots did not include it.
-- `php/api_records.php` groups only by `wr.idRecord`, which works in PostgreSQL only if the database can infer functional dependency from `idrecord` as the primary key.
+- `php/api_records.php` originally grouped only by `wr.idRecord`; this was corrected later so PostgreSQL groups every selected non-aggregated column.
 
 ### `PendingSubmission`
 
@@ -372,9 +372,9 @@ Observed divergences:
 
 ## Issues Found During Static Analysis
 
-- `php/delete_record.php` requires `__DIR__ . '/auth/check_auth.php'` even though the file lives under `php/`; the likely intended path is `../auth/check_auth.php`. This appears to be a pre-existing legacy issue and was not changed in this pass.
+- `php/delete_record.php` originally required `__DIR__ . '/auth/check_auth.php'` even though the file lives under `php/`; this was corrected later to `../auth/check_auth.php`.
 - `php/assign_setup.php` authorizes using PHP session state directly instead of `ensure_authorized_json()`. It may require the admin page to have established `$_SESSION['discord']` before API calls.
-- `php/api_records.php` groups by `wr.idRecord` only while selecting many non-aggregated columns. This relies on PostgreSQL primary-key functional dependency inference and can fail if the schema does not declare `idrecord` as a primary key.
+- `php/api_records.php` originally grouped by `wr.idRecord` only while selecting many non-aggregated columns. This has been corrected for PostgreSQL compatibility.
 - hCaptcha makes public submission end-to-end tests dependent on external credentials or an explicit mock strategy.
 
 ## Remaining Unknowns

@@ -15,6 +15,7 @@ Files:
 - `infra/dev/postgres/init/001_schema.sql`
 - `infra/dev/postgres/init/002_seed_demo.sql`
 - `scripts/dev/start-dev-stack.ps1`
+- `scripts/dev/start-migrated-stack.ps1`
 - `scripts/dev/reset-dev-database.ps1`
 - `scripts/dev/stop-dev-stack.ps1`
 - `scripts/dev/make-dev-wc-token.ps1`
@@ -38,6 +39,25 @@ Expected local URLs:
 - legacy PHP: `http://127.0.0.1:18080`
 - PostgreSQL: `127.0.0.1:54329`
 
+## Start The Migrated Stack
+
+To run the database, legacy server, FastAPI backend and React/Vite frontend together:
+
+```powershell
+.\scripts\dev\start-migrated-stack.ps1
+```
+
+If an old FastAPI or Vite process is already occupying the expected port and does not read demo data correctly, restart those listeners explicitly:
+
+```powershell
+.\scripts\dev\start-migrated-stack.ps1 -RestartFastApi -RestartFrontend
+```
+
+Expected local URLs:
+
+- FastAPI: `http://127.0.0.1:8000`
+- React/Vite: `http://127.0.0.1:5173`
+
 ## Reset And Reseed The Database
 
 ```powershell
@@ -57,9 +77,9 @@ After the stack is running, execute:
 python scripts\dev\test_legacy_regression.py
 ```
 
-The script checks the public legacy pages, static assets, read-only data routes, auth status, safe admin read routes, and known failure modes that still need deliberate migration fixes.
+The script checks the public legacy pages, static assets, read-only data routes, auth status, safe admin read routes, and the previously fixed PostgreSQL/include-path regressions.
 
-Expected known failures are documented in `legacy-regression-check.md`; they are reported as `XFAIL` only when the exact known failure signature is still present, so unexpected changes still fail the script.
+The current expected result is a clean pass. If a future known failure must be tracked temporarily, the script supports explicit `XFAIL` checks that still validate the exact failure signature.
 
 ## Stop The Dev Stack
 

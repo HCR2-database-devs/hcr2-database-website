@@ -47,9 +47,11 @@ The following checks passed:
 - `GET /auth/status.php` without a cookie reports a logged-out user.
 - `GET /auth/status.php` with a generated development `WC_TOKEN` reports an allowed admin user.
 - `GET /php/api_records.php` without an API key returns `401`.
+- `GET /php/api_records.php?api_key=dev-api-key` returns records.
 - `GET /auth/admin_pending.php` with an admin token returns pending submissions.
 - `POST /auth/admin_actions.php` with `action=integrity` returns `ok = true`.
 - `POST /php/public_submit.php` without a valid hCaptcha token returns the expected hCaptcha rejection.
+- `POST /php/delete_record.php` with a non-existent record id returns the legacy success shape after authorization.
 
 Additional validation executed during this pass:
 
@@ -60,16 +62,11 @@ Additional validation executed during this pass:
 - frontend production build passed with `npm run build`;
 - seeded PostgreSQL counts were verified: 3 maps, 3 vehicles, 3 players, 5 tuning parts, 2 tuning setups, 3 world records, 2 pending submissions, and 2 news items.
 
-## Known Expected Failures
-
-These are real legacy issues observed against PostgreSQL. They are marked as `XFAIL` in the regression script only when the exact known failure signature is still present, so future unexpected breakages remain visible.
-
-- `GET /php/api_records.php?api_key=dev-api-key` returns `500 {"error":"Database query failed"}`. Static analysis points to PostgreSQL `GROUP BY` incompatibility: the query selects many joined columns while grouping only by `wr.idRecord`.
-- `POST /php/delete_record.php` returns HTTP `200` with a PHP fatal error body because it includes `__DIR__ . '/auth/check_auth.php'` from inside `php/`, which resolves to the non-existent path `php/auth/check_auth.php`.
-
 ## Fixes Made During This Pass
 
 - `auth/config.php` now guards `safe_json_error()` and `generic_database_error()` with `function_exists`.
+- `php/api_records.php` now groups every selected non-aggregated column, which makes the existing query valid on PostgreSQL while preserving the response intent.
+- `php/delete_record.php` now includes `../auth/check_auth.php`, matching the location used by the other authenticated PHP endpoints.
 
 Reason: `php/load_data.php` and `php/get_hcaptcha_sitekey.php` define `safe_json_error()` before requiring `auth/config.php`. Without the guard, PHP fatals with a redeclaration error. The fix preserves the existing helper behavior and only prevents duplicate declarations.
 
@@ -91,4 +88,4 @@ Reason: `php/load_data.php` and `php/get_hcaptcha_sitekey.php` define `safe_json
 - Legacy read-only public data routes: medium-high, with identifier casing caveats.
 - Legacy auth status with development token: high.
 - Legacy admin read routes: medium.
-- Legacy PostgreSQL compatibility overall: medium, because the authorized API records endpoint and `delete_record.php` still need deliberate fixes.
+- Legacy PostgreSQL compatibility overall: medium-high for the tested routes. Casing caveats and untested mutating admin flows remain.
