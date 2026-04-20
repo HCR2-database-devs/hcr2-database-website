@@ -120,6 +120,13 @@ Post-rewrite actions:
 
 ## Decision For This Pass
 
-Execute current-index cleanup and `.gitignore` hardening now.
+Current-index cleanup and `.gitignore` hardening were executed after this audit:
+
+- `backups/main-20260326-023356.sqlite` was removed from the Git index.
+- `backups/main-20260403-073123.sqlite` was removed from the Git index.
+- local database snapshots and frontend build/dependency outputs are ignored.
+- `.env.*` files are ignored while `.env.example` files remain trackable.
+
+The SQLite files still exist locally for reference, but they are no longer tracked by the current branch.
 
 Do not rewrite history in this pass unless the repository owner explicitly approves the force-push workflow and collaborator impact.
