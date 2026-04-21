@@ -49,7 +49,8 @@ function get_data($db, $table, $select = '*', $where = '', $order = '', $limit =
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return json_encode($data);
     } catch (Throwable $e) {
-        return json_encode(['error' => 'Database error']);
+        error_log("Database error in get_data for table $table: " . $e->getMessage());
+        return json_encode(['error' => 'Database error', 'details' => $e->getMessage()]);
     }
 }
 
@@ -72,10 +73,10 @@ if (isset($_GET['type'])) {
             try {
                 $sql = "
                     SELECT ts.\"idTuningSetup\" AS \"idTuningSetup\",
-                           string_agg(tp.\"nameTuningPart\", ', ') AS parts
+                           string_agg(tp.\"nameTuningPart\", ', ' ORDER BY tp.\"nameTuningPart\") AS parts
                     FROM _tuningsetup ts
-                    JOIN _tuningsetupparts tsp ON ts.\"idTuningSetup\" = tsp.\"idTuningSetup\"
-                    JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
+                    LEFT JOIN _tuningsetupparts tsp ON ts.\"idTuningSetup\" = tsp.\"idTuningSetup\"
+                    LEFT JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
                     GROUP BY ts.\"idTuningSetup\"
                     ORDER BY ts.\"idTuningSetup\"
                 ";
@@ -94,42 +95,53 @@ if (isset($_GET['type'])) {
                 }
                 echo json_encode($data);
             } catch (Throwable $e) {
+                error_log('load_data tuning_setups failed: ' . $e->getMessage());
                 generic_database_error('load_data tuning_setups failed: ' . $e->getMessage());
             }
             break;
         case 'records':
             try {
                 $sql = "SELECT
-                            wr.\"idRecord\" AS \"idRecord\",
+                            wr.\"idMap\",
+                            wr.\"idVehicle\",
+                            wr.\"idPlayer\",
                             wr.distance,
                             wr.current,
-                            wr.\"idTuningSetup\" AS \"idTuningSetup\",
+                            wr.\"idTuningSetup\",
                             wr.questionable,
                             COALESCE(wr.questionable_reason, '') AS questionable_reason,
                             m.\"nameMap\" AS map_name,
                             v.\"nameVehicle\" AS vehicle_name,
                             p.\"namePlayer\" AS player_name,
                             COALESCE(p.country, '') AS player_country,
-                            COALESCE(ts_parts.tuning_parts, '') AS tuning_parts
-                        FROM _worldrecord AS wr
-                        JOIN _map AS m ON wr.\"idMap\" = m.\"idMap\"
-                        JOIN _vehicle AS v ON wr.\"idVehicle\" = v.\"idVehicle\"
-                        LEFT JOIN _player AS p ON wr.\"idPlayer\" = p.\"idPlayer\"
-                        LEFT JOIN (
-                            SELECT
-                                tsp.\"idTuningSetup\" AS tuning_setup_id,
-                                string_agg(tp.\"nameTuningPart\", ', ' ORDER BY tp.\"nameTuningPart\") AS tuning_parts
-                            FROM _tuningsetupparts tsp
-                            JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
-                            GROUP BY tsp.\"idTuningSetup\"
-                        ) AS ts_parts ON wr.\"idTuningSetup\" = ts_parts.tuning_setup_id
+                            string_agg(tp.\"nameTuningPart\", ', ' ORDER BY tp.\"nameTuningPart\") AS tuning_parts
+                        FROM _worldrecord wr
+                        JOIN _map m ON wr.\"idMap\" = m.\"idMap\"
+                        JOIN _vehicle v ON wr.\"idVehicle\" = v.\"idVehicle\"
+                        LEFT JOIN _player p ON wr.\"idPlayer\" = p.\"idPlayer\"
+                        LEFT JOIN _tuningsetupparts tsp ON CAST(wr.\"idTuningSetup\" AS smallint) = tsp.\"idTuningSetup\"
+                        LEFT JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
                         WHERE wr.current = 1
-                        ORDER BY wr.\"idRecord\" DESC";
+                        GROUP BY
+                            wr.\"idMap\",
+                            wr.\"idVehicle\",
+                            wr.\"idPlayer\",
+                            wr.distance,
+                            wr.current,
+                            wr.\"idTuningSetup\",
+                            wr.questionable,
+                            wr.questionable_reason,
+                            m.\"nameMap\",
+                            v.\"nameVehicle\",
+                            p.\"namePlayer\",
+                            p.country
+                        ORDER BY wr.\"idMap\" DESC";
                 $stmt = $db->prepare($sql);
                 $stmt->execute();
                 $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 echo json_encode($records);
             } catch (Throwable $e) {
+                error_log('load_data records failed: ' . $e->getMessage());
                 generic_database_error('load_data records failed: ' . $e->getMessage());
             }
             break;

@@ -72,34 +72,40 @@ if (isset($_GET['offset']) && is_numeric($_GET['offset'])) {
 }
 
 $sql = "SELECT
-        wr.\"idRecord\" AS \"idRecord\",
-        wr.\"idMap\" AS \"idMap\",
-        wr.\"idVehicle\" AS \"idVehicle\",
-        wr.\"idPlayer\" AS \"idPlayer\",
+        wr.\"idMap\",
+        wr.\"idVehicle\",
+        wr.\"idPlayer\",
         wr.distance,
         wr.current,
-        wr.\"idTuningSetup\" AS \"idTuningSetup\",
+        wr.\"idTuningSetup\",
         wr.questionable,
         COALESCE(wr.questionable_reason, '') AS notes,
         m.\"nameMap\" AS map_name,
         v.\"nameVehicle\" AS vehicle_name,
         p.\"namePlayer\" AS player_name,
         COALESCE(p.country, '') AS player_country,
-        COALESCE(ts_parts.tuning_parts, '') AS tuning_parts
+        string_agg(tp.\"nameTuningPart\", ', ' ORDER BY tp.\"nameTuningPart\") AS tuning_parts
     FROM _worldrecord wr
     JOIN _map m ON wr.\"idMap\" = m.\"idMap\"
     JOIN _vehicle v ON wr.\"idVehicle\" = v.\"idVehicle\"
     LEFT JOIN _player p ON wr.\"idPlayer\" = p.\"idPlayer\"
-    LEFT JOIN (
-        SELECT
-            tsp.\"idTuningSetup\" AS tuning_setup_id,
-            string_agg(tp.\"nameTuningPart\", ', ' ORDER BY tp.\"nameTuningPart\") AS tuning_parts
-        FROM _tuningsetupparts tsp
-        JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
-        GROUP BY tsp.\"idTuningSetup\"
-    ) ts_parts ON wr.\"idTuningSetup\" = ts_parts.tuning_setup_id
+    LEFT JOIN _tuningsetupparts tsp ON CAST(wr.\"idTuningSetup\" AS smallint) = tsp.\"idTuningSetup\"
+    LEFT JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
     " . (count($where) ? 'WHERE ' . implode(' AND ', $where) : '') . "
-    ORDER BY wr.\"idRecord\" DESC
+    GROUP BY
+        wr.\"idMap\",
+        wr.\"idVehicle\",
+        wr.\"idPlayer\",
+        wr.distance,
+        wr.current,
+        wr.\"idTuningSetup\",
+        wr.questionable,
+        wr.questionable_reason,
+        m.\"nameMap\",
+        v.\"nameVehicle\",
+        p.\"namePlayer\",
+        p.country
+    ORDER BY wr.\"idMap\" DESC
     LIMIT :limit OFFSET :offset";
 
 $stmt = $db->prepare($sql);
@@ -114,6 +120,7 @@ try {
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     echo json_encode(['records' => $rows, 'count' => count($rows)]);
 } catch (PDOException $e) {
+    error_log('api_records query failed: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['error' => 'Database query failed']);
+    echo json_encode(['error' => 'Database query failed', 'details' => $e->getMessage()]);
 }
