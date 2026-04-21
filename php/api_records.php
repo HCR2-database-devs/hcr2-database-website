@@ -92,12 +92,12 @@ $sql = "SELECT
     LEFT JOIN _player p ON wr.\"idPlayer\" = p.\"idPlayer\"
     LEFT JOIN (
         SELECT
-            tsp.\"idTuningSetup\" AS \"idTuningSetup\",
+            tsp.\"idTuningSetup\"::text AS tuning_setup_id,
             string_agg(tp.\"nameTuningPart\", ', ' ORDER BY tp.\"nameTuningPart\") AS tuning_parts
         FROM _tuningsetupparts tsp
         JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
         GROUP BY tsp.\"idTuningSetup\"
-    ) ts_parts ON wr.\"idTuningSetup\" = ts_parts.\"idTuningSetup\"
+    ) ts_parts ON wr.\"idTuningSetup\" = ts_parts.tuning_setup_id
     " . (count($where) ? 'WHERE ' . implode(' AND ', $where) : '') . "
     ORDER BY wr.\"idRecord\" DESC
     LIMIT :limit OFFSET :offset";

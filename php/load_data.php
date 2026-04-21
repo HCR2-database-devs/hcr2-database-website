@@ -117,12 +117,12 @@ if (isset($_GET['type'])) {
                         LEFT JOIN _player AS p ON wr.\"idPlayer\" = p.\"idPlayer\"
                         LEFT JOIN (
                             SELECT
-                                tsp.\"idTuningSetup\" AS \"idTuningSetup\",
+                                tsp.\"idTuningSetup\"::text AS tuning_setup_id,
                                 string_agg(tp.\"nameTuningPart\", ', ' ORDER BY tp.\"nameTuningPart\") AS tuning_parts
                             FROM _tuningsetupparts tsp
                             JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
                             GROUP BY tsp.\"idTuningSetup\"
-                        ) AS ts_parts ON wr.\"idTuningSetup\" = ts_parts.\"idTuningSetup\"
+                        ) AS ts_parts ON wr.\"idTuningSetup\" = ts_parts.tuning_setup_id
                         WHERE wr.current = 1
                         ORDER BY wr.\"idRecord\" DESC";
                 $stmt = $db->prepare($sql);
