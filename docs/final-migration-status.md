@@ -50,13 +50,16 @@ The smoke test validates:
 - news posting
 - maintenance controls
 - integrity check
+- backup creation/list/download/delete
+- multipart catalog routes used by icon-capable admin forms
+- hCaptcha sitekey loading in the public submit modal
 - React admin page rendering
 
 ## Remaining Non-App Operations
 
-The app does not implement PostgreSQL backup, restore or SQL import from the admin UI.
+The app does not implement PostgreSQL restore or SQL import from the admin UI.
 
-These operations should stay in operational tooling, not browser admin flows.
+These destructive operations should stay in reviewed operational tooling, not browser admin flows.
 
 ## Cutover Decision
 

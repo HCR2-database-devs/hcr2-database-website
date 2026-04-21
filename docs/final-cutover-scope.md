@@ -13,22 +13,24 @@
 - News posting.
 - Maintenance controls.
 - DB integrity check.
+- DB backup create/list/download/delete.
+- Admin SVG icon upload for maps, vehicles and tuning parts.
 
 ## Not Migrated As Browser Admin Features
 
-- PostgreSQL database download.
-- PostgreSQL backup creation.
 - PostgreSQL restore.
 - SQL import from the admin UI.
 
 ## Reason
 
-The PHP admin endpoint already reported PostgreSQL backup, restore and import as unsupported.
+Restore and SQL import are destructive PostgreSQL operations.
 
-For PostgreSQL, these tasks should be handled with operational tools such as `pg_dump`, `pg_restore`, managed database backups, or CI/deployment jobs.
+They should be handled with reviewed operational tooling such as `pg_restore`, managed database backups, or deployment jobs.
 
 ## Impact
 
 The product workflows no longer need the PHP stack.
 
-Database operations still need external operational tooling before production runbooks are complete.
+Backup creation/list/download/delete are available in the React admin.
+
+Restore/import still need external operational tooling before production runbooks are complete.

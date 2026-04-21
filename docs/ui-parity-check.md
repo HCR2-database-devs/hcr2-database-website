@@ -29,8 +29,9 @@ Covered areas:
 
 ## Remaining Notes
 
-- The admin "Database & Backups" block is visually present, but backup download/create/list/import actions still need official FastAPI routes before they can be considered fully migrated.
-- Public hCaptcha markup is present and keeps the legacy ids, but a real submission still depends on the external hCaptcha widget and configured site keys.
+- The admin "Database & Backups" block now supports backup create/list/download/delete and integrity checks through FastAPI.
+- SQL import and restore remain visibly disabled because they are destructive PostgreSQL operations.
+- Public hCaptcha markup keeps the legacy ids and now loads the configured site key; real submission still depends on the external hCaptcha service.
 - This pass used runtime smoke checks and DOM/text verification. Pixel-level screenshot diffing was not added.
 
 ## Verified
