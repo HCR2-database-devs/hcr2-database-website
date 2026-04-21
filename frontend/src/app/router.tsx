@@ -22,10 +22,10 @@ export const router = createBrowserRouter([
       { path: "tuning-setups", element: <DataViewPage view="tuning-setups" /> },
       { path: "records", element: <DataViewPage view="records" /> },
       { path: "stats", element: <StatsPage /> },
-      { path: "admin", element: <AdminPage /> },
-      { path: "privacy", element: <PrivacyPage /> },
-      { path: "maintenance", element: <MaintenancePage /> },
       { path: "*", element: <NotFoundPage /> }
     ]
-  }
+  },
+  { path: "/admin", element: <AdminPage /> },
+  { path: "/privacy", element: <PrivacyPage /> },
+  { path: "/maintenance", element: <MaintenancePage /> }
 ]);

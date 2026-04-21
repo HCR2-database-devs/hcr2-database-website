@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { getPublicData } from "../services/publicData";
@@ -45,36 +46,60 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
     [tuningParts.data]
   );
 
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const mapId = String(formData.get("mapId") ?? "");
+    const vehicleId = String(formData.get("vehicleId") ?? "");
+    const distance = String(formData.get("distance") ?? "");
+    const playerName = String(formData.get("playerName") ?? "").trim();
+    const hcaptchaResponse = String(formData.get("h_captcha_response") ?? "");
+
+    if (!mapId || !vehicleId || !distance || !playerName) {
+      setMessage("Please complete all required fields.");
+      return;
+    }
+    if (Number.isNaN(Number(distance)) || Number(distance) <= 0) {
+      setMessage("Distance must be a positive number.");
+      return;
+    }
+    if (selectedParts.length < 3 || selectedParts.length > 4) {
+      setMessage("Please choose 3 or 4 tuning parts for the record.");
+      return;
+    }
+    if (!hcaptchaResponse) {
+      setMessage("Please complete the hCaptcha verification.");
+      return;
+    }
+
+    submit.mutate({
+      mapId,
+      vehicleId,
+      distance,
+      playerName,
+      playerCountry: String(formData.get("playerCountry") ?? ""),
+      tuningParts: selectedParts,
+      h_captcha_response: hcaptchaResponse,
+      hp_email: String(formData.get("hp_email") ?? ""),
+      hp_website: String(formData.get("hp_website") ?? ""),
+      hp_phone: String(formData.get("hp_phone") ?? ""),
+      hp_comments: String(formData.get("hp_comments") ?? ""),
+      form_load_time: formLoadTime,
+      submission_time: Date.now()
+    });
+  }
+
   return (
-    <div className="modal-overlay" style={{ display: "block" }}>
-      <div className="modal-panel form-container" role="dialog" aria-modal="true">
+    <div id="public-submit-overlay" className="modal-overlay">
+      <div className="modal-panel form-container" role="dialog" aria-modal="true" aria-labelledby="public-submit-title">
         <button className="modal-close" type="button" aria-label="Close" onClick={onClose}>
-          x
+          ✕
         </button>
-        <h2>Submit a Record (for admin review)</h2>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            const formData = new FormData(event.currentTarget);
-            submit.mutate({
-              mapId: String(formData.get("mapId") ?? ""),
-              vehicleId: String(formData.get("vehicleId") ?? ""),
-              distance: String(formData.get("distance") ?? ""),
-              playerName: String(formData.get("playerName") ?? ""),
-              playerCountry: String(formData.get("playerCountry") ?? ""),
-              tuningParts: selectedParts,
-              h_captcha_response: String(formData.get("h_captcha_response") ?? ""),
-              hp_email: String(formData.get("hp_email") ?? ""),
-              hp_website: String(formData.get("hp_website") ?? ""),
-              hp_phone: String(formData.get("hp_phone") ?? ""),
-              hp_comments: String(formData.get("hp_comments") ?? ""),
-              form_load_time: formLoadTime,
-              submission_time: Date.now()
-            });
-          }}
-        >
+        <h2 id="public-submit-title">Submit a Record (for admin review)</h2>
+        <form id="public-submit-form" onSubmit={handleSubmit}>
+          <input id="form-load-time" type="hidden" value={formLoadTime} readOnly />
           <label>Map</label>
-          <select name="mapId" required>
+          <select id="public-map-select" name="mapId" required>
             <option value="">Select a Map</option>
             {(maps.data ?? []).map((map) => (
               <option key={getId(map, "idMap", "idmap")} value={getId(map, "idMap", "idmap")}>
@@ -84,7 +109,7 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
           </select>
 
           <label>Vehicle</label>
-          <select name="vehicleId" required>
+          <select id="public-vehicle-select" name="vehicleId" required>
             <option value="">Select a Vehicle</option>
             {(vehicles.data ?? []).map((vehicle) => (
               <option
@@ -97,17 +122,19 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
           </select>
 
           <label>Distance</label>
-          <input name="distance" type="number" required min="1" />
+          <input id="public-distance-input" name="distance" type="number" required min="1" />
           <label>Player Name</label>
-          <input name="playerName" required />
+          <input id="public-player-name" name="playerName" required />
           <label>Country (optional)</label>
-          <input name="playerCountry" />
+          <input id="public-player-country" name="playerCountry" />
 
-          <fieldset className="frontend-fieldset">
-            <legend>Tuning Parts (choose 3 or 4)</legend>
+          <label>Tuning Parts (choose 3 or 4)</label>
+          <div id="public-tuning-parts" className="frontend-fieldset">
             {partOptions.map((part) => (
               <label key={part.id}>
                 <input
+                  id={`public-tuning-part-${part.id}`}
+                  name="public-tuning-part"
                   type="checkbox"
                   value={part.name}
                   checked={selectedParts.includes(part.name)}
@@ -122,18 +149,37 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
                 {part.name}
               </label>
             ))}
-          </fieldset>
+          </div>
 
-          <input name="hp_email" className="hp-field" tabIndex={-1} autoComplete="off" />
-          <input name="hp_website" className="hp-field" tabIndex={-1} autoComplete="off" />
-          <input name="hp_phone" className="hp-field" tabIndex={-1} autoComplete="off" />
-          <textarea name="hp_comments" className="hp-field" tabIndex={-1} autoComplete="off" />
-          <input name="h_captcha_response" type="hidden" />
-          <div id="hcaptcha-widget" className="h-captcha" />
+          <div style={{ position: "absolute", left: "-9999px", top: "auto", width: 1, height: 1, overflow: "hidden" }}>
+            <label>
+              Email
+              <input id="hp_email" name="hp_email" tabIndex={-1} autoComplete="off" />
+            </label>
+            <label>
+              Website
+              <input id="hp_website" name="hp_website" tabIndex={-1} autoComplete="off" />
+            </label>
+            <label>
+              Phone
+              <input id="hp_phone" name="hp_phone" tabIndex={-1} autoComplete="off" />
+            </label>
+            <label>
+              Comments
+              <textarea id="hp_comments" name="hp_comments" tabIndex={-1} autoComplete="off" />
+            </label>
+          </div>
+          <div id="hcaptcha-widget" className="h-captcha" data-sitekey="" />
+          <input id="h-captcha-response" name="h_captcha_response" type="hidden" />
 
-          <button type="submit" disabled={submit.isPending}>
-            Submit
-          </button>
+          <div className="frontend-modal-actions">
+            <button type="submit" disabled={submit.isPending}>
+              Send Submission
+            </button>
+            <button type="button" onClick={onClose}>
+              Cancel
+            </button>
+          </div>
         </form>
         {message && <p id="public-submit-message">{message}</p>}
       </div>

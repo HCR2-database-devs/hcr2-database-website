@@ -20,7 +20,7 @@ import {
   setRecordQuestionable,
   submitAdminRecord
 } from "../services/admin";
-import { getPublicData } from "../services/publicData";
+import { getNews, getPublicData } from "../services/publicData";
 import type { AdminRecord, DataRow, IntegrityStatus } from "../types/api";
 
 type RecordFormState = {
@@ -64,22 +64,25 @@ function numberValue(row: DataRow, ...keys: string[]) {
 
 function setupLabel(row: DataRow) {
   const rawParts = row.parts;
+  const id = text(row, "idTuningSetup", "idtuningsetup");
   if (Array.isArray(rawParts)) {
-    return rawParts
+    const parts = rawParts
       .map((part) =>
         typeof part === "object" && part !== null && "nameTuningPart" in part
           ? String((part as { nameTuningPart: unknown }).nameTuningPart)
           : String(part)
       )
       .join(", ");
+    return `Setup ${id}: ${parts}`;
   }
-  return text(row, "parts", "idTuningSetup", "idtuningsetup");
+  const parts = text(row, "parts");
+  return parts ? `Setup ${id}: ${parts}` : `Setup ${id}`;
 }
 
 function recordLabel(record: AdminRecord) {
-  return `${record.distance}m | ${record.map_name ?? "Unknown"} | ${
+  return `${record.distance} - ${record.map_name ?? "Unknown"} - ${
     record.vehicle_name ?? "Unknown"
-  } | ${record.player_name ?? "Unknown"}`;
+  } - ${record.player_name ?? "Unknown"}`;
 }
 
 export function AdminPage() {
@@ -88,12 +91,18 @@ export function AdminPage() {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [recordForm, setRecordForm] = useState<RecordFormState>(emptyRecordForm);
+  const [tuningSetupFilter, setTuningSetupFilter] = useState("");
+  const [playerFilter, setPlayerFilter] = useState("");
   const [deleteRecordId, setDeleteRecordId] = useState("");
+  const [deleteFilter, setDeleteFilter] = useState("");
   const [statusRecordId, setStatusRecordId] = useState("");
-  const [statusValue, setStatusValue] = useState("0");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [statusValue, setStatusValue] = useState("");
   const [statusNote, setStatusNote] = useState("");
   const [assignRecordId, setAssignRecordId] = useState("");
+  const [assignRecordFilter, setAssignRecordFilter] = useState("");
   const [assignSetupId, setAssignSetupId] = useState("");
+  const [assignSetupFilter, setAssignSetupFilter] = useState("");
   const [mapName, setMapName] = useState("");
   const [vehicleName, setVehicleName] = useState("");
   const [partName, setPartName] = useState("");
@@ -121,14 +130,44 @@ export function AdminPage() {
   });
   const recordsQuery = useQuery({ queryKey: ["admin", "records"], queryFn: getAdminRecords });
   const pendingQuery = useQuery({ queryKey: ["admin", "pending"], queryFn: getPendingSubmissions });
+  const newsQuery = useQuery({ queryKey: ["news", 20], queryFn: () => getNews(20) });
   const maintenanceQuery = useQuery({
     queryKey: ["admin", "maintenance"],
     queryFn: getMaintenanceStatus
   });
 
+  const tuningSetups = setupsQuery.data ?? [];
+  const filteredTuningSetups = useMemo(
+    () =>
+      tuningSetups.filter((row) => setupLabel(row).toLowerCase().includes(tuningSetupFilter.toLowerCase())),
+    [tuningSetups, tuningSetupFilter]
+  );
+  const filteredAssignTuningSetups = useMemo(
+    () =>
+      tuningSetups.filter((row) => setupLabel(row).toLowerCase().includes(assignSetupFilter.toLowerCase())),
+    [tuningSetups, assignSetupFilter]
+  );
+  const filteredPlayers = useMemo(
+    () =>
+      (playersQuery.data ?? []).filter((row) =>
+        text(row, "namePlayer", "nameplayer").toLowerCase().includes(playerFilter.toLowerCase())
+      ),
+    [playersQuery.data, playerFilter]
+  );
+  const filterRecordOptions = (records: AdminRecord[], filter: string) =>
+    records.filter((record) => recordLabel(record).toLowerCase().includes(filter.toLowerCase()));
+
+  const deleteRecords = useMemo(
+    () => filterRecordOptions(recordsQuery.data ?? [], deleteFilter),
+    [recordsQuery.data, deleteFilter]
+  );
+  const statusRecords = useMemo(
+    () => filterRecordOptions(recordsQuery.data ?? [], statusFilter),
+    [recordsQuery.data, statusFilter]
+  );
   const recordsWithoutSetup = useMemo(
-    () => (recordsQuery.data ?? []).filter((record) => !record.idTuningSetup),
-    [recordsQuery.data]
+    () => filterRecordOptions((recordsQuery.data ?? []).filter((record) => !record.idTuningSetup), assignRecordFilter),
+    [recordsQuery.data, assignRecordFilter]
   );
 
   async function refreshAdminData() {
@@ -190,6 +229,7 @@ export function AdminPage() {
         note: statusNote || null
       });
       setStatusRecordId("");
+      setStatusValue("");
       setStatusNote("");
     }, "Record status updated.");
   }
@@ -253,40 +293,66 @@ export function AdminPage() {
     );
   }
 
+  function showUnsupportedBackupMessage() {
+    setNotice("");
+    setError("This backup operation is not available from the React admin yet.");
+  }
+
   if (authLoading) {
     return (
-      <section className="form-container admin-page">
-        <h2>Admin</h2>
-        <p>Checking access...</p>
-      </section>
+      <div className="admin-legacy-page">
+        <div className="form-container">
+          <h2>Admin</h2>
+          <p>Checking access...</p>
+        </div>
+      </div>
     );
   }
 
   if (!authStatus?.allowed) {
+    if (authStatus?.logged) {
+      return (
+        <div className="admin-legacy-page">
+          <h1>403 Forbidden</h1>
+          <p>You are logged in as {authStatus.username ?? authStatus.id}, but you are not an admin.</p>
+        </div>
+      );
+    }
+
     return (
-      <section className="form-container admin-page">
-        <h2>Admin</h2>
-        <p className="frontend-error">You must be signed in with an authorized Discord account.</p>
-        <button type="button" onClick={() => (window.location.href = "https://auth.hcr2.xyz/login")}>
-          Sign in with Discord
-        </button>
-      </section>
+      <div className="admin-legacy-page">
+        <div className="form-container">
+          <h2>Admin</h2>
+          <p className="frontend-error">You must be signed in with an authorized Discord account.</p>
+          <button type="button" onClick={() => (window.location.href = "https://auth.hcr2.xyz/login")}>
+            Sign in with Discord
+          </button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <section className="admin-page">
-      <h2>Admin</h2>
+    <div className="admin-legacy-page">
+      <div className="topbar">
+        <h1>Admin Panel — Edit/Add/Delete Records</h1>
+        <div>
+          <span>Logged in as {authStatus.username ?? authStatus.id}</span>
+          &nbsp;|&nbsp;<a href="/auth/logout.php">Logout</a>
+          &nbsp;|&nbsp;<a href="/">Back to Public</a>
+        </div>
+      </div>
+
       {notice && <p className="admin-notice">{notice}</p>}
       {error && <p className="frontend-error">{error}</p>}
 
-      <div className="admin-grid">
-        <form className="form-container" onSubmit={handleSubmitRecord}>
-          <h3>Submit or Replace Record</h3>
+      <div className="form-container">
+        <h2>Submit a New Record ✅</h2>
+        <form id="record-form" onSubmit={handleSubmitRecord}>
           <label>
             Map
-            <select required value={recordForm.mapId} onChange={(event) => updateRecordForm("mapId", event.target.value)}>
-              <option value="">Select a map</option>
+            <select id="map-select" required value={recordForm.mapId} onChange={(event) => updateRecordForm("mapId", event.target.value)}>
+              <option value="">Select a Map</option>
               {(mapsQuery.data ?? []).map((row) => (
                 <option key={numberValue(row, "idMap", "idmap")} value={numberValue(row, "idMap", "idmap")}>
                   {text(row, "nameMap", "namemap")}
@@ -297,11 +363,12 @@ export function AdminPage() {
           <label>
             Vehicle
             <select
+              id="vehicle-select"
               required
               value={recordForm.vehicleId}
               onChange={(event) => updateRecordForm("vehicleId", event.target.value)}
             >
-              <option value="">Select a vehicle</option>
+              <option value="">Select a Vehicle</option>
               {(vehiclesQuery.data ?? []).map((row) => (
                 <option
                   key={numberValue(row, "idVehicle", "idvehicle")}
@@ -315,6 +382,7 @@ export function AdminPage() {
           <label>
             Distance
             <input
+              id="distance-input"
               required
               type="number"
               min="1"
@@ -323,13 +391,22 @@ export function AdminPage() {
             />
           </label>
           <label>
-            Tuning Setup
+            Tuning Setup (optional)
+            <input
+              id="tuning-setup-filter"
+              type="text"
+              placeholder="Filter by part name or use part: prefix (e.g., 'magnet' or 'part:magnet')..."
+              value={tuningSetupFilter}
+              onChange={(event) => setTuningSetupFilter(event.target.value)}
+              style={{ marginBottom: 4 }}
+            />
             <select
+              id="tuning-setup-select"
               value={recordForm.tuningSetupId}
               onChange={(event) => updateRecordForm("tuningSetupId", event.target.value)}
             >
-              <option value="">No setup</option>
-              {(setupsQuery.data ?? []).map((row) => (
+              <option value="">No tuning setup</option>
+              {filteredTuningSetups.map((row) => (
                 <option
                   key={numberValue(row, "idTuningSetup", "idtuningsetup")}
                   value={numberValue(row, "idTuningSetup", "idtuningsetup")}
@@ -341,9 +418,16 @@ export function AdminPage() {
           </label>
           <label>
             Existing Player
-            <select value={recordForm.playerId} onChange={(event) => updateRecordForm("playerId", event.target.value)}>
+            <input
+              id="player-filter"
+              type="text"
+              placeholder="Filter players..."
+              value={playerFilter}
+              onChange={(event) => setPlayerFilter(event.target.value)}
+            />
+            <select id="player-select" value={recordForm.playerId} onChange={(event) => updateRecordForm("playerId", event.target.value)}>
               <option value="">Select existing player</option>
-              {(playersQuery.data ?? []).map((row) => (
+              {filteredPlayers.map((row) => (
                 <option
                   key={numberValue(row, "idPlayer", "idplayer")}
                   value={numberValue(row, "idPlayer", "idplayer")}
@@ -356,6 +440,7 @@ export function AdminPage() {
           <label>
             Or Add New Player
             <input
+              id="new-player-input"
               type="text"
               value={recordForm.newPlayerName}
               onChange={(event) => updateRecordForm("newPlayerName", event.target.value)}
@@ -364,6 +449,7 @@ export function AdminPage() {
           <label>
             Country
             <input
+              id="country-input"
               type="text"
               value={recordForm.country}
               onChange={(event) => updateRecordForm("country", event.target.value)}
@@ -371,24 +457,42 @@ export function AdminPage() {
           </label>
           <label className="admin-inline">
             <input
+              id="questionable-input"
               type="checkbox"
               checked={recordForm.questionable}
               onChange={(event) => updateRecordForm("questionable", event.target.checked)}
             />
-            Mark as Questionable
+            Mark as Questionable (TAS or uncertain legitimacy)
           </label>
           <label>
-            Note
-            <textarea value={recordForm.note} onChange={(event) => updateRecordForm("note", event.target.value)} />
+            Note (optional)
+            <textarea
+              id="questionable-reason-submit"
+              placeholder="add any notes for record (shows for everyone)"
+              value={recordForm.note}
+              onChange={(event) => updateRecordForm("note", event.target.value)}
+            />
           </label>
           <button type="submit">Submit Record</button>
         </form>
+        <p id="form-message" />
+      </div>
 
-        <form className="form-container" onSubmit={handleDeleteRecord}>
-          <h3>Delete Record</h3>
-          <select required value={deleteRecordId} onChange={(event) => setDeleteRecordId(event.target.value)}>
+      <div className="form-container">
+        <h2>Delete a Record ❌</h2>
+        <form id="delete-form" onSubmit={handleDeleteRecord}>
+          <label>Filter Record</label>
+          <input
+            type="text"
+            id="delete-filter"
+            placeholder="Filter by distance, map, vehicle, or player..."
+            value={deleteFilter}
+            onChange={(event) => setDeleteFilter(event.target.value)}
+          />
+          <label>Record</label>
+          <select id="record-select" required value={deleteRecordId} onChange={(event) => setDeleteRecordId(event.target.value)}>
             <option value="">Select a record</option>
-            {(recordsQuery.data ?? []).map((record) => (
+            {deleteRecords.map((record) => (
               <option key={record.idRecord} value={record.idRecord}>
                 {recordLabel(record)}
               </option>
@@ -396,28 +500,60 @@ export function AdminPage() {
           </select>
           <button type="submit">Delete Record</button>
         </form>
+        <p id="delete-message" />
+      </div>
 
-        <form className="form-container" onSubmit={handleSetStatus}>
-          <h3>Record Status</h3>
-          <select required value={statusRecordId} onChange={(event) => setStatusRecordId(event.target.value)}>
+      <div className="form-container">
+        <h2>Mark Records as Questionable ❓</h2>
+        <form id="questionable-form" onSubmit={handleSetStatus}>
+          <label>Filter Record</label>
+          <input
+            type="text"
+            id="questionable-filter-input"
+            placeholder="Filter by distance, map, vehicle, or player..."
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          />
+          <label>Record</label>
+          <select id="questionable-record-select" required value={statusRecordId} onChange={(event) => setStatusRecordId(event.target.value)}>
             <option value="">Select a record</option>
-            {(recordsQuery.data ?? []).map((record) => (
+            {statusRecords.map((record) => (
               <option key={record.idRecord} value={record.idRecord}>
-                {recordLabel(record)}
+                {record.questionable === 1 ? "❓" : "✓"} {recordLabel(record)}
               </option>
             ))}
           </select>
-          <select value={statusValue} onChange={(event) => setStatusValue(event.target.value)}>
-            <option value="0">Mark as Verified</option>
-            <option value="1">Mark as Questionable</option>
+          <label>Status</label>
+          <select id="questionable-status-select" required value={statusValue} onChange={(event) => setStatusValue(event.target.value)}>
+            <option value="">Select status</option>
+            <option value="0">Mark as Verified ✓</option>
+            <option value="1">Mark as Questionable ❓</option>
           </select>
-          <textarea value={statusNote} onChange={(event) => setStatusNote(event.target.value)} />
+          <label>Note (optional)</label>
+          <textarea
+            id="questionable-reason-input"
+            placeholder="add any notes for records"
+            value={statusNote}
+            onChange={(event) => setStatusNote(event.target.value)}
+          />
           <button type="submit">Update Status</button>
         </form>
+        <p id="questionable-message" />
+      </div>
 
-        <form className="form-container" onSubmit={handleAssignSetup}>
-          <h3>Assign Tuning Setup</h3>
-          <select required value={assignRecordId} onChange={(event) => setAssignRecordId(event.target.value)}>
+      <div className="form-container">
+        <h2>Assign Tuning Setup to Existing Record 🔧</h2>
+        <form id="assign-setup-form" onSubmit={handleAssignSetup}>
+          <label>Filter Record (without tuning setup)</label>
+          <input
+            type="text"
+            id="assign-filter"
+            placeholder="Filter by distance, map, vehicle, or player..."
+            value={assignRecordFilter}
+            onChange={(event) => setAssignRecordFilter(event.target.value)}
+          />
+          <label>Record (without tuning setup)</label>
+          <select id="assign-record-select" required value={assignRecordId} onChange={(event) => setAssignRecordId(event.target.value)}>
             <option value="">Select a record without setup</option>
             {recordsWithoutSetup.map((record) => (
               <option key={record.idRecord} value={record.idRecord}>
@@ -425,9 +561,18 @@ export function AdminPage() {
               </option>
             ))}
           </select>
-          <select required value={assignSetupId} onChange={(event) => setAssignSetupId(event.target.value)}>
+          <label>Tuning Setup</label>
+          <input
+            type="text"
+            id="assign-tuning-setup-filter"
+            placeholder="Filter by part name or use part: prefix (e.g., 'magnet' or 'part:magnet')..."
+            value={assignSetupFilter}
+            onChange={(event) => setAssignSetupFilter(event.target.value)}
+            style={{ marginBottom: 4 }}
+          />
+          <select id="assign-tuning-setup-select" required value={assignSetupId} onChange={(event) => setAssignSetupId(event.target.value)}>
             <option value="">Select a setup</option>
-            {(setupsQuery.data ?? []).map((row) => (
+            {filteredAssignTuningSetups.map((row) => (
               <option
                 key={numberValue(row, "idTuningSetup", "idtuningsetup")}
                 value={numberValue(row, "idTuningSetup", "idtuningsetup")}
@@ -438,28 +583,59 @@ export function AdminPage() {
           </select>
           <button type="submit">Assign Setup</button>
         </form>
+        <p id="assign-message" />
+      </div>
 
-        <form className="form-container" onSubmit={handleAddVehicle}>
-          <h3>Add Vehicle</h3>
-          <input required value={vehicleName} onChange={(event) => setVehicleName(event.target.value)} />
+      <div className="form-container">
+        <h2>Add a Vehicle ➕</h2>
+        <form id="add-vehicle-form" onSubmit={handleAddVehicle} encType="multipart/form-data">
+          <label>Vehicle Name</label>
+          <input id="vehicle-name-input" type="text" required placeholder="e.g., Jeep" value={vehicleName} onChange={(event) => setVehicleName(event.target.value)} />
+          <label>Icon (SVG - optional)</label>
+          <input id="vehicle-icon-input" type="file" accept=".svg,image/svg+xml" style={{ cursor: "pointer" }} />
+          <small style={{ display: "block", margin: "-6px 0 8px 0", color: "#666" }}>
+            Upload a .svg icon file. Will be saved as: vehicle_name.svg
+          </small>
           <button type="submit">Add Vehicle</button>
         </form>
+        <p id="add-vehicle-message" />
+      </div>
 
-        <form className="form-container" onSubmit={handleAddMap}>
-          <h3>Add Map</h3>
-          <input required value={mapName} onChange={(event) => setMapName(event.target.value)} />
+      <div className="form-container">
+        <h2>Add a Map ➕</h2>
+        <form id="add-map-form" onSubmit={handleAddMap} encType="multipart/form-data">
+          <label>Map Name</label>
+          <input id="map-name-input" type="text" required placeholder="e.g., Forest Trials" value={mapName} onChange={(event) => setMapName(event.target.value)} />
+          <label>Icon (SVG - optional)</label>
+          <input id="map-icon-input" type="file" accept=".svg,image/svg+xml" style={{ cursor: "pointer" }} />
+          <small style={{ display: "block", margin: "-6px 0 8px 0", color: "#666" }}>
+            Upload a .svg icon file. Will be saved as: map_name.svg
+          </small>
           <button type="submit">Add Map</button>
         </form>
+        <p id="add-map-message" />
+      </div>
 
-        <form className="form-container" onSubmit={handleAddPart}>
-          <h3>Add Tuning Part</h3>
-          <input required value={partName} onChange={(event) => setPartName(event.target.value)} />
+      <div className="form-container">
+        <h2>Add Tuning Part ➕</h2>
+        <form id="add-tuning-part-form" onSubmit={handleAddPart} encType="multipart/form-data">
+          <label>Tuning Part Name</label>
+          <input id="tuning-part-name-input" type="text" required placeholder="e.g., Turbo" value={partName} onChange={(event) => setPartName(event.target.value)} />
+          <label>Icon (SVG - optional)</label>
+          <input id="tuning-part-icon-input" type="file" accept=".svg,image/svg+xml" style={{ cursor: "pointer" }} />
+          <small style={{ display: "block", margin: "-6px 0 8px 0", color: "#666" }}>
+            Upload a .svg icon file. Will be saved as: part_name.svg
+          </small>
           <button type="submit">Add Tuning Part</button>
         </form>
+        <p id="add-tuning-part-message" />
+      </div>
 
-        <form className="form-container" onSubmit={handleAddSetup}>
-          <h3>Add Tuning Setup</h3>
-          <div className="admin-checkboxes">
+      <div className="form-container">
+        <h2>Add Tuning Setup ➕</h2>
+        <form id="add-tuning-setup-form" onSubmit={handleAddSetup}>
+          <label>Select Tuning Parts (3-4)</label>
+          <div id="tuning-parts-checkboxes" className="admin-checkboxes">
             {(partsQuery.data ?? []).map((row) => {
               const partId = numberValue(row, "idTuningPart", "idtuningpart");
               return (
@@ -476,15 +652,16 @@ export function AdminPage() {
           </div>
           <button type="submit">Add Tuning Setup</button>
         </form>
+        <p id="add-tuning-setup-message" />
       </div>
 
-      <div className="form-container">
-        <h3>Pending Submissions</h3>
+      <div className="form-container" id="pending-submissions-container">
+        <h2>Pending Submissions (from users)</h2>
         {pendingQuery.isLoading && <p>Loading...</p>}
         {(pendingQuery.data?.pending ?? []).length === 0 && <p>No pending submissions.</p>}
         {(pendingQuery.data?.pending ?? []).length > 0 && (
-          <div className="table-scroll">
-            <table>
+          <div id="pending-list" className="table-scroll">
+            <table className="admin-pending-table">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -492,7 +669,9 @@ export function AdminPage() {
                   <th>Vehicle</th>
                   <th>Distance</th>
                   <th>Player</th>
+                  <th>Country</th>
                   <th>Tuning Parts</th>
+                  <th>When</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -504,7 +683,9 @@ export function AdminPage() {
                     <td>{submission.vehicleName}</td>
                     <td>{submission.distance}</td>
                     <td>{submission.playerName}</td>
+                    <td>{submission.playerCountry}</td>
                     <td>{submission.tuningParts}</td>
+                    <td>{submission.submitted_at}</td>
                     <td className="admin-table-actions">
                       <button
                         type="button"
@@ -519,6 +700,7 @@ export function AdminPage() {
                         onClick={() =>
                           runAction(() => rejectPendingSubmission(submission.id), "Submission rejected.")
                         }
+                        style={{ background: "#ccc", color: "#000" }}
                       >
                         Reject
                       </button>
@@ -531,29 +713,45 @@ export function AdminPage() {
         )}
       </div>
 
-      <div className="admin-grid">
-        <form className="form-container" onSubmit={handlePostNews}>
-          <h3>Site News</h3>
-          <input required value={newsTitle} onChange={(event) => setNewsTitle(event.target.value)} />
-          <textarea required rows={6} value={newsContent} onChange={(event) => setNewsContent(event.target.value)} />
-          <button type="submit">Post News</button>
-        </form>
-
-        <div className="form-container">
-          <h3>Maintenance Mode</h3>
-          <p>{maintenanceQuery.data?.maintenance ? "MAINTENANCE: ON" : "MAINTENANCE: OFF"}</p>
-          <div className="admin-actions">
-            <button type="button" onClick={() => runAction(() => setMaintenance("enable"), "Maintenance enabled.")}>
-              Enable
-            </button>
-            <button type="button" onClick={() => runAction(() => setMaintenance("disable"), "Maintenance disabled.")}>
-              Disable
+      <div className="form-container">
+        <h2>Site News (Admins)</h2>
+        <form id="news-form" onSubmit={handlePostNews}>
+          <label>Title</label>
+          <input id="news-title-input" type="text" required value={newsTitle} onChange={(event) => setNewsTitle(event.target.value)} />
+          <label>Content</label>
+          <textarea id="news-content-input" required rows={6} value={newsContent} onChange={(event) => setNewsContent(event.target.value)} />
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <button type="submit">Post News</button>
+            <button type="button" onClick={() => newsQuery.refetch()} style={{ background: "#ccc", color: "#000" }}>
+              Refresh
             </button>
           </div>
+        </form>
+        <p id="news-message" />
+        <div id="admin-news-list">
+          {newsQuery.isLoading && <p>Loading news...</p>}
+          {newsQuery.data?.news.map((item) => (
+            <div className="news-item" key={item.id}>
+              <h3 style={{ margin: "0 0 6px" }}>{item.title}</h3>
+              <div style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>{item.created_at} — {item.author ?? ""}</div>
+              <div style={{ whiteSpace: "pre-wrap" }}>{item.content}</div>
+            </div>
+          ))}
         </div>
+      </div>
 
-        <div className="form-container">
-          <h3>Database Integrity</h3>
+      <div className="form-container">
+        <h2>Database & Backups</h2>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button type="button" onClick={showUnsupportedBackupMessage}>
+            Download DB
+          </button>
+          <button type="button" onClick={showUnsupportedBackupMessage}>
+            Create Backup
+          </button>
+          <button type="button" onClick={showUnsupportedBackupMessage}>
+            List Backups
+          </button>
           <button
             type="button"
             onClick={() =>
@@ -562,13 +760,44 @@ export function AdminPage() {
               }, "Integrity check completed.")
             }
           >
-            Run Integrity Check
+            Integrity Check
           </button>
-          {integrity && (
-            <pre className="frontend-pre-wrap">{JSON.stringify(integrity.counts, null, 2)}</pre>
-          )}
         </div>
+        <div id="backups-list">
+          {integrity && <pre className="frontend-pre-wrap">{JSON.stringify(integrity.counts, null, 2)}</pre>}
+        </div>
+        <form id="import-form" onSubmit={(event) => { event.preventDefault(); showUnsupportedBackupMessage(); }} encType="multipart/form-data">
+          <input type="file" name="sqlfile" accept=".sql" required />
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button type="submit">Import SQL</button>
+          </div>
+          <p id="import-message" />
+        </form>
       </div>
-    </section>
+
+      <div className="form-container" id="maintenance-container">
+        <h2>Maintenance Mode</h2>
+        <p id="maintenance-status">
+          {maintenanceQuery.data?.maintenance ? "MAINTENANCE: ON (admins only)" : "MAINTENANCE: OFF"}
+        </p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button type="button" onClick={() => runAction(() => setMaintenance("enable"), "Maintenance updated.")} id="maintenance-enable">
+            Enable
+          </button>
+          <button
+            type="button"
+            onClick={() => runAction(() => setMaintenance("disable"), "Maintenance updated.")}
+            id="maintenance-disable"
+            style={{ background: "#ccc", color: "#000" }}
+          >
+            Disable
+          </button>
+          <button type="button" onClick={() => maintenanceQuery.refetch()} style={{ background: "#f0f0f0", color: "#000" }}>
+            Refresh
+          </button>
+        </div>
+        <p id="maintenance-message" />
+      </div>
+    </div>
   );
 }

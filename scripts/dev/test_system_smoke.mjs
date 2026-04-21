@@ -52,11 +52,12 @@ const uiChecks = [
   ["/players", "Demo Driver"],
   ["/tuning-parts", "Coin Boost"],
   ["/tuning-setups", "Wings"],
-  ["/records", "12345"],
+  ["/records", "Countryside"],
   ["/stats", "Records"],
   ["/privacy", "Privacy"],
   ["/maintenance", "We'll be back soon"],
 ];
+const standaloneUiRoutes = new Set(["/privacy", "/maintenance"]);
 
 function b64url(value) {
   return Buffer.from(value).toString("base64url");
@@ -212,7 +213,7 @@ async function checkAdminApiSurface() {
       vehicleId: vehicle.idVehicle,
       distance: 55555,
       playerId: 1,
-      tuningSetupId: setup.idTuningSetup,
+      tuningSetupId: null,
       questionable: 0,
     }),
   });
@@ -229,7 +230,7 @@ async function checkAdminApiSurface() {
 
   await adminJson("/api/v1/admin/records/tuning-setup", {
     method: "PATCH",
-    body: JSON.stringify({ recordId: 2, tuningSetupId: 1 }),
+    body: JSON.stringify({ recordId: record.idRecord, tuningSetupId: setup.idTuningSetup }),
   });
   console.log("OK admin tuning setup assignment");
 
@@ -425,14 +426,17 @@ async function checkUiSurface() {
     await page.command("Page.enable");
 
     for (const [route, text] of uiChecks) {
+      const isStandalone = standaloneUiRoutes.has(route);
       page.problems = [];
       await page.command("Page.navigate", { url: `${frontendBaseUrl}${route}` });
       await waitForText(page, text);
-      await waitForExpression(
-        page,
-        "Boolean(document.querySelector('img#logo') && document.querySelector('img#logo').complete && document.querySelector('img#logo').naturalWidth > 0)",
-        `Logo did not load on ${route}`,
-      );
+      if (!isStandalone) {
+        await waitForExpression(
+          page,
+          "Boolean(document.querySelector('img#logo') && document.querySelector('img#logo').complete && document.querySelector('img#logo').naturalWidth > 0)",
+          `Logo did not load on ${route}`,
+        );
+      }
       const details = await page.evaluate(`(() => {
         return {
           hasDarkModeButton: Boolean(document.querySelector('#dark-mode-toggle')),
@@ -441,7 +445,7 @@ async function checkUiSurface() {
         };
       })()`);
 
-      if (!details.hasDarkModeButton) {
+      if (!isStandalone && !details.hasDarkModeButton) {
         throw new Error(`Dark mode button is missing on ${route}`);
       }
       if (["/maps", "/vehicles", "/players", "/tuning-parts", "/tuning-setups", "/records"].includes(route) && details.rowCount < 1) {
@@ -457,14 +461,14 @@ async function checkUiSurface() {
     }
 
     await page.command("Page.navigate", { url: `${frontendBaseUrl}/records` });
-    await waitForText(page, "12345");
+    await waitForText(page, "Countryside");
     await page.evaluate(`(() => {
       const input = document.querySelector('#search-bar');
       const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
       setter.call(input, 'Forest');
       input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: 'Forest' }));
     })()`);
-    await waitForText(page, "23456");
+    await waitForText(page, "Sample Racer");
     await waitForExpression(
       page,
       "!document.body.innerText.includes('Demo Driver')",
@@ -504,10 +508,10 @@ async function checkUiSurface() {
       path: "/",
     });
     await page.command("Page.navigate", { url: `${frontendBaseUrl}/admin` });
-    await waitForText(page, "Submit or Replace Record");
+    await waitForText(page, "Submit a New Record");
     await waitForText(page, "Maintenance Mode");
     await page.evaluate(
-      `Array.from(document.querySelectorAll('button')).find((button) => button.textContent.trim() === 'Run Integrity Check').click()`,
+      `Array.from(document.querySelectorAll('button')).find((button) => button.textContent.trim() === 'Integrity Check').click()`,
     );
     await waitForText(page, "Integrity check completed.");
     if (page.problems.length) {

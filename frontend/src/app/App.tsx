@@ -9,8 +9,8 @@ export function App() {
       <Header />
       <main>
         <Outlet />
+        <Footer />
       </main>
-      <Footer />
     </>
   );
 }

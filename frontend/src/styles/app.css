@@ -191,3 +191,150 @@
   color: #167a32;
   font-weight: 700;
 }
+
+.policy-container {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  margin: 30px auto;
+  max-width: 900px;
+  padding: 20px;
+}
+
+.policy-container h1 {
+  margin-top: 0;
+}
+
+.policy-container p {
+  line-height: 1.5;
+}
+
+.maintenance-legacy-page {
+  align-items: center;
+  background: #f4f4f9;
+  color: #222;
+  display: flex;
+  font-family: Arial, Helvetica, sans-serif;
+  justify-content: center;
+  margin: 0;
+  min-height: 100vh;
+}
+
+.maintenance-card {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  max-width: 760px;
+  padding: 28px;
+  text-align: center;
+}
+
+.maintenance-card h1 {
+  color: #123;
+  margin: 0 0 8px;
+}
+
+.maintenance-card p {
+  color: #555;
+}
+
+.maintenance-card .meta {
+  color: #777;
+  font-size: 13px;
+  margin-top: 12px;
+}
+
+.admin-legacy-page {
+  background: #f4f4f9;
+  color: #333;
+  font-family: Arial, sans-serif;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.admin-legacy-page h1 {
+  color: #007bff;
+}
+
+.admin-legacy-page .form-container {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  margin: 20px auto;
+  max-width: 900px;
+  padding: 20px;
+}
+
+.admin-legacy-page input,
+.admin-legacy-page select,
+.admin-legacy-page button {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-sizing: border-box;
+  margin: 8px 0;
+  padding: 10px;
+  width: 100%;
+}
+
+.admin-legacy-page button {
+  background: #007bff;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+}
+
+.admin-legacy-page textarea {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+  margin: 8px 0;
+  min-height: 60px;
+  padding: 10px;
+  resize: vertical;
+  width: 100%;
+}
+
+.admin-legacy-page .topbar {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin: 0 auto 20px;
+  max-width: 900px;
+}
+
+.admin-legacy-page .topbar a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.admin-legacy-page .admin-inline input,
+.admin-legacy-page .admin-checkboxes input {
+  margin: 0 8px 0 0;
+  width: auto;
+}
+
+.admin-legacy-page .admin-checkboxes label {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.admin-legacy-page .admin-table-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.admin-legacy-page .admin-table-actions button,
+.admin-legacy-page .topbar button,
+.admin-legacy-page [style*="display: flex"] button {
+  width: auto;
+}
+
+@media (max-width: 700px) {
+  .admin-legacy-page .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
