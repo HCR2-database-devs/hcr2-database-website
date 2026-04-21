@@ -63,10 +63,16 @@ function verify_hcaptcha($token, $secret) {
 
 try {
     $db = get_database_connection();
-} catch (PDOException $e) {
+} catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['error' => 'Database connection failed']);
     exit;
+}
+
+try {
+    $pendingTable = pending_submissions_table($db);
+} catch (Throwable $e) {
+    generic_database_error('public_submit table resolution failed: ' . $e->getMessage());
 }
 
 
@@ -142,7 +148,7 @@ if (count($tuningParts) < 3 || count($tuningParts) > 4) {
 try {
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
     if ($ip) {
-        $rstmt = $db->prepare("SELECT COUNT(1) AS c FROM PendingSubmission WHERE submitterIp = :ip AND submitted_at >= NOW() - INTERVAL '1 hour'");
+        $rstmt = $db->prepare("SELECT COUNT(1) AS c FROM {$pendingTable} WHERE submitterIp = :ip AND submitted_at >= NOW() - INTERVAL '1 hour'");
         $rstmt->execute([':ip' => $ip]);
         $rc = $rstmt->fetch(PDO::FETCH_ASSOC);
         if ($rc && isset($rc['c']) && (int)$rc['c'] >= 5) {
@@ -151,7 +157,7 @@ try {
             exit;
         }
     }
-    $stmt = $db->prepare('INSERT INTO PendingSubmission (idMap, idVehicle, distance, playerName, playerCountry, tuningParts, submitterIp) VALUES (:idMap, :idVehicle, :distance, :playerName, :playerCountry, :tuningParts, :ip)');
+    $stmt = $db->prepare("INSERT INTO {$pendingTable} (idMap, idVehicle, distance, playerName, playerCountry, tuningParts, submitterIp) VALUES (:idMap, :idVehicle, :distance, :playerName, :playerCountry, :tuningParts, :ip)");
     $stmt->execute([
         ':idMap' => $mapId,
         ':idVehicle' => $vehicleId,

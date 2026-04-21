@@ -4,7 +4,7 @@ ensure_authorized_json();
 
 try {
     $db = get_database_connection();
-} catch (PDOException $e) {
+} catch (Throwable $e) {
     generic_database_error('submit_record connection failed: ' . $e->getMessage());
 }
 

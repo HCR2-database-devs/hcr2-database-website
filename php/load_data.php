@@ -109,12 +109,12 @@ if (isset($_GET['type'])) {
                             m.nameMap AS map_name,
                             v.nameVehicle AS vehicle_name,
                             p.namePlayer AS player_name,
-                            p.country AS player_country,
+                            COALESCE(p.country, '') AS player_country,
                             string_agg(tp.nameTuningPart, ', ') as tuning_parts
                         FROM _worldrecord AS wr
                         JOIN _map AS m ON wr.idMap = m.idMap
                         JOIN _vehicle AS v ON wr.idVehicle = v.idVehicle
-                        JOIN _player AS p ON wr.idPlayer = p.idPlayer
+                        LEFT JOIN _player AS p ON wr.idPlayer = p.idPlayer
                         LEFT JOIN _tuningsetupparts tsp ON wr.idTuningSetup = tsp.idTuningSetup
                         LEFT JOIN _tuningpart tp ON tsp.idTuningPart = tp.idTuningPart
                         WHERE wr.current = 1

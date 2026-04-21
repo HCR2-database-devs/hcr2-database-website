@@ -6,18 +6,28 @@ header('Content-Type: application/json; charset=utf-8');
 
 try {
     $pdo = get_database_connection();
-} catch (PDOException $e) {
+} catch (Throwable $e) {
     generic_database_error('admin_pending connection failed: ' . $e->getMessage());
+}
+
+try {
+    $pendingTable = pending_submissions_table($pdo);
+} catch (Throwable $e) {
+    generic_database_error('admin_pending table resolution failed: ' . $e->getMessage());
 }
 
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
-    $stmt = $pdo->prepare("SELECT p.*, m.nameMap AS mapName, v.nameVehicle AS vehicleName FROM PendingSubmission p LEFT JOIN _map m ON p.idMap = m.idMap LEFT JOIN _vehicle v ON p.idVehicle = v.idVehicle WHERE p.status = 'pending' ORDER BY p.submitted_at DESC");
-    $stmt->execute();
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    echo json_encode(['pending' => $rows]);
-    exit;
+    try {
+        $stmt = $pdo->prepare("SELECT p.*, m.nameMap AS mapName, v.nameVehicle AS vehicleName FROM {$pendingTable} p LEFT JOIN _map m ON p.idMap = m.idMap LEFT JOIN _vehicle v ON p.idVehicle = v.idVehicle WHERE p.status = 'pending' ORDER BY p.submitted_at DESC");
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode(['pending' => $rows]);
+        exit;
+    } catch (Throwable $e) {
+        generic_database_error('admin_pending GET failed: ' . $e->getMessage());
+    }
 }
 
 $data = json_decode(file_get_contents('php://input'), true) ?: $_POST;
@@ -28,7 +38,7 @@ try {
     if ($action === 'approve') {
         if (!$id) throw new Exception('Missing id');
 
-        $stmt = $pdo->prepare('SELECT * FROM PendingSubmission WHERE id = :id LIMIT 1');
+        $stmt = $pdo->prepare("SELECT * FROM {$pendingTable} WHERE id = :id LIMIT 1");
         $stmt->execute([':id' => $id]);
         $sub = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$sub) throw new Exception('Submission not found');
@@ -75,11 +85,9 @@ try {
                     }
 
                     if (count($partIds) === count($partNames)) {
-                        $row = $pdo->query('SELECT COALESCE(MAX(idTuningSetup), 0) AS m FROM _tuningsetup')->fetch(PDO::FETCH_ASSOC);
-                        $newSetupId = (int)$row['m'] + 1;
-
-                        $setupStmt = $pdo->prepare('INSERT INTO _tuningsetup (idTuningSetup) VALUES (:id)');
-                        $setupStmt->execute([':id' => $newSetupId]);
+                        $setupStmt = $pdo->prepare('INSERT INTO _tuningsetup DEFAULT VALUES RETURNING idTuningSetup');
+                        $setupStmt->execute();
+                        $newSetupId = (int)$setupStmt->fetchColumn();
 
                         $partStmt = $pdo->prepare('INSERT INTO _tuningsetupparts (idTuningSetup, idTuningPart) VALUES (:setupId, :partId)');
                         foreach ($partIds as $partId) {
@@ -93,7 +101,7 @@ try {
             }
         }
 
-        $upd = $pdo->prepare("UPDATE PendingSubmission SET status = 'approved' WHERE id = :id");
+        $upd = $pdo->prepare("UPDATE {$pendingTable} SET status = 'approved' WHERE id = :id");
         $upd->execute([':id' => $id]);
 
         $pdo->commit();
@@ -103,7 +111,7 @@ try {
 
     if ($action === 'reject') {
         if (!$id) throw new Exception('Missing id');
-        $upd = $pdo->prepare("UPDATE PendingSubmission SET status = 'rejected' WHERE id = :id");
+        $upd = $pdo->prepare("UPDATE {$pendingTable} SET status = 'rejected' WHERE id = :id");
         $upd->execute([':id' => $id]);
         echo json_encode(['success' => true]);
         exit;

@@ -4,7 +4,7 @@ ensure_authorized_json();
 
 try {
     $db = get_database_connection();
-} catch (PDOException $e) {
+} catch (Throwable $e) {
     generic_database_error('add_tuning_setup connection failed: ' . $e->getMessage());
 }
 
@@ -52,9 +52,9 @@ try {
         exit;
     }
 
-    $stmt = $db->prepare("INSERT INTO _tuningsetup DEFAULT VALUES");
+    $stmt = $db->prepare("INSERT INTO _tuningsetup DEFAULT VALUES RETURNING idTuningSetup");
     $stmt->execute();
-    $setupId = $db->lastInsertId();
+    $setupId = (int)$stmt->fetchColumn();
 
     $stmt = $db->prepare("INSERT INTO _tuningsetupparts (idTuningSetup, idTuningPart) VALUES (?, ?)");
     foreach ($partIds as $partId) {

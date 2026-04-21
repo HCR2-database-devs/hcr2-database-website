@@ -96,13 +96,36 @@ define('HCAPTCHA_SITE_KEY', env('HCAPTCHA_SITE_KEY'));
 define('HCAPTCHA_SECRET_KEY', env('HCAPTCHA_SECRET_KEY'));
 
 function get_database_config(): array {
-    return [
-        'host' => env('DB_HOST'),
-        'port' => env('DB_PORT'),
-        'dbname' => env('DB_NAME'),
-        'user' => env('DB_USER'),
-        'pass' => env('DB_PASS'),
+    $config = [
+        'host' => env('DB_HOST') ?: env('PGHOST') ?: env('POSTGRES_HOST'),
+        'port' => env('DB_PORT') ?: env('PGPORT') ?: env('POSTGRES_PORT') ?: '5432',
+        'dbname' => env('DB_NAME') ?: env('PGDATABASE') ?: env('POSTGRES_DB'),
+        'user' => env('DB_USER') ?: env('PGUSER') ?: env('POSTGRES_USER'),
+        'pass' => env('DB_PASS') ?: env('PGPASSWORD') ?: env('POSTGRES_PASSWORD'),
     ];
+
+    $databaseUrl = env('DATABASE_URL') ?: env('POSTGRES_URL') ?: env('POSTGRESQL_URL');
+    if ($databaseUrl) {
+        $parts = parse_url($databaseUrl);
+        if ($parts !== false) {
+            $config['host'] = $config['host'] ?: ($parts['host'] ?? null);
+            $config['port'] = $config['port'] ?: (isset($parts['port']) ? (string)$parts['port'] : null);
+            $config['dbname'] = $config['dbname'] ?: (isset($parts['path']) ? ltrim($parts['path'], '/') : null);
+            $config['user'] = $config['user'] ?: ($parts['user'] ?? null);
+            $config['pass'] = $config['pass'] ?: ($parts['pass'] ?? null);
+
+            if (!empty($parts['query'])) {
+                parse_str($parts['query'], $query);
+                $config['host'] = $config['host'] ?: ($query['host'] ?? null);
+                $config['port'] = $config['port'] ?: ($query['port'] ?? null);
+                $config['dbname'] = $config['dbname'] ?: ($query['dbname'] ?? null);
+                $config['user'] = $config['user'] ?: ($query['user'] ?? null);
+                $config['pass'] = $config['pass'] ?: ($query['password'] ?? null);
+            }
+        }
+    }
+
+    return $config;
 }
 
 function get_database_connection(): PDO {
@@ -112,6 +135,12 @@ function get_database_connection(): PDO {
     }
 
     $config = get_database_config();
+    foreach (['host', 'port', 'dbname', 'user'] as $key) {
+        if ($config[$key] === null || $config[$key] === '') {
+            throw new RuntimeException("Configuration error: database $key is not set");
+        }
+    }
+
     $dsn = sprintf('pgsql:host=%s;port=%s;dbname=%s', $config['host'], $config['port'], $config['dbname']);
     $options = [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -121,4 +150,35 @@ function get_database_connection(): PDO {
 
     $pdo = new PDO($dsn, $config['user'], $config['pass'], $options);
     return $pdo;
+}
+
+function resolve_pg_table(PDO $pdo, array $candidates): string {
+    static $resolved = [];
+
+    $cacheKey = implode('|', $candidates);
+    if (isset($resolved[$cacheKey])) {
+        return $resolved[$cacheKey];
+    }
+
+    $stmt = $pdo->prepare('SELECT to_regclass(:relation_name)');
+    foreach ($candidates as $candidate) {
+        $stmt->execute([':relation_name' => $candidate]);
+        $relationName = $stmt->fetchColumn();
+        if (is_string($relationName) && $relationName !== '') {
+            return $resolved[$cacheKey] = $relationName;
+        }
+    }
+
+    throw new RuntimeException('Required database table was not found');
+}
+
+function pending_submissions_table(PDO $pdo): string {
+    return resolve_pg_table($pdo, [
+        'public."PendingSubmission"',
+        '"PendingSubmission"',
+        'public.pendingsubmission',
+        'pendingsubmission',
+        'public.pending_submission',
+        'pending_submission',
+    ]);
 }
