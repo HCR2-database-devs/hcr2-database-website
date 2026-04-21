@@ -117,7 +117,7 @@ if (isset($_GET['type'])) {
                         LEFT JOIN _player AS p ON wr.\"idPlayer\" = p.\"idPlayer\"
                         LEFT JOIN (
                             SELECT
-                                tsp.\"idTuningSetup\"::text AS tuning_setup_id,
+                                tsp.\"idTuningSetup\" AS tuning_setup_id,
                                 string_agg(tp.\"nameTuningPart\", ', ' ORDER BY tp.\"nameTuningPart\") AS tuning_parts
                             FROM _tuningsetupparts tsp
                             JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
