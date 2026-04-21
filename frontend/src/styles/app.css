@@ -283,6 +283,22 @@
   cursor: pointer;
 }
 
+.admin-legacy-page button:disabled,
+.admin-legacy-page input:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.admin-legacy-page .admin-button-link {
+  background: #007bff;
+  border-radius: 6px;
+  color: #fff;
+  display: inline-block;
+  margin: 8px 0;
+  padding: 10px 14px;
+  text-decoration: none;
+}
+
 .admin-legacy-page textarea {
   border: 1px solid #ccc;
   border-radius: 6px;

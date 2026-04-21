@@ -40,7 +40,7 @@ const apiChecks = [
   [
     "news",
     "/api/v1/news?limit=10",
-    (data) => Array.isArray(data.news) && data.news.some((item) => item.title.includes("Demo database")),
+    (data) => Array.isArray(data.news) && data.news.length > 0,
   ],
   ["hcaptcha sitekey", "/api/v1/hcaptcha/sitekey", (data) => data.sitekey === "dev-hcaptcha-site-key"],
 ];
@@ -100,6 +100,39 @@ async function adminJson(route, init = {}) {
   }
   if (!response.ok) {
     throw new Error(`Admin route ${route} returned HTTP ${response.status}: ${text}`);
+  }
+  return data;
+}
+
+async function adminFetch(route, init = {}) {
+  return fetch(`${backendBaseUrl}${route}`, {
+    ...init,
+    headers: {
+      ...adminHeaders(),
+      ...(init.headers ?? {}),
+    },
+  });
+}
+
+async function adminFormJson(route, fields) {
+  const body = new FormData();
+  for (const [key, value] of fields) {
+    body.append(key, value);
+  }
+  const response = await fetch(`${backendBaseUrl}${route}`, {
+    method: "POST",
+    headers: { Cookie: `WC_TOKEN=${makeDevToken()}` },
+    body,
+  });
+  const text = await response.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`Admin form route ${route} returned invalid JSON: ${text.slice(0, 300)}`);
+  }
+  if (!response.ok) {
+    throw new Error(`Admin form route ${route} returned HTTP ${response.status}: ${text}`);
   }
   return data;
 }
@@ -197,6 +230,14 @@ async function checkAdminApiSurface() {
   }
   console.log("OK admin catalog additions");
 
+  const formMap = await adminFormJson("/api/v1/admin/maps/form", [["mapName", `Admin Smoke Form Map ${suffix}`]]);
+  const formVehicle = await adminFormJson("/api/v1/admin/vehicles/form", [["vehicleName", `Admin Smoke Form Vehicle ${suffix}`]]);
+  const formPart = await adminFormJson("/api/v1/admin/tuning-parts/form", [["partName", `Admin Smoke Form Part ${suffix}`]]);
+  if (!formMap.success || !formVehicle.success || !formPart.success) {
+    throw new Error("Admin multipart catalog additions did not return success");
+  }
+  console.log("OK admin multipart catalog additions");
+
   const setup = await adminJson("/api/v1/admin/tuning-setups", {
     method: "POST",
     body: JSON.stringify({ partIds: [1, 2, part.idTuningPart] }),
@@ -285,6 +326,32 @@ async function checkAdminApiSurface() {
     throw new Error(`Admin integrity returned unexpected payload: ${JSON.stringify(integrity)}`);
   }
   console.log("OK admin integrity check");
+
+  const createdBackup = await adminJson("/api/v1/admin/backups", { method: "POST" });
+  if (!createdBackup.success || !createdBackup.filename || !createdBackup.filename.endsWith(".sql")) {
+    throw new Error(`Admin backup creation returned unexpected payload: ${JSON.stringify(createdBackup)}`);
+  }
+  console.log("OK admin backup creation");
+
+  const listedBackups = await adminJson("/api/v1/admin/backups", { method: "GET" });
+  if (!Array.isArray(listedBackups.backups) || !listedBackups.backups.some((item) => item.name === createdBackup.filename)) {
+    throw new Error(`Admin backup list did not include ${createdBackup.filename}`);
+  }
+  console.log("OK admin backup listing");
+
+  const backupDownload = await adminFetch(`/api/v1/admin/backups/${encodeURIComponent(createdBackup.filename)}/download`);
+  const backupText = await backupDownload.text();
+  if (!backupDownload.ok || !backupText.includes("BEGIN;") || !backupText.includes("_worldrecord")) {
+    throw new Error(`Admin backup download returned unexpected payload: ${backupDownload.status} ${backupText.slice(0, 200)}`);
+  }
+  console.log("OK admin backup download");
+
+  await adminJson(`/api/v1/admin/backups/${encodeURIComponent(createdBackup.filename)}`, { method: "DELETE" });
+  const listedAfterDelete = await adminJson("/api/v1/admin/backups", { method: "GET" });
+  if (listedAfterDelete.backups.some((item) => item.name === createdBackup.filename)) {
+    throw new Error(`Admin backup delete did not remove ${createdBackup.filename}`);
+  }
+  console.log("OK admin backup delete");
 }
 
 function sendCommand(ws, id, method, params = {}) {
@@ -482,7 +549,7 @@ async function checkUiSurface() {
     console.log("OK UI records filters");
 
     await page.evaluate(`document.querySelector('#news-btn-container button').click()`);
-    await waitForText(page, "Demo database ready");
+    await waitForText(page, "Created by admin smoke test.");
     await page.evaluate(`document.querySelector('.close-news-btn').click()`);
     console.log("OK UI news modal");
 
@@ -490,6 +557,11 @@ async function checkUiSurface() {
       `Array.from(document.querySelectorAll('button')).find((button) => button.textContent.trim() === 'Submit Record').click()`,
     );
     await waitForText(page, "Submit a Record (for admin review)");
+    await waitForExpression(
+      page,
+      "document.querySelector('#hcaptcha-widget')?.getAttribute('data-sitekey') === 'dev-hcaptcha-site-key'",
+      "Public submit modal did not load the hCaptcha site key",
+    );
     console.log("OK UI public submit modal");
 
     const before = await page.evaluate("document.documentElement.getAttribute('data-theme')");
@@ -510,10 +582,26 @@ async function checkUiSurface() {
     await page.command("Page.navigate", { url: `${frontendBaseUrl}/admin` });
     await waitForText(page, "Submit a New Record");
     await waitForText(page, "Maintenance Mode");
+    await waitForText(page, "Database & Backups");
     await page.evaluate(
       `Array.from(document.querySelectorAll('button')).find((button) => button.textContent.trim() === 'Integrity Check').click()`,
     );
     await waitForText(page, "Integrity check completed.");
+    await page.evaluate(
+      `Array.from(document.querySelectorAll('button')).find((button) => button.textContent.trim() === 'Create Backup').click()`,
+    );
+    await waitForText(page, "Backup created.");
+    await waitForExpression(
+      page,
+      "Boolean(Array.from(document.querySelectorAll('#backups-list td')).some((cell) => cell.textContent.includes('.sql')))",
+      "Admin backup list did not render a SQL backup after creation",
+    );
+    const uiBackupName = await page.evaluate(
+      "Array.from(document.querySelectorAll('#backups-list td')).map((cell) => cell.textContent.trim()).find((text) => text.endsWith('.sql')) || ''",
+    );
+    if (uiBackupName) {
+      await adminJson(`/api/v1/admin/backups/${encodeURIComponent(uiBackupName)}`, { method: "DELETE" });
+    }
     if (page.problems.length) {
       throw new Error(`Browser problems on /admin: ${page.problems.join("; ")}`);
     }

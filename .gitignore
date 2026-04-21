@@ -203,5 +203,6 @@ MAINTENANCE
 *.sql.gz
 backups/*.sqlite
 backups/*.db
+backups/*.sql
 dumps/
 exports/

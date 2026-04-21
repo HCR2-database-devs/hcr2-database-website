@@ -1,6 +1,9 @@
 import re
+import stat
 from pathlib import Path
 from typing import Any
+
+from psycopg import sql
 
 from app.core.config import REPO_ROOT
 from app.db.session import DatabaseConfig, open_connection
@@ -29,6 +32,10 @@ class AdminConflictError(AdminServiceError):
     status_code = 409
 
 
+class AdminUnsupportedMediaError(AdminServiceError):
+    status_code = 415
+
+
 def _clean_text(value: str | None) -> str:
     return (value or "").strip()
 
@@ -41,6 +48,18 @@ class AdminService:
     def __init__(self, config: DatabaseConfig | None = None) -> None:
         self._config = config
         self._maintenance_flag = REPO_ROOT / "MAINTENANCE"
+        self._backups_dir = REPO_ROOT / "backups"
+        self._backup_tables = (
+            "_map",
+            "_vehicle",
+            "_player",
+            "_tuningpart",
+            "_tuningsetup",
+            "_tuningsetupparts",
+            "_worldrecord",
+            "pendingsubmission",
+            "news",
+        )
 
     def list_records(self) -> list[dict[str, Any]]:
         with open_connection(self._config) as connection:
@@ -287,6 +306,32 @@ class AdminService:
                 new_id = cursor.fetchone()["idtuningpart"]
         return {"success": True, "idTuningPart": new_id, "nameTuningPart": name, "iconMessage": ""}
 
+    def save_icon(
+        self,
+        folder: str,
+        item_name: str,
+        filename: str | None,
+        content_type: str | None,
+        content: bytes | None,
+    ) -> str:
+        if not content:
+            return ""
+        self._validate_svg_icon(filename, content_type, content)
+        target_dir = REPO_ROOT / "frontend" / "public" / "img" / folder
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target = target_dir / f"{self._asset_slug(item_name)}.svg"
+        target.write_bytes(content)
+        return f"Icon uploaded: {target.name}"
+
+    def validate_icon_upload(
+        self,
+        filename: str | None,
+        content_type: str | None,
+        content: bytes | None,
+    ) -> None:
+        if content:
+            self._validate_svg_icon(filename, content_type, content)
+
     def add_tuning_setup(self, payload: AddTuningSetupRequest) -> dict[str, Any]:
         part_ids = sorted(set(int(part_id) for part_id in payload.part_ids))
         if len(part_ids) < 3 or len(part_ids) > 4:
@@ -413,6 +458,47 @@ class AdminService:
                     cursor.execute(f"SELECT count(*) AS count FROM {table}")
                     counts[table] = int(cursor.fetchone()["count"])
         return {"ok": True, "result": ok, "counts": counts}
+
+    def create_backup(self) -> dict[str, Any]:
+        self._ensure_backups_dir()
+        filename = self._next_backup_filename()
+        target = self._backups_dir / filename
+
+        with open_connection(self._config) as connection:
+            dump = self._build_application_sql_dump(connection)
+
+        target.write_text(dump, encoding="utf-8")
+        try:
+            target.chmod(stat.S_IRUSR | stat.S_IWUSR)
+        except OSError:
+            # Windows may ignore POSIX-like permission bits; the file is still stored locally.
+            pass
+
+        info = self._backup_info(target)
+        return {"success": True, "filename": info["name"], "backup": info}
+
+    def list_backups(self) -> dict[str, list[dict[str, Any]]]:
+        self._ensure_backups_dir()
+        backups = [
+            self._backup_info(path)
+            for path in self._backups_dir.iterdir()
+            if path.is_file() and path.suffix.lower() == ".sql"
+        ]
+        backups.sort(key=lambda item: str(item["mtime"]), reverse=True)
+        return {"backups": backups}
+
+    def delete_backup(self, filename: str) -> dict[str, bool]:
+        path = self._safe_backup_path(filename)
+        if not path.exists() or not path.is_file():
+            raise AdminNotFoundError("Backup file not found.")
+        path.unlink()
+        return {"success": True}
+
+    def backup_path(self, filename: str) -> Path:
+        path = self._safe_backup_path(filename)
+        if not path.exists() or not path.is_file():
+            raise AdminNotFoundError("Backup file not found.")
+        return path
 
     def _resolve_player(self, cursor: Any, payload: SubmitRecordRequest) -> int:
         if payload.player_id is not None:
@@ -552,6 +638,117 @@ class AdminService:
         )
         row = cursor.fetchone()
         return str(row["name"]) if row else "Unknown"
+
+    def _validate_svg_icon(
+        self,
+        filename: str | None,
+        content_type: str | None,
+        content: bytes,
+    ) -> None:
+        if len(content) > 500_000:
+            raise AdminServiceError("Icon file is too large.")
+        if filename and not filename.lower().endswith(".svg"):
+            raise AdminUnsupportedMediaError("Only SVG icon uploads are supported.")
+        if content_type and content_type not in {"image/svg+xml", "application/octet-stream"}:
+            raise AdminUnsupportedMediaError("Only SVG icon uploads are supported.")
+        preview = content[:1024].lstrip().lower()
+        if b"<svg" not in preview and not preview.startswith(b"<?xml"):
+            raise AdminUnsupportedMediaError("The uploaded icon does not look like an SVG file.")
+
+    def _asset_slug(self, name: str) -> str:
+        slug = re.sub(r"\s+", "_", name.strip().lower())
+        slug = re.sub(r"[^a-z0-9_-]", "", slug)
+        if not slug:
+            raise AdminServiceError("Icon filename could not be generated.")
+        return slug
+
+    def _ensure_backups_dir(self) -> None:
+        self._backups_dir.mkdir(mode=0o750, parents=True, exist_ok=True)
+
+    def _next_backup_filename(self) -> str:
+        from datetime import UTC, datetime
+
+        stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+        candidate = f"hcr2-backup-{stamp}.sql"
+        counter = 1
+        while (self._backups_dir / candidate).exists():
+            counter += 1
+            candidate = f"hcr2-backup-{stamp}-{counter}.sql"
+        return candidate
+
+    def _safe_backup_path(self, filename: str) -> Path:
+        self._ensure_backups_dir()
+        name = Path(filename).name
+        if not name or name != filename or not name.endswith(".sql"):
+            raise AdminServiceError("Invalid backup filename.")
+        path = (self._backups_dir / name).resolve()
+        backups_root = self._backups_dir.resolve()
+        if backups_root not in path.parents and path != backups_root:
+            raise AdminServiceError("Invalid backup filename.")
+        return path
+
+    def _backup_info(self, path: Path) -> dict[str, Any]:
+        from datetime import datetime
+
+        stat_result = path.stat()
+        return {
+            "name": path.name,
+            "size": stat_result.st_size,
+            "mtime": datetime.fromtimestamp(stat_result.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+        }
+
+    def _build_application_sql_dump(self, connection: Any) -> str:
+        lines = [
+            "-- HCR2 application data backup generated by the FastAPI admin.",
+            "-- This backup contains application tables only.",
+            "-- It does not include roles, extensions, or server settings.",
+            "BEGIN;",
+            "SET CONSTRAINTS ALL DEFERRED;",
+            (
+                "TRUNCATE TABLE "
+                f"{', '.join(self._quote_ident(table) for table in self._backup_tables)} "
+                "RESTART IDENTITY CASCADE;"
+            ),
+        ]
+
+        with connection.cursor() as cursor:
+            for table in self._backup_tables:
+                cursor.execute(
+                    """
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = %s
+                    ORDER BY ordinal_position
+                    """,
+                    (table,),
+                )
+                columns = [str(row["column_name"]) for row in cursor.fetchall()]
+                if not columns:
+                    continue
+
+                column_sql = ", ".join(self._quote_ident(column) for column in columns)
+                cursor.execute(f"SELECT {column_sql} FROM {self._quote_ident(table)}")
+                rows = cursor.fetchall()
+                if not rows:
+                    continue
+
+                lines.append("")
+                lines.append(f"-- Data for {table}")
+                for row in rows:
+                    values = ", ".join(
+                        sql.Literal(row[column]).as_string(connection)
+                        for column in columns
+                    )
+                    lines.append(
+                        f"INSERT INTO {self._quote_ident(table)} "
+                        f"({column_sql}) VALUES ({values});"
+                    )
+
+        lines.extend(["COMMIT;", ""])
+        return "\n".join(lines)
+
+    def _quote_ident(self, name: str) -> str:
+        return '"' + name.replace('"', '""') + '"'
 
 
 def maintenance_flag_path() -> Path:

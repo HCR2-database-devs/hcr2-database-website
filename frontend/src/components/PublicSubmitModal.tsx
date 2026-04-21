@@ -1,13 +1,30 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { getPublicData } from "../services/publicData";
+import { getHcaptchaSitekey, getPublicData } from "../services/publicData";
 import { submitPublicRecord } from "../services/submissions";
 
 type PublicSubmitModalProps = {
   onClose: () => void;
 };
+
+declare global {
+  interface Window {
+    hcaptcha?: {
+      render: (
+        container: HTMLElement,
+        options: {
+          sitekey: string;
+          theme?: string;
+          callback?: (token: string) => void;
+          "expired-callback"?: () => void;
+        }
+      ) => string | number;
+      reset?: (widgetId?: string | number) => void;
+    };
+  }
+}
 
 function getId(row: Record<string, unknown>, camel: string, lower: string) {
   return String(row[camel] ?? row[lower] ?? "");
@@ -21,6 +38,8 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
   const [selectedParts, setSelectedParts] = useState<string[]>([]);
   const [message, setMessage] = useState<string>("");
   const [formLoadTime] = useState(() => Date.now());
+  const widgetRef = useRef<HTMLDivElement | null>(null);
+  const hcaptchaWidgetId = useRef<string | number | null>(null);
   const maps = useQuery({ queryKey: ["public-data", "maps"], queryFn: () => getPublicData("maps") });
   const vehicles = useQuery({
     queryKey: ["public-data", "vehicles"],
@@ -29,6 +48,11 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
   const tuningParts = useQuery({
     queryKey: ["public-data", "tuning-parts"],
     queryFn: () => getPublicData("tuning-parts")
+  });
+  const sitekey = useQuery({
+    queryKey: ["hcaptcha-sitekey"],
+    queryFn: getHcaptchaSitekey,
+    retry: false
   });
 
   const submit = useMutation({
@@ -45,6 +69,49 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
       })),
     [tuningParts.data]
   );
+
+  useEffect(() => {
+    if (!sitekey.data?.sitekey || !widgetRef.current || hcaptchaWidgetId.current !== null) {
+      return undefined;
+    }
+
+    let attempts = 0;
+    const renderWidget = () => {
+      if (!widgetRef.current || !window.hcaptcha?.render || !sitekey.data?.sitekey) {
+        return false;
+      }
+      hcaptchaWidgetId.current = window.hcaptcha.render(widgetRef.current, {
+        sitekey: sitekey.data.sitekey,
+        theme: "light",
+        callback(token) {
+          const input = document.getElementById("h-captcha-response") as HTMLInputElement | null;
+          if (input) {
+            input.value = token;
+          }
+        },
+        "expired-callback"() {
+          const input = document.getElementById("h-captcha-response") as HTMLInputElement | null;
+          if (input) {
+            input.value = "";
+          }
+        }
+      });
+      return true;
+    };
+
+    if (renderWidget()) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      if (renderWidget() || attempts >= 30) {
+        window.clearInterval(timer);
+      }
+    }, 200);
+
+    return () => window.clearInterval(timer);
+  }, [sitekey.data?.sitekey]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -169,7 +236,13 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
               <textarea id="hp_comments" name="hp_comments" tabIndex={-1} autoComplete="off" />
             </label>
           </div>
-          <div id="hcaptcha-widget" className="h-captcha" data-sitekey="" />
+          <div
+            id="hcaptcha-widget"
+            ref={widgetRef}
+            className="h-captcha"
+            data-sitekey={sitekey.data?.sitekey ?? ""}
+          />
+          {sitekey.isError && <p className="frontend-error">hCaptcha is not configured.</p>}
           <input id="h-captcha-response" name="h_captcha_response" type="hidden" />
 
           <div className="frontend-modal-actions">

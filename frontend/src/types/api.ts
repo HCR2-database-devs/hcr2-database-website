@@ -64,3 +64,9 @@ export type IntegrityStatus = {
   result: number;
   counts: Record<string, number>;
 };
+
+export type BackupItem = {
+  name: string;
+  size: number;
+  mtime: string;
+};

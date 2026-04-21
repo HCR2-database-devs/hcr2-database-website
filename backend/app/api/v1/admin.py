@@ -1,7 +1,7 @@
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse
 
 from app.api.dependencies import get_admin_service, get_auth_service
 from app.schemas.admin import (
@@ -22,6 +22,7 @@ from app.services.admin_service import (
     AdminNotFoundError,
     AdminService,
     AdminServiceError,
+    AdminUnsupportedMediaError,
 )
 from app.services.auth_service import AuthService
 
@@ -42,6 +43,12 @@ def _admin_status(request: Request, auth_service: AuthService) -> dict[str, Any]
 
 def _error_response(exc: AdminServiceError) -> JSONResponse:
     return JSONResponse({"error": str(exc)}, status_code=exc.status_code)
+
+
+async def _read_upload(upload: UploadFile | None) -> tuple[str | None, str | None, bytes | None]:
+    if upload is None or not upload.filename:
+        return None, None, None
+    return upload.filename, upload.content_type, await upload.read()
 
 
 @router.get("/records", response_model=None)
@@ -164,6 +171,31 @@ def add_map(
         return _error_response(exc)
 
 
+@router.post("/maps/form", response_model=None)
+async def add_map_form(
+    map_name: Annotated[str, Form(alias="mapName")],
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+    icon: Annotated[UploadFile | None, File()] = None,
+) -> Any:
+    _admin_status(request, auth_service)
+    filename, content_type, content = await _read_upload(icon)
+    try:
+        service.validate_icon_upload(filename, content_type, content)
+        result = service.add_map(AddMapRequest(mapName=map_name))
+        result["iconMessage"] = service.save_icon(
+            "map_icons",
+            map_name,
+            filename,
+            content_type,
+            content,
+        )
+        return result
+    except (AdminServiceError, AdminConflictError, AdminUnsupportedMediaError) as exc:
+        return _error_response(exc)
+
+
 @router.post("/vehicles", response_model=None)
 def add_vehicle(
     payload: AddVehicleRequest,
@@ -178,6 +210,31 @@ def add_vehicle(
         return _error_response(exc)
 
 
+@router.post("/vehicles/form", response_model=None)
+async def add_vehicle_form(
+    vehicle_name: Annotated[str, Form(alias="vehicleName")],
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+    icon: Annotated[UploadFile | None, File()] = None,
+) -> Any:
+    _admin_status(request, auth_service)
+    filename, content_type, content = await _read_upload(icon)
+    try:
+        service.validate_icon_upload(filename, content_type, content)
+        result = service.add_vehicle(AddVehicleRequest(vehicleName=vehicle_name))
+        result["iconMessage"] = service.save_icon(
+            "vehicle_icons",
+            vehicle_name,
+            filename,
+            content_type,
+            content,
+        )
+        return result
+    except (AdminServiceError, AdminConflictError, AdminUnsupportedMediaError) as exc:
+        return _error_response(exc)
+
+
 @router.post("/tuning-parts", response_model=None)
 def add_tuning_part(
     payload: AddTuningPartRequest,
@@ -189,6 +246,31 @@ def add_tuning_part(
     try:
         return service.add_tuning_part(payload)
     except (AdminServiceError, AdminConflictError) as exc:
+        return _error_response(exc)
+
+
+@router.post("/tuning-parts/form", response_model=None)
+async def add_tuning_part_form(
+    part_name: Annotated[str, Form(alias="partName")],
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+    icon: Annotated[UploadFile | None, File()] = None,
+) -> Any:
+    _admin_status(request, auth_service)
+    filename, content_type, content = await _read_upload(icon)
+    try:
+        service.validate_icon_upload(filename, content_type, content)
+        result = service.add_tuning_part(AddTuningPartRequest(partName=part_name))
+        result["iconMessage"] = service.save_icon(
+            "tuning_parts_icons",
+            part_name,
+            filename,
+            content_type,
+            content,
+        )
+        return result
+    except (AdminServiceError, AdminConflictError, AdminUnsupportedMediaError) as exc:
         return _error_response(exc)
 
 
@@ -315,3 +397,59 @@ def integrity_check(
 ) -> Any:
     _admin_status(request, auth_service)
     return service.integrity_check()
+
+
+@router.get("/backups", response_model=None)
+def list_backups(
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    _admin_status(request, auth_service)
+    return service.list_backups()
+
+
+@router.post("/backups", response_model=None)
+def create_backup(
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    _admin_status(request, auth_service)
+    try:
+        return service.create_backup()
+    except AdminServiceError as exc:
+        return _error_response(exc)
+
+
+@router.get("/backups/{filename}/download", response_model=None)
+def download_backup(
+    filename: str,
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    _admin_status(request, auth_service)
+    try:
+        path = service.backup_path(filename)
+    except (AdminServiceError, AdminNotFoundError) as exc:
+        return _error_response(exc)
+    return FileResponse(
+        path,
+        media_type="application/sql",
+        filename=path.name,
+    )
+
+
+@router.delete("/backups/{filename}", response_model=None)
+def delete_backup(
+    filename: str,
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    _admin_status(request, auth_service)
+    try:
+        return service.delete_backup(filename)
+    except (AdminServiceError, AdminNotFoundError) as exc:
+        return _error_response(exc)

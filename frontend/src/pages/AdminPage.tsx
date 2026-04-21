@@ -9,10 +9,14 @@ import {
   addVehicle,
   approvePendingSubmission,
   assignTuningSetup,
+  backupDownloadUrl,
+  createBackup,
   deleteAdminRecord,
+  deleteBackup,
   getAdminRecords,
   getMaintenanceStatus,
   getPendingSubmissions,
+  listBackups as listAdminBackups,
   postAdminNews,
   rejectPendingSubmission,
   runIntegrityCheck,
@@ -85,6 +89,11 @@ function recordLabel(record: AdminRecord) {
   } - ${record.player_name ?? "Unknown"}`;
 }
 
+function optionalIcon(form: HTMLFormElement) {
+  const icon = new FormData(form).get("icon");
+  return icon instanceof File && icon.size > 0 ? icon : null;
+}
+
 export function AdminPage() {
   const queryClient = useQueryClient();
   const { data: authStatus, isLoading: authLoading } = useAuthStatus();
@@ -110,6 +119,8 @@ export function AdminPage() {
   const [newsTitle, setNewsTitle] = useState("");
   const [newsContent, setNewsContent] = useState("");
   const [integrity, setIntegrity] = useState<IntegrityStatus | null>(null);
+  const [backupMessage, setBackupMessage] = useState("");
+  const [backupError, setBackupError] = useState("");
 
   const mapsQuery = useQuery({ queryKey: ["public-data", "maps"], queryFn: () => getPublicData("maps") });
   const vehiclesQuery = useQuery({
@@ -131,6 +142,7 @@ export function AdminPage() {
   const recordsQuery = useQuery({ queryKey: ["admin", "records"], queryFn: getAdminRecords });
   const pendingQuery = useQuery({ queryKey: ["admin", "pending"], queryFn: getPendingSubmissions });
   const newsQuery = useQuery({ queryKey: ["news", 20], queryFn: () => getNews(20) });
+  const backupsQuery = useQuery({ queryKey: ["admin", "backups"], queryFn: listAdminBackups });
   const maintenanceQuery = useQuery({
     queryKey: ["admin", "maintenance"],
     queryFn: getMaintenanceStatus
@@ -187,6 +199,18 @@ export function AdminPage() {
       await refreshAdminData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed");
+    }
+  }
+
+  async function runBackupAction(action: () => Promise<unknown>, successMessage: string) {
+    setBackupMessage("");
+    setBackupError("");
+    try {
+      await action();
+      setBackupMessage(successMessage);
+      await backupsQuery.refetch();
+    } catch (err) {
+      setBackupError(err instanceof Error ? err.message : "Request failed");
     }
   }
 
@@ -248,25 +272,34 @@ export function AdminPage() {
 
   async function handleAddMap(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
+    const icon = optionalIcon(form);
     await runAction(async () => {
-      await addMap(mapName);
+      await addMap(mapName, icon);
       setMapName("");
+      form.reset();
     }, "Map added.");
   }
 
   async function handleAddVehicle(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
+    const icon = optionalIcon(form);
     await runAction(async () => {
-      await addVehicle(vehicleName);
+      await addVehicle(vehicleName, icon);
       setVehicleName("");
+      form.reset();
     }, "Vehicle added.");
   }
 
   async function handleAddPart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
+    const icon = optionalIcon(form);
     await runAction(async () => {
-      await addTuningPart(partName);
+      await addTuningPart(partName, icon);
       setPartName("");
+      form.reset();
     }, "Tuning part added.");
   }
 
@@ -293,9 +326,38 @@ export function AdminPage() {
     );
   }
 
-  function showUnsupportedBackupMessage() {
-    setNotice("");
-    setError("This backup operation is not available from the React admin yet.");
+  async function handleCreateBackup() {
+    await runBackupAction(async () => {
+      await createBackup();
+    }, "Backup created.");
+  }
+
+  async function handleDownloadDb() {
+    setBackupMessage("");
+    setBackupError("");
+    try {
+      const result = await createBackup();
+      await backupsQuery.refetch();
+      setBackupMessage(`Fresh backup created: ${result.filename}`);
+      window.location.href = backupDownloadUrl(result.filename);
+    } catch (err) {
+      setBackupError(err instanceof Error ? err.message : "Request failed");
+    }
+  }
+
+  async function handleDeleteBackup(filename: string) {
+    const confirmed = window.confirm(`Delete backup ${filename}?`);
+    if (!confirmed) {
+      return;
+    }
+    await runBackupAction(async () => {
+      await deleteBackup(filename);
+    }, "Backup deleted.");
+  }
+
+  function showImportUnsupported() {
+    setBackupMessage("");
+    setBackupError("SQL import and restore are intentionally disabled in the React admin because they are destructive PostgreSQL operations.");
   }
 
   if (authLoading) {
@@ -592,7 +654,7 @@ export function AdminPage() {
           <label>Vehicle Name</label>
           <input id="vehicle-name-input" type="text" required placeholder="e.g., Jeep" value={vehicleName} onChange={(event) => setVehicleName(event.target.value)} />
           <label>Icon (SVG - optional)</label>
-          <input id="vehicle-icon-input" type="file" accept=".svg,image/svg+xml" style={{ cursor: "pointer" }} />
+          <input id="vehicle-icon-input" name="icon" type="file" accept=".svg,image/svg+xml" style={{ cursor: "pointer" }} />
           <small style={{ display: "block", margin: "-6px 0 8px 0", color: "#666" }}>
             Upload a .svg icon file. Will be saved as: vehicle_name.svg
           </small>
@@ -607,7 +669,7 @@ export function AdminPage() {
           <label>Map Name</label>
           <input id="map-name-input" type="text" required placeholder="e.g., Forest Trials" value={mapName} onChange={(event) => setMapName(event.target.value)} />
           <label>Icon (SVG - optional)</label>
-          <input id="map-icon-input" type="file" accept=".svg,image/svg+xml" style={{ cursor: "pointer" }} />
+          <input id="map-icon-input" name="icon" type="file" accept=".svg,image/svg+xml" style={{ cursor: "pointer" }} />
           <small style={{ display: "block", margin: "-6px 0 8px 0", color: "#666" }}>
             Upload a .svg icon file. Will be saved as: map_name.svg
           </small>
@@ -622,7 +684,7 @@ export function AdminPage() {
           <label>Tuning Part Name</label>
           <input id="tuning-part-name-input" type="text" required placeholder="e.g., Turbo" value={partName} onChange={(event) => setPartName(event.target.value)} />
           <label>Icon (SVG - optional)</label>
-          <input id="tuning-part-icon-input" type="file" accept=".svg,image/svg+xml" style={{ cursor: "pointer" }} />
+          <input id="tuning-part-icon-input" name="icon" type="file" accept=".svg,image/svg+xml" style={{ cursor: "pointer" }} />
           <small style={{ display: "block", margin: "-6px 0 8px 0", color: "#666" }}>
             Upload a .svg icon file. Will be saved as: part_name.svg
           </small>
@@ -743,33 +805,71 @@ export function AdminPage() {
       <div className="form-container">
         <h2>Database & Backups</h2>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button type="button" onClick={showUnsupportedBackupMessage}>
+          <button type="button" onClick={handleDownloadDb}>
             Download DB
           </button>
-          <button type="button" onClick={showUnsupportedBackupMessage}>
+          <button type="button" onClick={handleCreateBackup}>
             Create Backup
           </button>
-          <button type="button" onClick={showUnsupportedBackupMessage}>
+          <button type="button" onClick={() => backupsQuery.refetch()} style={{ background: "#ccc", color: "#000" }}>
             List Backups
           </button>
           <button
             type="button"
             onClick={() =>
-              runAction(async () => {
+              runBackupAction(async () => {
                 setIntegrity(await runIntegrityCheck());
               }, "Integrity check completed.")
             }
+            style={{ background: "#28a745", color: "#fff" }}
           >
             Integrity Check
           </button>
         </div>
-        <div id="backups-list">
+        {backupMessage && <p className="admin-notice">{backupMessage}</p>}
+        {backupError && <p className="frontend-error">{backupError}</p>}
+        <div id="backups-list" style={{ marginTop: 12 }}>
+          {backupsQuery.isLoading && <p>Loading...</p>}
+          {!backupsQuery.isLoading && (backupsQuery.data?.backups ?? []).length === 0 && <p>No backups found.</p>}
+          {(backupsQuery.data?.backups ?? []).length > 0 && (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <tbody>
+                <tr>
+                  <th>Name</th>
+                  <th>Size</th>
+                  <th>Modified</th>
+                  <th>Actions</th>
+                </tr>
+                {(backupsQuery.data?.backups ?? []).map((backup) => (
+                  <tr key={backup.name} style={{ borderTop: "1px solid #eee" }}>
+                    <td>{backup.name}</td>
+                    <td>{backup.size}</td>
+                    <td>{backup.mtime}</td>
+                    <td className="admin-table-actions">
+                      <a className="admin-button-link" href={backupDownloadUrl(backup.name)}>
+                        Download
+                      </a>
+                      <button type="button" onClick={() => handleDeleteBackup(backup.name)} style={{ background: "#ccc", color: "#000" }}>
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
           {integrity && <pre className="frontend-pre-wrap">{JSON.stringify(integrity.counts, null, 2)}</pre>}
         </div>
-        <form id="import-form" onSubmit={(event) => { event.preventDefault(); showUnsupportedBackupMessage(); }} encType="multipart/form-data">
-          <input type="file" name="sqlfile" accept=".sql" required />
+        <h3 style={{ marginTop: 12 }}>Import SQL</h3>
+        <form id="import-form" onSubmit={(event) => { event.preventDefault(); showImportUnsupported(); }} encType="multipart/form-data">
+          <p style={{ color: "#666", fontSize: 13 }}>
+            SQL import and restore are disabled here. Use reviewed database tooling for destructive restores.
+          </p>
+          <input type="file" name="sqlfile" accept=".sql" disabled />
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button type="submit">Import SQL</button>
+            <button type="submit" disabled>
+              Import SQL
+            </button>
           </div>
           <p id="import-message" />
         </form>

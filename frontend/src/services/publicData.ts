@@ -17,3 +17,7 @@ export function getPublicData(view: PublicDataView) {
 export function getNews(limit = 10) {
   return fetchJson<{ news: NewsItem[] }>(`/api/v1/news?limit=${limit}`);
 }
+
+export function getHcaptchaSitekey() {
+  return fetchJson<{ sitekey: string }>("/api/v1/hcaptcha/sitekey");
+}

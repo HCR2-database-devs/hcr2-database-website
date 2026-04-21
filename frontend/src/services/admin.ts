@@ -1,4 +1,4 @@
-import type { AdminRecord, IntegrityStatus, MaintenanceStatus, PendingSubmission } from "../types/api";
+import type { AdminRecord, BackupItem, IntegrityStatus, MaintenanceStatus, PendingSubmission } from "../types/api";
 import { fetchJson } from "./api";
 
 type SuccessResponse = {
@@ -12,6 +12,22 @@ function jsonRequest<T>(path: string, method: string, body?: unknown) {
     headers: { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body)
   });
+}
+
+function formRequest<T>(path: string, body: FormData) {
+  return fetchJson<T>(path, {
+    method: "POST",
+    body
+  });
+}
+
+function withOptionalIcon(nameKey: string, name: string, icon?: File | null) {
+  const body = new FormData();
+  body.append(nameKey, name);
+  if (icon && icon.size > 0) {
+    body.append("icon", icon);
+  }
+  return body;
 }
 
 export function getAdminRecords() {
@@ -34,16 +50,16 @@ export function assignTuningSetup(body: unknown) {
   return jsonRequest<SuccessResponse>("/api/v1/admin/records/tuning-setup", "PATCH", body);
 }
 
-export function addMap(name: string) {
-  return jsonRequest<SuccessResponse>("/api/v1/admin/maps", "POST", { mapName: name });
+export function addMap(name: string, icon?: File | null) {
+  return formRequest<SuccessResponse>("/api/v1/admin/maps/form", withOptionalIcon("mapName", name, icon));
 }
 
-export function addVehicle(name: string) {
-  return jsonRequest<SuccessResponse>("/api/v1/admin/vehicles", "POST", { vehicleName: name });
+export function addVehicle(name: string, icon?: File | null) {
+  return formRequest<SuccessResponse>("/api/v1/admin/vehicles/form", withOptionalIcon("vehicleName", name, icon));
 }
 
-export function addTuningPart(name: string) {
-  return jsonRequest<SuccessResponse>("/api/v1/admin/tuning-parts", "POST", { partName: name });
+export function addTuningPart(name: string, icon?: File | null) {
+  return formRequest<SuccessResponse>("/api/v1/admin/tuning-parts/form", withOptionalIcon("partName", name, icon));
 }
 
 export function addTuningSetup(partIds: number[]) {
@@ -76,4 +92,22 @@ export function setMaintenance(action: "enable" | "disable") {
 
 export function runIntegrityCheck() {
   return fetchJson<IntegrityStatus>("/api/v1/admin/integrity");
+}
+
+export function listBackups() {
+  return fetchJson<{ backups: BackupItem[] }>("/api/v1/admin/backups");
+}
+
+export function createBackup() {
+  return jsonRequest<{ success: boolean; filename: string; backup: BackupItem }>("/api/v1/admin/backups", "POST");
+}
+
+export function deleteBackup(filename: string) {
+  return fetchJson<SuccessResponse>(`/api/v1/admin/backups/${encodeURIComponent(filename)}`, {
+    method: "DELETE"
+  });
+}
+
+export function backupDownloadUrl(filename: string) {
+  return `/api/v1/admin/backups/${encodeURIComponent(filename)}/download`;
 }
