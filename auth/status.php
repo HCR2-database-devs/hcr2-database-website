@@ -1,13 +1,17 @@
 <?php
-ini_set('session.cookie_domain', '.hcr2.xyz'); 
-ini_set('session.cookie_path', '/'); 
-ini_set('session.cookie_secure', 1); 
-ini_set('session.cookie_httponly', 1); 
-ini_set('session.cookie_samesite', 'Lax'); 
-session_start();
-
-require_once __DIR__ . '/check_auth.php';
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/check_auth.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params([
+        'domain' => '.hcr2.xyz',
+        'path' => '/',
+        'secure' => true,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
 
 header('Content-Type: application/json');
 

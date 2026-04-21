@@ -45,9 +45,18 @@ function env_list(string $value): array {
 
 ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
-ini_set('session.cookie_secure', '1');
-ini_set('session.cookie_httponly', '1');
-ini_set('session.cookie_samesite', 'Lax');
+
+function configure_session_cookie_settings(): void {
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        return;
+    }
+
+    ini_set('session.cookie_secure', '1');
+    ini_set('session.cookie_httponly', '1');
+    ini_set('session.cookie_samesite', 'Lax');
+}
+
+configure_session_cookie_settings();
 
 load_dotenv(__DIR__ . '/../.env');
 
@@ -60,13 +69,15 @@ function require_env(string $name): string {
     return $value;
 }
 
-function safe_json_error(string $message, int $statusCode = 500): void {
-    if (!headers_sent()) {
-        header('Content-Type: application/json; charset=utf-8');
-        http_response_code($statusCode);
+if (!function_exists('safe_json_error')) {
+    function safe_json_error(string $message, int $statusCode = 500): void {
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            http_response_code($statusCode);
+        }
+        echo json_encode(['error' => $message]);
+        exit;
     }
-    echo json_encode(['error' => $message]);
-    exit;
 }
 
 function generic_database_error(string $context = ''): void {
