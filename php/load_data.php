@@ -66,7 +66,7 @@ if (isset($_GET['type'])) {
             echo get_data($db, '_player');
             break;
         case 'tuning_parts':
-            echo get_data($db, '_tuningpart', '*', '', 'nameTuningPart');
+            echo get_data($db, '_tuningpart', '*', '', '"nameTuningPart"');
             break;
         case 'tuning_setups':
             try {
@@ -105,20 +105,26 @@ if (isset($_GET['type'])) {
                             wr.current,
                             wr.\"idTuningSetup\" AS \"idTuningSetup\",
                             wr.questionable,
-                            COALESCE(wr.questionable_reason, '') as questionable_reason,
+                            COALESCE(wr.questionable_reason, '') AS questionable_reason,
                             m.\"nameMap\" AS map_name,
                             v.\"nameVehicle\" AS vehicle_name,
                             p.\"namePlayer\" AS player_name,
                             COALESCE(p.country, '') AS player_country,
-                            string_agg(tp.\"nameTuningPart\", ', ') AS tuning_parts
+                            COALESCE(ts_parts.tuning_parts, '') AS tuning_parts
                         FROM _worldrecord AS wr
                         JOIN _map AS m ON wr.\"idMap\" = m.\"idMap\"
                         JOIN _vehicle AS v ON wr.\"idVehicle\" = v.\"idVehicle\"
                         LEFT JOIN _player AS p ON wr.\"idPlayer\" = p.\"idPlayer\"
-                        LEFT JOIN _tuningsetupparts tsp ON wr.\"idTuningSetup\" = tsp.\"idTuningSetup\"
-                        LEFT JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
+                        LEFT JOIN (
+                            SELECT
+                                tsp.\"idTuningSetup\" AS \"idTuningSetup\",
+                                string_agg(tp.\"nameTuningPart\", ', ' ORDER BY tp.\"nameTuningPart\") AS tuning_parts
+                            FROM _tuningsetupparts tsp
+                            JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
+                            GROUP BY tsp.\"idTuningSetup\"
+                        ) AS ts_parts ON wr.\"idTuningSetup\" = ts_parts.\"idTuningSetup\"
                         WHERE wr.current = 1
-                        GROUP BY wr.\"idRecord\", wr.distance, wr.current, wr.\"idTuningSetup\", wr.questionable, wr.questionable_reason, m.\"nameMap\", v.\"nameVehicle\", p.\"namePlayer\", p.country";
+                        ORDER BY wr.\"idRecord\" DESC";
                 $stmt = $db->prepare($sql);
                 $stmt->execute();
                 $records = $stmt->fetchAll(PDO::FETCH_ASSOC);

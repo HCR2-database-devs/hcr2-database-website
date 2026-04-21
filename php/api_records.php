@@ -80,20 +80,25 @@ $sql = "SELECT
         wr.current,
         wr.\"idTuningSetup\" AS \"idTuningSetup\",
         wr.questionable,
-        COALESCE(wr.questionable_reason, '') as notes,
+        COALESCE(wr.questionable_reason, '') AS notes,
         m.\"nameMap\" AS map_name,
         v.\"nameVehicle\" AS vehicle_name,
         p.\"namePlayer\" AS player_name,
-        p.country AS player_country,
-        string_agg(tp.\"nameTuningPart\", ', ') AS tuning_parts
+        COALESCE(p.country, '') AS player_country,
+        COALESCE(ts_parts.tuning_parts, '') AS tuning_parts
     FROM _worldrecord wr
     JOIN _map m ON wr.\"idMap\" = m.\"idMap\"
     JOIN _vehicle v ON wr.\"idVehicle\" = v.\"idVehicle\"
     LEFT JOIN _player p ON wr.\"idPlayer\" = p.\"idPlayer\"
-    LEFT JOIN _tuningsetupparts tsp ON wr.\"idTuningSetup\" = tsp.\"idTuningSetup\"
-    LEFT JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
+    LEFT JOIN (
+        SELECT
+            tsp.\"idTuningSetup\" AS \"idTuningSetup\",
+            string_agg(tp.\"nameTuningPart\", ', ' ORDER BY tp.\"nameTuningPart\") AS tuning_parts
+        FROM _tuningsetupparts tsp
+        JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
+        GROUP BY tsp.\"idTuningSetup\"
+    ) ts_parts ON wr.\"idTuningSetup\" = ts_parts.\"idTuningSetup\"
     " . (count($where) ? 'WHERE ' . implode(' AND ', $where) : '') . "
-    GROUP BY wr.\"idRecord\", wr.\"idMap\", wr.\"idVehicle\", wr.\"idPlayer\", wr.distance, wr.current, wr.\"idTuningSetup\", wr.questionable, wr.questionable_reason, m.\"nameMap\", v.\"nameVehicle\", p.\"namePlayer\", p.country
     ORDER BY wr.\"idRecord\" DESC
     LIMIT :limit OFFSET :offset";
 
