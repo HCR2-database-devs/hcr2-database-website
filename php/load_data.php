@@ -71,13 +71,13 @@ if (isset($_GET['type'])) {
         case 'tuning_setups':
             try {
                 $sql = "
-                    SELECT ts.idTuningSetup,
-                           string_agg(tp.nameTuningPart, ', ') as parts
+                    SELECT ts.\"idTuningSetup\" AS \"idTuningSetup\",
+                           string_agg(tp.\"nameTuningPart\", ', ') AS parts
                     FROM _tuningsetup ts
-                    JOIN _tuningsetupparts tsp ON ts.idTuningSetup = tsp.idTuningSetup
-                    JOIN _tuningpart tp ON tsp.idTuningPart = tp.idTuningPart
-                    GROUP BY ts.idTuningSetup
-                    ORDER BY ts.idTuningSetup
+                    JOIN _tuningsetupparts tsp ON ts.\"idTuningSetup\" = tsp.\"idTuningSetup\"
+                    JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
+                    GROUP BY ts.\"idTuningSetup\"
+                    ORDER BY ts.\"idTuningSetup\"
                 ";
                 $stmt = $db->prepare($sql);
                 $stmt->execute();
@@ -100,25 +100,25 @@ if (isset($_GET['type'])) {
         case 'records':
             try {
                 $sql = "SELECT
-                            wr.idRecord AS idRecord,
+                            wr.\"idRecord\" AS \"idRecord\",
                             wr.distance,
                             wr.current,
-                            wr.idTuningSetup,
+                            wr.\"idTuningSetup\" AS \"idTuningSetup\",
                             wr.questionable,
                             COALESCE(wr.questionable_reason, '') as questionable_reason,
-                            m.nameMap AS map_name,
-                            v.nameVehicle AS vehicle_name,
-                            p.namePlayer AS player_name,
+                            m.\"nameMap\" AS map_name,
+                            v.\"nameVehicle\" AS vehicle_name,
+                            p.\"namePlayer\" AS player_name,
                             COALESCE(p.country, '') AS player_country,
-                            string_agg(tp.nameTuningPart, ', ') as tuning_parts
+                            string_agg(tp.\"nameTuningPart\", ', ') AS tuning_parts
                         FROM _worldrecord AS wr
-                        JOIN _map AS m ON wr.idMap = m.idMap
-                        JOIN _vehicle AS v ON wr.idVehicle = v.idVehicle
-                        LEFT JOIN _player AS p ON wr.idPlayer = p.idPlayer
-                        LEFT JOIN _tuningsetupparts tsp ON wr.idTuningSetup = tsp.idTuningSetup
-                        LEFT JOIN _tuningpart tp ON tsp.idTuningPart = tp.idTuningPart
+                        JOIN _map AS m ON wr.\"idMap\" = m.\"idMap\"
+                        JOIN _vehicle AS v ON wr.\"idVehicle\" = v.\"idVehicle\"
+                        LEFT JOIN _player AS p ON wr.\"idPlayer\" = p.\"idPlayer\"
+                        LEFT JOIN _tuningsetupparts tsp ON wr.\"idTuningSetup\" = tsp.\"idTuningSetup\"
+                        LEFT JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
                         WHERE wr.current = 1
-                        GROUP BY wr.idRecord, wr.distance, wr.current, wr.idTuningSetup, wr.questionable, wr.questionable_reason, m.nameMap, v.nameVehicle, p.namePlayer, p.country";
+                        GROUP BY wr.\"idRecord\", wr.distance, wr.current, wr.\"idTuningSetup\", wr.questionable, wr.questionable_reason, m.\"nameMap\", v.\"nameVehicle\", p.\"namePlayer\", p.country";
                 $stmt = $db->prepare($sql);
                 $stmt->execute();
                 $records = $stmt->fetchAll(PDO::FETCH_ASSOC);

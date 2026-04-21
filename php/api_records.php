@@ -27,15 +27,15 @@ function safeLike($value) {
 }
 
 if (!empty($_GET['map'])) {
-    $where[] = 'LOWER(m.nameMap) LIKE LOWER(:map)';
+    $where[] = 'LOWER(m."nameMap") LIKE LOWER(:map)';
     $params[':map'] = safeLike($_GET['map']);
 }
 if (!empty($_GET['vehicle'])) {
-    $where[] = 'LOWER(v.nameVehicle) LIKE LOWER(:vehicle)';
+    $where[] = 'LOWER(v."nameVehicle") LIKE LOWER(:vehicle)';
     $params[':vehicle'] = safeLike($_GET['vehicle']);
 }
 if (!empty($_GET['player'])) {
-    $where[] = 'LOWER(p.namePlayer) LIKE LOWER(:player)';
+    $where[] = 'LOWER(p."namePlayer") LIKE LOWER(:player)';
     $params[':player'] = safeLike($_GET['player']);
 }
 if (!empty($_GET['country'])) {
@@ -56,7 +56,7 @@ if (isset($_GET['max_distance']) && is_numeric($_GET['max_distance'])) {
 }
 if (!empty($_GET['q'])) {
     $q = safeLike($_GET['q']);
-    $where[] = '(LOWER(m.nameMap) LIKE LOWER(:q) OR LOWER(v.nameVehicle) LIKE LOWER(:q) OR LOWER(p.namePlayer) LIKE LOWER(:q) OR LOWER(wr.questionable_reason) LIKE LOWER(:q))';
+    $where[] = '(LOWER(m."nameMap") LIKE LOWER(:q) OR LOWER(v."nameVehicle") LIKE LOWER(:q) OR LOWER(p."namePlayer") LIKE LOWER(:q) OR LOWER(wr.questionable_reason) LIKE LOWER(:q))';
     $params[':q'] = $q;
 }
 
@@ -72,29 +72,29 @@ if (isset($_GET['offset']) && is_numeric($_GET['offset'])) {
 }
 
 $sql = "SELECT
-        wr.idRecord as idRecord,
-        wr.idMap,
-        wr.idVehicle,
-        wr.idPlayer,
+        wr.\"idRecord\" AS \"idRecord\",
+        wr.\"idMap\" AS \"idMap\",
+        wr.\"idVehicle\" AS \"idVehicle\",
+        wr.\"idPlayer\" AS \"idPlayer\",
         wr.distance,
         wr.current,
-        wr.idTuningSetup,
+        wr.\"idTuningSetup\" AS \"idTuningSetup\",
         wr.questionable,
         COALESCE(wr.questionable_reason, '') as notes,
-        m.nameMap as map_name,
-        v.nameVehicle as vehicle_name,
-        p.namePlayer as player_name,
-        p.country as player_country,
-        string_agg(tp.nameTuningPart, ', ') as tuning_parts
+        m.\"nameMap\" AS map_name,
+        v.\"nameVehicle\" AS vehicle_name,
+        p.\"namePlayer\" AS player_name,
+        p.country AS player_country,
+        string_agg(tp.\"nameTuningPart\", ', ') AS tuning_parts
     FROM _worldrecord wr
-    JOIN _map m ON wr.idMap = m.idMap
-    JOIN _vehicle v ON wr.idVehicle = v.idVehicle
-    LEFT JOIN _player p ON wr.idPlayer = p.idPlayer
-    LEFT JOIN _tuningsetupparts tsp ON wr.idTuningSetup = tsp.idTuningSetup
-    LEFT JOIN _tuningpart tp ON tsp.idTuningPart = tp.idTuningPart
+    JOIN _map m ON wr.\"idMap\" = m.\"idMap\"
+    JOIN _vehicle v ON wr.\"idVehicle\" = v.\"idVehicle\"
+    LEFT JOIN _player p ON wr.\"idPlayer\" = p.\"idPlayer\"
+    LEFT JOIN _tuningsetupparts tsp ON wr.\"idTuningSetup\" = tsp.\"idTuningSetup\"
+    LEFT JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
     " . (count($where) ? 'WHERE ' . implode(' AND ', $where) : '') . "
-    GROUP BY wr.idRecord
-    ORDER BY wr.idRecord DESC
+    GROUP BY wr.\"idRecord\", wr.\"idMap\", wr.\"idVehicle\", wr.\"idPlayer\", wr.distance, wr.current, wr.\"idTuningSetup\", wr.questionable, wr.questionable_reason, m.\"nameMap\", v.\"nameVehicle\", p.\"namePlayer\", p.country
+    ORDER BY wr.\"idRecord\" DESC
     LIMIT :limit OFFSET :offset";
 
 $stmt = $db->prepare($sql);
