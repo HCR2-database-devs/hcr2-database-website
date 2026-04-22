@@ -1,6 +1,6 @@
 export function PrivacyPage() {
   return (
-    <main>
+    <main className="standalone-page">
       <div className="policy-container">
         <h1>Privacy Policy</h1>
         <p>Effective date: 26 December 2025</p>
@@ -57,7 +57,7 @@ export function PrivacyPage() {
           <a href="mailto:nipatsuplaying@gmail.com">nipatsuplaying@gmail.com</a>
         </p>
 
-        <p style={{ marginTop: 16, fontSize: 13, color: "#555" }}>
+        <p className="policy-note">
           This policy may be updated; the effective date above indicates the latest revision.
         </p>
         <p>

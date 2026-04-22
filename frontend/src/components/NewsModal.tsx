@@ -16,18 +16,18 @@ export function NewsModal({ onClose }: NewsModalProps) {
     <div className="modal-overlay">
       <div className="modal-panel form-container" role="dialog" aria-modal="true" aria-labelledby="news-title">
         <button className="modal-close" type="button" aria-label="Close" onClick={onClose}>
-          ✕
+          Close
         </button>
         <h2 id="news-title">Recent News</h2>
-        <div id="news-list" style={{ maxHeight: "60vh", overflow: "auto", textAlign: "left" }}>
+        <div id="news-list" className="modal-scroll">
           {news.isLoading && <p>Loading news...</p>}
           {news.isError && <p className="frontend-error">Failed to load news.</p>}
           {news.data?.news.length === 0 && <p>No news available.</p>}
           {news.data?.news.map((item) => (
             <div className="news-item" key={item.id}>
-              <h3 style={{ margin: "0 0 6px" }}>{item.title}</h3>
+              <h3>{item.title}</h3>
               <div className="frontend-muted">
-                {item.created_at} — {item.author ?? ""}
+                {item.created_at} - {item.author ?? ""}
               </div>
               <div className="frontend-pre-wrap">{item.content}</div>
             </div>

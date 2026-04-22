@@ -82,7 +82,7 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
       }
       hcaptchaWidgetId.current = window.hcaptcha.render(widgetRef.current, {
         sitekey: sitekey.data.sitekey,
-        theme: "light",
+        theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
         callback(token) {
           const input = document.getElementById("h-captcha-response") as HTMLInputElement | null;
           if (input) {
@@ -160,43 +160,50 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
     <div id="public-submit-overlay" className="modal-overlay">
       <div className="modal-panel form-container" role="dialog" aria-modal="true" aria-labelledby="public-submit-title">
         <button className="modal-close" type="button" aria-label="Close" onClick={onClose}>
-          ✕
+          Close
         </button>
         <h2 id="public-submit-title">Submit a Record (for admin review)</h2>
         <form id="public-submit-form" onSubmit={handleSubmit}>
           <input id="form-load-time" type="hidden" value={formLoadTime} readOnly />
-          <label>Map</label>
-          <select id="public-map-select" name="mapId" required>
-            <option value="">Select a Map</option>
-            {(maps.data ?? []).map((map) => (
-              <option key={getId(map, "idMap", "idmap")} value={getId(map, "idMap", "idmap")}>
-                {getName(map, "nameMap", "namemap")}
-              </option>
-            ))}
-          </select>
+          <label>
+            Map
+            <select id="public-map-select" name="mapId" required>
+              <option value="">Select a Map</option>
+              {(maps.data ?? []).map((map) => (
+                <option key={getId(map, "idMap", "idmap")} value={getId(map, "idMap", "idmap")}>
+                  {getName(map, "nameMap", "namemap")}
+                </option>
+              ))}
+            </select>
+          </label>
 
-          <label>Vehicle</label>
-          <select id="public-vehicle-select" name="vehicleId" required>
-            <option value="">Select a Vehicle</option>
-            {(vehicles.data ?? []).map((vehicle) => (
-              <option
-                key={getId(vehicle, "idVehicle", "idvehicle")}
-                value={getId(vehicle, "idVehicle", "idvehicle")}
-              >
-                {getName(vehicle, "nameVehicle", "namevehicle")}
-              </option>
-            ))}
-          </select>
+          <label>
+            Vehicle
+            <select id="public-vehicle-select" name="vehicleId" required>
+              <option value="">Select a Vehicle</option>
+              {(vehicles.data ?? []).map((vehicle) => (
+                <option key={getId(vehicle, "idVehicle", "idvehicle")} value={getId(vehicle, "idVehicle", "idvehicle")}>
+                  {getName(vehicle, "nameVehicle", "namevehicle")}
+                </option>
+              ))}
+            </select>
+          </label>
 
-          <label>Distance</label>
-          <input id="public-distance-input" name="distance" type="number" required min="1" />
-          <label>Player Name</label>
-          <input id="public-player-name" name="playerName" required />
-          <label>Country (optional)</label>
-          <input id="public-player-country" name="playerCountry" />
+          <label>
+            Distance
+            <input id="public-distance-input" name="distance" type="number" required min="1" />
+          </label>
+          <label>
+            Player Name
+            <input id="public-player-name" name="playerName" required />
+          </label>
+          <label>
+            Country (optional)
+            <input id="public-player-country" name="playerCountry" />
+          </label>
 
-          <label>Tuning Parts (choose 3 or 4)</label>
-          <div id="public-tuning-parts" className="frontend-fieldset">
+          <fieldset id="public-tuning-parts" className="frontend-fieldset">
+            <legend>Tuning Parts (choose 3 or 4)</legend>
             {partOptions.map((part) => (
               <label key={part.id}>
                 <input
@@ -207,18 +214,16 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
                   checked={selectedParts.includes(part.name)}
                   onChange={(event) => {
                     setSelectedParts((current) =>
-                      event.target.checked
-                        ? [...current, part.name]
-                        : current.filter((item) => item !== part.name)
+                      event.target.checked ? [...current, part.name] : current.filter((item) => item !== part.name)
                     );
                   }}
                 />
                 {part.name}
               </label>
             ))}
-          </div>
+          </fieldset>
 
-          <div style={{ position: "absolute", left: "-9999px", top: "auto", width: 1, height: 1, overflow: "hidden" }}>
+          <div className="hp-field" aria-hidden="true">
             <label>
               Email
               <input id="hp_email" name="hp_email" tabIndex={-1} autoComplete="off" />
@@ -236,12 +241,7 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
               <textarea id="hp_comments" name="hp_comments" tabIndex={-1} autoComplete="off" />
             </label>
           </div>
-          <div
-            id="hcaptcha-widget"
-            ref={widgetRef}
-            className="h-captcha"
-            data-sitekey={sitekey.data?.sitekey ?? ""}
-          />
+          <div id="hcaptcha-widget" ref={widgetRef} className="h-captcha" data-sitekey={sitekey.data?.sitekey ?? ""} />
           {sitekey.isError && <p className="frontend-error">hCaptcha is not configured.</p>}
           <input id="h-captcha-response" name="h_captcha_response" type="hidden" />
 

@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+﻿import { FormEvent, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useAuthStatus } from "../hooks/useAuthStatus";
@@ -362,7 +362,7 @@ export function AdminPage() {
 
   if (authLoading) {
     return (
-      <div className="admin-legacy-page">
+      <div className="admin-page">
         <div className="form-container">
           <h2>Admin</h2>
           <p>Checking access...</p>
@@ -374,7 +374,7 @@ export function AdminPage() {
   if (!authStatus?.allowed) {
     if (authStatus?.logged) {
       return (
-        <div className="admin-legacy-page">
+        <div className="admin-page">
           <h1>403 Forbidden</h1>
           <p>You are logged in as {authStatus.username ?? authStatus.id}, but you are not an admin.</p>
         </div>
@@ -382,7 +382,7 @@ export function AdminPage() {
     }
 
     return (
-      <div className="admin-legacy-page">
+      <div className="admin-page">
         <div className="form-container">
           <h2>Admin</h2>
           <p className="frontend-error">You must be signed in with an authorized Discord account.</p>
@@ -395,9 +395,9 @@ export function AdminPage() {
   }
 
   return (
-    <div className="admin-legacy-page">
+    <div className="admin-page">
       <div className="topbar">
-        <h1>Admin Panel — Edit/Add/Delete Records</h1>
+        <h1>Admin Panel</h1>
         <div>
           <span>Logged in as {authStatus.username ?? authStatus.id}</span>
           &nbsp;|&nbsp;<a href="/auth/logout.php">Logout</a>
@@ -409,7 +409,7 @@ export function AdminPage() {
       {error && <p className="frontend-error">{error}</p>}
 
       <div className="form-container">
-        <h2>Submit a New Record ✅</h2>
+        <h2>Submit a New Record</h2>
         <form id="record-form" onSubmit={handleSubmitRecord}>
           <label>
             Map
@@ -460,7 +460,7 @@ export function AdminPage() {
               placeholder="Filter by part name or use part: prefix (e.g., 'magnet' or 'part:magnet')..."
               value={tuningSetupFilter}
               onChange={(event) => setTuningSetupFilter(event.target.value)}
-              style={{ marginBottom: 4 }}
+              className="stacked-control"
             />
             <select
               id="tuning-setup-select"
@@ -541,7 +541,7 @@ export function AdminPage() {
       </div>
 
       <div className="form-container">
-        <h2>Delete a Record ❌</h2>
+        <h2>Delete a Record</h2>
         <form id="delete-form" onSubmit={handleDeleteRecord}>
           <label>Filter Record</label>
           <input
@@ -566,7 +566,7 @@ export function AdminPage() {
       </div>
 
       <div className="form-container">
-        <h2>Mark Records as Questionable ❓</h2>
+        <h2>Mark Records as Questionable</h2>
         <form id="questionable-form" onSubmit={handleSetStatus}>
           <label>Filter Record</label>
           <input
@@ -581,15 +581,15 @@ export function AdminPage() {
             <option value="">Select a record</option>
             {statusRecords.map((record) => (
               <option key={record.idRecord} value={record.idRecord}>
-                {record.questionable === 1 ? "❓" : "✓"} {recordLabel(record)}
+                {record.questionable === 1 ? "Questionable" : "Verified"} - {recordLabel(record)}
               </option>
             ))}
           </select>
           <label>Status</label>
           <select id="questionable-status-select" required value={statusValue} onChange={(event) => setStatusValue(event.target.value)}>
             <option value="">Select status</option>
-            <option value="0">Mark as Verified ✓</option>
-            <option value="1">Mark as Questionable ❓</option>
+            <option value="0">Mark as Verified</option>
+            <option value="1">Mark as Questionable</option>
           </select>
           <label>Note (optional)</label>
           <textarea
@@ -604,7 +604,7 @@ export function AdminPage() {
       </div>
 
       <div className="form-container">
-        <h2>Assign Tuning Setup to Existing Record 🔧</h2>
+        <h2>Assign Tuning Setup to Existing Record</h2>
         <form id="assign-setup-form" onSubmit={handleAssignSetup}>
           <label>Filter Record (without tuning setup)</label>
           <input
@@ -630,7 +630,7 @@ export function AdminPage() {
             placeholder="Filter by part name or use part: prefix (e.g., 'magnet' or 'part:magnet')..."
             value={assignSetupFilter}
             onChange={(event) => setAssignSetupFilter(event.target.value)}
-            style={{ marginBottom: 4 }}
+            className="stacked-control"
           />
           <select id="assign-tuning-setup-select" required value={assignSetupId} onChange={(event) => setAssignSetupId(event.target.value)}>
             <option value="">Select a setup</option>
@@ -649,13 +649,13 @@ export function AdminPage() {
       </div>
 
       <div className="form-container">
-        <h2>Add a Vehicle ➕</h2>
+        <h2>Add a Vehicle</h2>
         <form id="add-vehicle-form" onSubmit={handleAddVehicle} encType="multipart/form-data">
           <label>Vehicle Name</label>
           <input id="vehicle-name-input" type="text" required placeholder="e.g., Jeep" value={vehicleName} onChange={(event) => setVehicleName(event.target.value)} />
           <label>Icon (SVG - optional)</label>
-          <input id="vehicle-icon-input" name="icon" type="file" accept=".svg,image/svg+xml" style={{ cursor: "pointer" }} />
-          <small style={{ display: "block", margin: "-6px 0 8px 0", color: "#666" }}>
+          <input id="vehicle-icon-input" name="icon" type="file" accept=".svg,image/svg+xml" />
+          <small className="form-hint">
             Upload a .svg icon file. Will be saved as: vehicle_name.svg
           </small>
           <button type="submit">Add Vehicle</button>
@@ -664,13 +664,13 @@ export function AdminPage() {
       </div>
 
       <div className="form-container">
-        <h2>Add a Map ➕</h2>
+        <h2>Add a Map</h2>
         <form id="add-map-form" onSubmit={handleAddMap} encType="multipart/form-data">
           <label>Map Name</label>
           <input id="map-name-input" type="text" required placeholder="e.g., Forest Trials" value={mapName} onChange={(event) => setMapName(event.target.value)} />
           <label>Icon (SVG - optional)</label>
-          <input id="map-icon-input" name="icon" type="file" accept=".svg,image/svg+xml" style={{ cursor: "pointer" }} />
-          <small style={{ display: "block", margin: "-6px 0 8px 0", color: "#666" }}>
+          <input id="map-icon-input" name="icon" type="file" accept=".svg,image/svg+xml" />
+          <small className="form-hint">
             Upload a .svg icon file. Will be saved as: map_name.svg
           </small>
           <button type="submit">Add Map</button>
@@ -679,13 +679,13 @@ export function AdminPage() {
       </div>
 
       <div className="form-container">
-        <h2>Add Tuning Part ➕</h2>
+        <h2>Add Tuning Part</h2>
         <form id="add-tuning-part-form" onSubmit={handleAddPart} encType="multipart/form-data">
           <label>Tuning Part Name</label>
           <input id="tuning-part-name-input" type="text" required placeholder="e.g., Turbo" value={partName} onChange={(event) => setPartName(event.target.value)} />
           <label>Icon (SVG - optional)</label>
-          <input id="tuning-part-icon-input" name="icon" type="file" accept=".svg,image/svg+xml" style={{ cursor: "pointer" }} />
-          <small style={{ display: "block", margin: "-6px 0 8px 0", color: "#666" }}>
+          <input id="tuning-part-icon-input" name="icon" type="file" accept=".svg,image/svg+xml" />
+          <small className="form-hint">
             Upload a .svg icon file. Will be saved as: part_name.svg
           </small>
           <button type="submit">Add Tuning Part</button>
@@ -694,7 +694,7 @@ export function AdminPage() {
       </div>
 
       <div className="form-container">
-        <h2>Add Tuning Setup ➕</h2>
+        <h2>Add Tuning Setup</h2>
         <form id="add-tuning-setup-form" onSubmit={handleAddSetup}>
           <label>Select Tuning Parts (3-4)</label>
           <div id="tuning-parts-checkboxes" className="admin-checkboxes">
@@ -762,7 +762,7 @@ export function AdminPage() {
                         onClick={() =>
                           runAction(() => rejectPendingSubmission(submission.id), "Submission rejected.")
                         }
-                        style={{ background: "#ccc", color: "#000" }}
+                        className="button-ghost"
                       >
                         Reject
                       </button>
@@ -782,9 +782,9 @@ export function AdminPage() {
           <input id="news-title-input" type="text" required value={newsTitle} onChange={(event) => setNewsTitle(event.target.value)} />
           <label>Content</label>
           <textarea id="news-content-input" required rows={6} value={newsContent} onChange={(event) => setNewsContent(event.target.value)} />
-          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <div className="admin-actions">
             <button type="submit">Post News</button>
-            <button type="button" onClick={() => newsQuery.refetch()} style={{ background: "#ccc", color: "#000" }}>
+            <button type="button" onClick={() => newsQuery.refetch()} className="button-ghost">
               Refresh
             </button>
           </div>
@@ -794,9 +794,9 @@ export function AdminPage() {
           {newsQuery.isLoading && <p>Loading news...</p>}
           {newsQuery.data?.news.map((item) => (
             <div className="news-item" key={item.id}>
-              <h3 style={{ margin: "0 0 6px" }}>{item.title}</h3>
-              <div style={{ fontSize: 13, color: "#666", marginBottom: 8 }}>{item.created_at} — {item.author ?? ""}</div>
-              <div style={{ whiteSpace: "pre-wrap" }}>{item.content}</div>
+              <h3>{item.title}</h3>
+              <div className="frontend-muted">{item.created_at} - {item.author ?? ""}</div>
+              <div className="frontend-pre-wrap">{item.content}</div>
             </div>
           ))}
         </div>
@@ -804,14 +804,14 @@ export function AdminPage() {
 
       <div className="form-container">
         <h2>Database & Backups</h2>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div className="admin-actions">
           <button type="button" onClick={handleDownloadDb}>
             Download DB
           </button>
           <button type="button" onClick={handleCreateBackup}>
             Create Backup
           </button>
-          <button type="button" onClick={() => backupsQuery.refetch()} style={{ background: "#ccc", color: "#000" }}>
+          <button type="button" onClick={() => backupsQuery.refetch()} className="button-ghost">
             List Backups
           </button>
           <button
@@ -821,18 +821,18 @@ export function AdminPage() {
                 setIntegrity(await runIntegrityCheck());
               }, "Integrity check completed.")
             }
-            style={{ background: "#28a745", color: "#fff" }}
+            className="button-primary"
           >
             Integrity Check
           </button>
         </div>
         {backupMessage && <p className="admin-notice">{backupMessage}</p>}
         {backupError && <p className="frontend-error">{backupError}</p>}
-        <div id="backups-list" style={{ marginTop: 12 }}>
+        <div id="backups-list" className="admin-block">
           {backupsQuery.isLoading && <p>Loading...</p>}
           {!backupsQuery.isLoading && (backupsQuery.data?.backups ?? []).length === 0 && <p>No backups found.</p>}
           {(backupsQuery.data?.backups ?? []).length > 0 && (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table>
               <tbody>
                 <tr>
                   <th>Name</th>
@@ -841,7 +841,7 @@ export function AdminPage() {
                   <th>Actions</th>
                 </tr>
                 {(backupsQuery.data?.backups ?? []).map((backup) => (
-                  <tr key={backup.name} style={{ borderTop: "1px solid #eee" }}>
+                  <tr key={backup.name}>
                     <td>{backup.name}</td>
                     <td>{backup.size}</td>
                     <td>{backup.mtime}</td>
@@ -849,7 +849,7 @@ export function AdminPage() {
                       <a className="admin-button-link" href={backupDownloadUrl(backup.name)}>
                         Download
                       </a>
-                      <button type="button" onClick={() => handleDeleteBackup(backup.name)} style={{ background: "#ccc", color: "#000" }}>
+                      <button type="button" onClick={() => handleDeleteBackup(backup.name)} className="button-ghost">
                         Delete
                       </button>
                     </td>
@@ -860,13 +860,13 @@ export function AdminPage() {
           )}
           {integrity && <pre className="frontend-pre-wrap">{JSON.stringify(integrity.counts, null, 2)}</pre>}
         </div>
-        <h3 style={{ marginTop: 12 }}>Import SQL</h3>
+        <h3 className="admin-subtitle">Import SQL</h3>
         <form id="import-form" onSubmit={(event) => { event.preventDefault(); showImportUnsupported(); }} encType="multipart/form-data">
-          <p style={{ color: "#666", fontSize: 13 }}>
+          <p className="form-hint">
             SQL import and restore are disabled here. Use reviewed database tooling for destructive restores.
           </p>
           <input type="file" name="sqlfile" accept=".sql" disabled />
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <div className="admin-actions">
             <button type="submit" disabled>
               Import SQL
             </button>
@@ -880,7 +880,7 @@ export function AdminPage() {
         <p id="maintenance-status">
           {maintenanceQuery.data?.maintenance ? "MAINTENANCE: ON (admins only)" : "MAINTENANCE: OFF"}
         </p>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div className="admin-actions">
           <button type="button" onClick={() => runAction(() => setMaintenance("enable"), "Maintenance updated.")} id="maintenance-enable">
             Enable
           </button>
@@ -888,11 +888,11 @@ export function AdminPage() {
             type="button"
             onClick={() => runAction(() => setMaintenance("disable"), "Maintenance updated.")}
             id="maintenance-disable"
-            style={{ background: "#ccc", color: "#000" }}
+            className="button-ghost"
           >
             Disable
           </button>
-          <button type="button" onClick={() => maintenanceQuery.refetch()} style={{ background: "#f0f0f0", color: "#000" }}>
+          <button type="button" onClick={() => maintenanceQuery.refetch()} className="button-ghost">
             Refresh
           </button>
         </div>

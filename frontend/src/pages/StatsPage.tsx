@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { asText, formatDistance, MapWithIcon, TuningPartWithIcon, VehicleWithIcon } from "../lib/legacyDisplay";
@@ -12,6 +13,7 @@ type ChartEntry = {
 };
 
 const specialMaps = ["Forest Trials", "Intense City", "Raging Winter"];
+const chartVariables = ["--accent", "--chart-2", "--chart-3", "--chart-4", "--chart-5", "--chart-6"];
 
 function distance(row: DataRow) {
   return Number(row.distance ?? 0);
@@ -22,8 +24,30 @@ function adventureStars(row: DataRow) {
   return specialMaps.includes(asText(row.map_name)) ? (value >= 5000 ? 15000 : value * 3) : value >= 10000 ? 10000 : value;
 }
 
+function cssValue(name: string, fallback: string) {
+  if (typeof window === "undefined") {
+    return fallback;
+  }
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
+
+function chartColor(index: number) {
+  return `var(${chartVariables[index % chartVariables.length]})`;
+}
+
+function TableFrame({ children }: { children: ReactNode }) {
+  return (
+    <div className="table-shell">
+      <div className="table-scroll">{children}</div>
+    </div>
+  );
+}
+
 function ChartBars({ entries }: { entries: ChartEntry[] }) {
   const max = Math.max(...entries.map((entry) => entry.value), 1);
+  if (entries.length === 0) {
+    return <p className="empty-state">No statistics available.</p>;
+  }
   return (
     <>
       {entries.map((entry, index) => (
@@ -35,7 +59,7 @@ function ChartBars({ entries }: { entries: ChartEntry[] }) {
               className="bar-fill"
               style={{
                 width: `${(entry.value / max) * 100}%`,
-                background: entry.accent
+                backgroundColor: entry.accent ?? "var(--accent)"
               }}
             >
               <span className="bar-value">{formatDistance(entry.value)}</span>
@@ -149,7 +173,10 @@ export function StatsPage() {
     if (!canvas || !ctx || countryEntries.length === 0) {
       return;
     }
-    ctx.fillStyle = "#ffffff";
+    const surface = cssValue("--surface", "#ffffff");
+    const border = cssValue("--surface", "#ffffff");
+    const palette = chartVariables.map((item) => cssValue(item, "#0f766e"));
+    ctx.fillStyle = surface;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     const total = countryEntries.reduce((sum, [, count]) => sum + count, 0) || 1;
     const cx = canvas.width / 2;
@@ -162,9 +189,9 @@ export function StatsPage() {
       ctx.moveTo(cx, cy);
       ctx.arc(cx, cy, radius, startAngle, startAngle + slice);
       ctx.closePath();
-      ctx.fillStyle = `hsl(${(index * 137.508) % 360},70%,50%)`;
+      ctx.fillStyle = palette[index % palette.length];
       ctx.fill();
-      ctx.strokeStyle = "#ffffff";
+      ctx.strokeStyle = border;
       ctx.lineWidth = 2;
       ctx.stroke();
       startAngle += slice;
@@ -202,46 +229,59 @@ export function StatsPage() {
 
   const vehicleStarEntries = Object.entries(stats.vehicleStars)
     .sort((a, b) => b[1] - a[1])
-    .map(([label, value]) => ({ label, value, accent: "linear-gradient(to right, #85a728ff, #28a745)" }));
+    .map(([label, value]) => ({ label, value, accent: "var(--accent)" }));
   const mapStarEntries = Object.entries(stats.mapStars)
     .sort((a, b) => b[1] - a[1])
-    .map(([label, value]) => ({ label, value, accent: "linear-gradient(to right, #4287f5ff, #00d4ff)" }));
+    .map(([label, value]) => ({ label, value, accent: "var(--chart-2)" }));
   const playerEntries = Object.entries(stats.playerCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
-    .map(([label, value]) => ({ label, value }));
+    .map(([label, value]) => ({ label, value, accent: "var(--chart-3)" }));
   const mapEntries = Object.entries(stats.mapTotals).sort((a, b) => b[1].distance - a[1].distance);
   const totalDistance = rows.reduce((sum, row) => sum + distance(row), 0);
+  const summary = [
+    { label: "Total Records", value: rows.length },
+    { label: "Total Distance", value: formatDistance(totalDistance) },
+    { label: "Average Distance", value: formatDistance(totalDistance / Math.max(rows.length, 1), 2) },
+    { label: "Unique Players", value: new Set(rows.map((row) => asText(row.player_name))).size },
+    { label: "Unique Vehicles", value: new Set(rows.map((row) => asText(row.vehicle_name))).size },
+    { label: "Unique Maps", value: new Set(rows.map((row) => asText(row.map_name))).size }
+  ];
 
   return (
-    <section id="stats-container">
-      <h2>DETAILED STATISTICS</h2>
-      {records.isLoading && <p>Loading stats...</p>}
-      {records.isError && <p style={{ color: "red" }}>Error fetching stats data from server.</p>}
+    <main id="stats-container" className="stats-page">
+      <section className="page-hero page-hero--compact" aria-labelledby="stats-title">
+        <p className="eyebrow">Analytics</p>
+        <h1 id="stats-title">Detailed Statistics</h1>
+        <p>Records, vehicle performance, map distribution and tuning usage in one view.</p>
+      </section>
+
+      {records.isLoading && <p className="loading-state">Loading stats...</p>}
+      {records.isError && <p className="frontend-error">Error fetching stats data from server.</p>}
       {records.data && (
         <>
-          <div className="stats-section">
-            <div className="vehicle-header" style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: 15 }}>
-              <h3 className="vehicle-title" style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", margin: 0 }}>
-                Vehicle Statistics
-              </h3>
-              <div className="vehicle-select-wrap" style={{ marginLeft: "auto" }}>
-                <select
-                  id="vehicle-sort-select"
-                  value={vehicleSort}
-                  onChange={(event) => setVehicleSort(event.target.value)}
-                  style={{ padding: "8px 12px", borderRadius: 4, border: "1px solid #ccc", fontSize: 14 }}
-                >
-                  <option value="total-distance">Total Distance</option>
-                  <option value="longest-distance">Longest Distance</option>
-                  <option value="avg-placement">Average Placement </option>
-                  <option value="highest-placement">Highest Placement</option>
-                  <option value="lowest-placement">Lowest Placement</option>
-                </select>
+          <section className="stats-summary" aria-label="Overall records summary">
+            {summary.map((item) => (
+              <div className="stat-box" key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
               </div>
+            ))}
+          </section>
+
+          <section className="stats-section">
+            <div className="section-toolbar">
+              <h2>Vehicle Statistics</h2>
+              <select id="vehicle-sort-select" value={vehicleSort} onChange={(event) => setVehicleSort(event.target.value)}>
+                <option value="total-distance">Total Distance</option>
+                <option value="longest-distance">Longest Distance</option>
+                <option value="avg-placement">Average Placement</option>
+                <option value="highest-placement">Highest Placement</option>
+                <option value="lowest-placement">Lowest Placement</option>
+              </select>
             </div>
-            <div id="vehicle-stats-table">
-              <table>
+            <TableFrame>
+              <table id="vehicle-stats-table">
                 <tbody>
                   <tr>
                     <th>Rank</th>
@@ -265,33 +305,37 @@ export function StatsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
-          </div>
+            </TableFrame>
+          </section>
 
-          <div className="stats-section">
-            <h3>Vehicle Rankings by Adventure Stars</h3>
-            <div className="chart-container stars-chart">
-              <ChartBars entries={vehicleStarEntries} />
-              <div className="total-stars">⭐ Total Adventure Stars : </div>
-              <div className="total-stars-value">{formatDistance(vehicleStarEntries.reduce((sum, entry) => sum + entry.value, 0))}</div>
+          <section className="stats-grid-layout">
+            <div className="stats-section">
+              <h2>Vehicle Adventure Stars</h2>
+              <div className="chart-container">
+                <ChartBars entries={vehicleStarEntries} />
+                <div className="total-stars">
+                  <span>Total Adventure Stars</span>
+                  <strong>{formatDistance(vehicleStarEntries.reduce((sum, entry) => sum + entry.value, 0))}</strong>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div className="stats-section">
-            <h3>Top 10 Players by Record Count</h3>
-            <div className="chart-container players-chart">
-              <ChartBars entries={playerEntries} />
+            <div className="stats-section">
+              <h2>Top 10 Players by Record Count</h2>
+              <div className="chart-container">
+                <ChartBars entries={playerEntries} />
+              </div>
             </div>
-          </div>
+          </section>
 
-          <div className="stats-section">
-            <h3>Records by Country</h3>
+          <section className="stats-section">
+            <h2>Records by Country</h2>
             <div className="pie-container">
               <canvas ref={countryCanvas} id="country-pie" width="500" height="375" aria-label="Pie chart showing records by country" />
               <div className="pie-legend">
                 {countryEntries.map(([country, count], index) => (
                   <div className="legend-item" key={country}>
-                    <span className="legend-color" style={{ background: `hsl(${(index * 137.508) % 360},70%,50%)` }} />
+                    <span className="legend-color" style={{ backgroundColor: chartColor(index) }} />
                     <span className="legend-label">
                       {country} ({count})
                     </span>
@@ -299,106 +343,105 @@ export function StatsPage() {
                 ))}
               </div>
             </div>
-          </div>
+          </section>
 
-          <div className="stats-section">
-            <h3>Map Statistics</h3>
-            <table>
-              <tbody>
-                <tr>
-                  <th>Map Name</th>
-                  <th>Total Records</th>
-                  <th>Total Distance</th>
-                  <th>Average Distance</th>
-                </tr>
-                {mapEntries.map(([map, item]) => (
-                  <tr key={map}>
-                    <td>
-                      <MapWithIcon name={map} />
-                    </td>
-                    <td>{item.count}</td>
-                    <td>{formatDistance(item.distance)}</td>
-                    <td>{formatDistance(item.distance / item.count, 2)}</td>
+          <section className="stats-section">
+            <h2>Map Statistics</h2>
+            <TableFrame>
+              <table>
+                <tbody>
+                  <tr>
+                    <th>Map Name</th>
+                    <th>Total Records</th>
+                    <th>Total Distance</th>
+                    <th>Average Distance</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  {mapEntries.map(([map, item]) => (
+                    <tr key={map}>
+                      <td>
+                        <MapWithIcon name={map} />
+                      </td>
+                      <td>{item.count}</td>
+                      <td>{formatDistance(item.distance)}</td>
+                      <td>{formatDistance(item.distance / item.count, 2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableFrame>
+          </section>
 
-          <div className="stats-section">
-            <h3>Map Rankings by Adventure Stars</h3>
-            <div className="chart-container stars-chart">
+          <section className="stats-section">
+            <h2>Map Adventure Stars</h2>
+            <div className="chart-container">
               <ChartBars entries={mapStarEntries} />
-              <div className="total-stars">⭐ Total Adventure Stars : </div>
-              <div className="total-stars-value">{formatDistance(mapStarEntries.reduce((sum, entry) => sum + entry.value, 0))}</div>
+              <div className="total-stars">
+                <span>Total Adventure Stars</span>
+                <strong>{formatDistance(mapStarEntries.reduce((sum, entry) => sum + entry.value, 0))}</strong>
+              </div>
             </div>
-          </div>
+          </section>
 
-          <div className="stats-section">
-            <h3>Tuning Part Statistics</h3>
+          <section className="stats-section">
+            <h2>Tuning Part Statistics</h2>
             <div className="tuning-stats">
               <div className="stat-subsection">
-                <h4>Most Used Individual Parts</h4>
-                <table>
-                  <tbody>
-                    <tr>
-                      <th>Rank</th>
-                      <th>Part</th>
-                      <th>Usage Count</th>
-                    </tr>
-                    {Object.entries(stats.tuningParts)
-                      .sort((a, b) => b[1] - a[1])
-                      .slice(0, 10)
-                      .map(([part, count], index) => (
-                        <tr key={part}>
-                          <td>{index + 1}</td>
-                          <td>
-                            <TuningPartWithIcon name={part} />
-                          </td>
-                          <td>{count}</td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
+                <h3>Most Used Individual Parts</h3>
+                <TableFrame>
+                  <table>
+                    <tbody>
+                      <tr>
+                        <th>Rank</th>
+                        <th>Part</th>
+                        <th>Usage Count</th>
+                      </tr>
+                      {Object.entries(stats.tuningParts)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 10)
+                        .map(([part, count], index) => (
+                          <tr key={part}>
+                            <td>{index + 1}</td>
+                            <td>
+                              <TuningPartWithIcon name={part} />
+                            </td>
+                            <td>{count}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </TableFrame>
               </div>
               <div className="stat-subsection">
-                <h4>Most Used Setups</h4>
-                <table>
-                  <tbody>
-                    <tr>
-                      <th>Rank</th>
-                      <th>Setup</th>
-                      <th>Usage Count</th>
-                    </tr>
-                    {Object.entries(stats.tuningSetups)
-                      .sort((a, b) => b[1].count - a[1].count)
-                      .slice(0, 10)
-                      .map(([setup, item], index) => (
-                        <tr key={setup}>
-                          <td>{index + 1}</td>
-                          <td>{setup}{item.parts ? `: ${item.parts}` : ""}</td>
-                          <td>{item.count}</td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
+                <h3>Most Used Setups</h3>
+                <TableFrame>
+                  <table>
+                    <tbody>
+                      <tr>
+                        <th>Rank</th>
+                        <th>Setup</th>
+                        <th>Usage Count</th>
+                      </tr>
+                      {Object.entries(stats.tuningSetups)
+                        .sort((a, b) => b[1].count - a[1].count)
+                        .slice(0, 10)
+                        .map(([setup, item], index) => (
+                          <tr key={setup}>
+                            <td>{index + 1}</td>
+                            <td>
+                              {setup}
+                              {item.parts ? `: ${item.parts}` : ""}
+                            </td>
+                            <td>{item.count}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </TableFrame>
               </div>
             </div>
-          </div>
-
-          <div className="stats-section">
-            <h3>Overall Statistics</h3>
-            <div className="overall-stats">
-              <div className="stat-box"><strong>Total Records:</strong> {rows.length}</div>
-              <div className="stat-box"><strong>Total Distance:</strong> {formatDistance(totalDistance)}</div>
-              <div className="stat-box"><strong>Average Distance:</strong> {formatDistance(totalDistance / Math.max(rows.length, 1), 2)}</div>
-              <div className="stat-box"><strong>Unique Players:</strong> {new Set(rows.map((row) => asText(row.player_name))).size}</div>
-              <div className="stat-box"><strong>Unique Vehicles:</strong> {new Set(rows.map((row) => asText(row.vehicle_name))).size}</div>
-              <div className="stat-box"><strong>Unique Maps:</strong> {new Set(rows.map((row) => asText(row.map_name))).size}</div>
-            </div>
-          </div>
+          </section>
         </>
       )}
-    </section>
+    </main>
   );
 }
