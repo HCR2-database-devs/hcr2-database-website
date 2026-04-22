@@ -36,6 +36,7 @@ UPDATE _map SET special = 0 WHERE special IS NULL;
 ALTER TABLE _map ALTER COLUMN special SET NOT NULL;
 ALTER SEQUENCE _map_idmap_seq OWNED BY _map."idMap";
 SELECT setval('_map_idmap_seq', GREATEST((SELECT COALESCE(MAX("idMap"), 0) FROM _map), 1), true);
+GRANT USAGE, SELECT, UPDATE ON SEQUENCE _map_idmap_seq TO hcr2user;
 
 CREATE SEQUENCE IF NOT EXISTS _vehicle_idvehicle_seq;
 ALTER TABLE _vehicle ALTER COLUMN "idVehicle" TYPE integer;
@@ -44,6 +45,7 @@ ALTER TABLE _vehicle ALTER COLUMN "idVehicle" SET DEFAULT nextval('_vehicle_idve
 ALTER TABLE _vehicle ALTER COLUMN "nameVehicle" SET NOT NULL;
 ALTER SEQUENCE _vehicle_idvehicle_seq OWNED BY _vehicle."idVehicle";
 SELECT setval('_vehicle_idvehicle_seq', GREATEST((SELECT COALESCE(MAX("idVehicle"), 0) FROM _vehicle), 1), true);
+GRANT USAGE, SELECT, UPDATE ON SEQUENCE _vehicle_idvehicle_seq TO hcr2user;
 
 CREATE SEQUENCE IF NOT EXISTS _player_idplayer_seq;
 ALTER TABLE _player ALTER COLUMN "idPlayer" TYPE integer;
@@ -55,6 +57,7 @@ UPDATE _player SET country = '' WHERE country IS NULL;
 ALTER TABLE _player ALTER COLUMN country SET NOT NULL;
 ALTER SEQUENCE _player_idplayer_seq OWNED BY _player."idPlayer";
 SELECT setval('_player_idplayer_seq', GREATEST((SELECT COALESCE(MAX("idPlayer"), 0) FROM _player), 1), true);
+GRANT USAGE, SELECT, UPDATE ON SEQUENCE _player_idplayer_seq TO hcr2user;
 
 CREATE SEQUENCE IF NOT EXISTS _tuningpart_idtuningpart_seq;
 ALTER TABLE _tuningpart ALTER COLUMN "idTuningPart" TYPE integer;
@@ -63,6 +66,7 @@ ALTER TABLE _tuningpart ALTER COLUMN "idTuningPart" SET DEFAULT nextval('_tuning
 ALTER TABLE _tuningpart ALTER COLUMN "nameTuningPart" SET NOT NULL;
 ALTER SEQUENCE _tuningpart_idtuningpart_seq OWNED BY _tuningpart."idTuningPart";
 SELECT setval('_tuningpart_idtuningpart_seq', GREATEST((SELECT COALESCE(MAX("idTuningPart"), 0) FROM _tuningpart), 1), true);
+GRANT USAGE, SELECT, UPDATE ON SEQUENCE _tuningpart_idtuningpart_seq TO hcr2user;
 
 CREATE SEQUENCE IF NOT EXISTS _tuningsetup_idtuningsetup_seq;
 ALTER TABLE _tuningsetup ALTER COLUMN "idTuningSetup" TYPE integer;
@@ -70,6 +74,7 @@ ALTER TABLE _tuningsetup ALTER COLUMN "idTuningSetup" SET NOT NULL;
 ALTER TABLE _tuningsetup ALTER COLUMN "idTuningSetup" SET DEFAULT nextval('_tuningsetup_idtuningsetup_seq');
 ALTER SEQUENCE _tuningsetup_idtuningsetup_seq OWNED BY _tuningsetup."idTuningSetup";
 SELECT setval('_tuningsetup_idtuningsetup_seq', GREATEST((SELECT COALESCE(MAX("idTuningSetup"), 0) FROM _tuningsetup), 1), true);
+GRANT USAGE, SELECT, UPDATE ON SEQUENCE _tuningsetup_idtuningsetup_seq TO hcr2user;
 
 ALTER TABLE _tuningsetupparts ALTER COLUMN "idTuningSetup" TYPE integer;
 ALTER TABLE _tuningsetupparts ALTER COLUMN "idTuningPart" TYPE integer;
@@ -97,6 +102,7 @@ ALTER TABLE _worldrecord ALTER COLUMN "idRecord" SET NOT NULL;
 ALTER TABLE _worldrecord ALTER COLUMN "idRecord" SET DEFAULT nextval('_worldrecord_idrecord_seq');
 ALTER SEQUENCE _worldrecord_idrecord_seq OWNED BY _worldrecord."idRecord";
 SELECT setval('_worldrecord_idrecord_seq', GREATEST((SELECT COALESCE(MAX("idRecord"), 0) FROM _worldrecord), 1), true);
+GRANT USAGE, SELECT, UPDATE ON SEQUENCE _worldrecord_idrecord_seq TO hcr2user;
 
 DO $$
 BEGIN
@@ -137,6 +143,7 @@ CREATE TABLE IF NOT EXISTS news (
 );
 ALTER SEQUENCE news_id_seq OWNED BY news.id;
 ALTER TABLE news ALTER COLUMN id SET DEFAULT nextval('news_id_seq');
+GRANT USAGE, SELECT, UPDATE ON SEQUENCE news_id_seq TO hcr2user;
 INSERT INTO news (id, title, content, author, created_at)
 SELECT id::integer, title, content, author,
        CASE WHEN NULLIF(created_at, '') IS NULL THEN CURRENT_TIMESTAMP ELSE created_at::timestamp END
@@ -147,6 +154,7 @@ SELECT setval('news_id_seq', GREATEST((SELECT COALESCE(MAX(id), 0) FROM news), 1
 
 ALTER TABLE pendingsubmission ADD COLUMN IF NOT EXISTS tuningparts text;
 ALTER TABLE pendingsubmission ALTER COLUMN id SET DEFAULT nextval('pendingsubmission_id_seq');
+GRANT USAGE, SELECT, UPDATE ON SEQUENCE pendingsubmission_id_seq TO hcr2user;
 INSERT INTO pendingsubmission (id, idmap, idvehicle, distance, playername, playercountry, submitterip, status, submitted_at, tuningparts)
 SELECT id::integer, "idMap"::integer, "idVehicle"::integer, distance, "playerName", "playerCountry", "submitterIp", COALESCE(status, 'pending'),
        CASE WHEN NULLIF(submitted_at, '') IS NULL THEN CURRENT_TIMESTAMP ELSE submitted_at::timestamp END,

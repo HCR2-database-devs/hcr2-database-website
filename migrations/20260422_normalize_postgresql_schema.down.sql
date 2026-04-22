@@ -58,4 +58,6 @@ DROP SEQUENCE IF EXISTS _player_idplayer_seq;
 DROP SEQUENCE IF EXISTS _tuningpart_idtuningpart_seq;
 DROP SEQUENCE IF EXISTS _tuningsetup_idtuningsetup_seq;
 
+REVOKE USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public FROM hcr2user;
+
 COMMIT;
