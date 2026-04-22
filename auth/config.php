@@ -151,26 +151,16 @@ function next_legacy_id(PDO $pdo, string $table, string $column): int {
 }
 
 function worldrecord_has_id_record(PDO $pdo): bool {
-    return db_column_exists($pdo, '_worldrecord', 'idRecord');
+    return db_column_exists($pdo, 'world_record', 'id_record');
 }
 
 function record_key_sql(string $alias = 'wr'): string {
-    $pdo = get_database_connection();
-    if (worldrecord_has_id_record($pdo)) {
-        return $alias . '."idRecord"::text';
-    }
-
-    return $alias . '."idMap"::text || \':\' || ' . $alias . '."idVehicle"::text';
+    return $alias . '.id_record::text';
 }
 
 function record_key_where_sql(string $alias = ''): string {
-    $pdo = get_database_connection();
     $prefix = $alias !== '' ? $alias . '.' : '';
-    if (worldrecord_has_id_record($pdo)) {
-        return $prefix . '"idRecord" = :idRecord';
-    }
-
-    return $prefix . '"idMap" = :idMap AND ' . $prefix . '"idVehicle" = :idVehicle';
+    return $prefix . 'id_record = :idRecord';
 }
 
 function parse_record_key($recordId): ?array {
@@ -183,25 +173,11 @@ function parse_record_key($recordId): ?array {
         return ['idRecord' => (int)$recordId];
     }
 
-    if (preg_match('/^(\d+):(\d+)$/', $recordId, $matches)) {
-        return [
-            'idMap' => (int)$matches[1],
-            'idVehicle' => (int)$matches[2],
-        ];
-    }
-
     return null;
 }
 
 function record_key_params(array $recordKey): array {
-    if (isset($recordKey['idRecord'])) {
-        return [':idRecord' => $recordKey['idRecord']];
-    }
-
-    return [
-        ':idMap' => $recordKey['idMap'],
-        ':idVehicle' => $recordKey['idVehicle'],
-    ];
+    return [':idRecord' => $recordKey['idRecord']];
 }
 
 function send_security_headers(): void {
@@ -308,20 +284,9 @@ function resolve_pg_table(PDO $pdo, array $candidates): string {
 }
 
 function pending_submissions_table(PDO $pdo): string {
-    if (db_column_exists($pdo, 'pendingsubmission', 'tuningparts')) {
-        return 'pendingsubmission';
+    if (db_column_exists($pdo, 'pending_submission', 'tuning_parts')) {
+        return 'pending_submission';
     }
 
-    if (db_column_exists($pdo, '_pendingsubmission', 'idMap')) {
-        return '_pendingsubmission';
-    }
-
-    return resolve_pg_table($pdo, [
-        'pending_submission',
-        'public.pending_submission',
-        'pendingsubmission',
-        'public.pendingsubmission',
-        '_pendingsubmission',
-        'public._pendingsubmission',
-    ]);
+    throw new RuntimeException('Required table pending_submission is missing');
 }

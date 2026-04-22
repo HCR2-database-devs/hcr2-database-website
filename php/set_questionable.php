@@ -30,7 +30,7 @@ try {
 
     try {
         $pdo = get_database_connection();
-        $checkStmt = $pdo->prepare('SELECT 1 FROM _worldrecord WHERE ' . record_key_where_sql() . ' AND current = 1 LIMIT 1');
+        $checkStmt = $pdo->prepare('SELECT 1 FROM world_record WHERE ' . record_key_where_sql() . ' AND current = 1 LIMIT 1');
         $checkStmt->execute(record_key_params($recordKey));
         if (!$checkStmt->fetch()) {
             http_response_code(404);
@@ -39,7 +39,7 @@ try {
         }
 
         $pdo->beginTransaction();
-        $updateStmt = $pdo->prepare('UPDATE _worldrecord SET questionable = :questionable, questionable_reason = :note WHERE ' . record_key_where_sql() . ' AND current = 1');
+        $updateStmt = $pdo->prepare('UPDATE world_record SET questionable = :questionable, questionable_reason = :note WHERE ' . record_key_where_sql() . ' AND current = 1');
         $updateStmt->execute(array_merge([
             ':questionable' => $questionable,
             ':note' => $note,

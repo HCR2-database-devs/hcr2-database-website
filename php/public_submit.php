@@ -73,11 +73,7 @@ try {
     exit;
 }
 
-try {
-    $pendingTable = pending_submissions_table($db);
-} catch (Throwable $e) {
-    generic_database_error('public_submit table resolution failed: ' . $e->getMessage());
-}
+$pendingTable = 'pending_submission';
 
 
 $raw = file_get_contents('php://input');
@@ -151,13 +147,8 @@ if (count($tuningParts) < 3 || count($tuningParts) > 4) {
 }
 try {
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-    $legacyPending = $pendingTable === '_pendingsubmission' || str_ends_with($pendingTable, '._pendingsubmission');
     if ($ip && !api_dry_run_enabled()) {
-        $ipColumn = $legacyPending ? '"submitterIp"' : 'submitterip';
-        $submittedAtColumn = $legacyPending ? 'id' : 'submitted_at';
-        $rateSql = $legacyPending
-            ? "SELECT COUNT(1) AS c FROM {$pendingTable} WHERE {$ipColumn} = :ip"
-            : "SELECT COUNT(1) AS c FROM {$pendingTable} WHERE {$ipColumn} = :ip AND {$submittedAtColumn} >= NOW() - INTERVAL '1 hour'";
+        $rateSql = "SELECT COUNT(1) AS c FROM {$pendingTable} WHERE submitter_ip = :ip AND submitted_at >= NOW() - INTERVAL '1 hour'";
         $rstmt = $db->prepare($rateSql);
         $rstmt->execute([':ip' => $ip]);
         $rc = $rstmt->fetch(PDO::FETCH_ASSOC);
@@ -168,15 +159,8 @@ try {
         }
     }
     $db->beginTransaction();
-    if ($legacyPending) {
-        $newId = next_legacy_id($db, $pendingTable, 'id');
-        $stmt = $db->prepare("INSERT INTO {$pendingTable} (id, \"idMap\", \"idVehicle\", distance, \"playerName\", \"playerCountry\", \"tuningParts\", \"submitterIp\", status) VALUES (:id, :idMap, :idVehicle, :distance, :playerName, :playerCountry, :tuningParts, :ip, 'pending')");
-        $params = [':id' => $newId];
-    } else {
-        $stmt = $db->prepare("INSERT INTO {$pendingTable} (idmap, idvehicle, distance, playername, playercountry, tuningparts, submitterip, status) VALUES (:idMap, :idVehicle, :distance, :playerName, :playerCountry, :tuningParts, :ip, 'pending')");
-        $params = [];
-    }
-    $stmt->execute($params + [
+    $stmt = $db->prepare("INSERT INTO {$pendingTable} (id_map, id_vehicle, distance, player_name, player_country, tuning_parts, submitter_ip, status) VALUES (:idMap, :idVehicle, :distance, :playerName, :playerCountry, :tuningParts, :ip, 'pending')");
+    $stmt->execute([
             ':idMap' => $mapId,
             ':idVehicle' => $vehicleId,
             ':distance' => $distance,

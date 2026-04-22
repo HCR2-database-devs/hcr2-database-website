@@ -19,7 +19,7 @@ if (!$recordKey) {
 
 try {
     $db->beginTransaction();
-    $stmt = $db->prepare('DELETE FROM _worldrecord WHERE ' . record_key_where_sql() . ' AND current = 1');
+    $stmt = $db->prepare('DELETE FROM world_record WHERE ' . record_key_where_sql() . ' AND current = 1');
     $stmt->execute(record_key_params($recordKey));
     $dryRun = finish_dry_run_transaction($db);
 

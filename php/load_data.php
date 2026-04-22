@@ -27,7 +27,7 @@ try {
 }
 
 function get_data($db, $table, $select = '*', $where = '', $order = '', $limit = '') {
-    $allowed_tables = ['_map', '_vehicle', '_player', '_tuningpart'];
+    $allowed_tables = ['map', 'vehicle', 'player', 'tuning_part'];
     if (!in_array($table, $allowed_tables, true)) {
         return json_encode(['error' => 'Invalid table']);
     }
@@ -58,27 +58,27 @@ if (isset($_GET['type'])) {
     $type = $_GET['type'];
     switch ($type) {
         case 'maps':
-            echo get_data($db, '_map');
+            echo get_data($db, 'map');
             break;
         case 'vehicles':
-            echo get_data($db, '_vehicle');
+            echo get_data($db, 'vehicle');
             break;
         case 'players':
-            echo get_data($db, '_player');
+            echo get_data($db, 'player');
             break;
         case 'tuning_parts':
-            echo get_data($db, '_tuningpart', '*', '', '"nameTuningPart"');
+            echo get_data($db, 'tuning_part', '*', '', 'name_tuning_part');
             break;
         case 'tuning_setups':
             try {
                 $sql = "
-                    SELECT ts.\"idTuningSetup\" AS \"idTuningSetup\",
-                           string_agg(tp.\"nameTuningPart\", ', ' ORDER BY tp.\"nameTuningPart\") AS parts
-                    FROM _tuningsetup ts
-                    LEFT JOIN _tuningsetupparts tsp ON ts.\"idTuningSetup\" = tsp.\"idTuningSetup\"
-                    LEFT JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
-                    GROUP BY ts.\"idTuningSetup\"
-                    ORDER BY ts.\"idTuningSetup\"
+                    SELECT ts.id_tuning_setup AS \"idTuningSetup\",
+                           string_agg(tp.name_tuning_part, ', ' ORDER BY tp.name_tuning_part) AS parts
+                    FROM tuning_setup ts
+                    LEFT JOIN tuning_setup_part tsp ON ts.id_tuning_setup = tsp.id_tuning_setup
+                    LEFT JOIN tuning_part tp ON tsp.id_tuning_part = tp.id_tuning_part
+                    GROUP BY ts.id_tuning_setup
+                    ORDER BY ts.id_tuning_setup
                 ";
                 $stmt = $db->prepare($sql);
                 $stmt->execute();
@@ -101,48 +101,44 @@ if (isset($_GET['type'])) {
             break;
         case 'records':
             try {
-                $hasIdRecord = worldrecord_has_id_record($db);
-                $setupJoin = $hasIdRecord
-                    ? 'wr."idTuningSetup" = tsp."idTuningSetup"'
-                    : 'NULLIF(wr."idTuningSetup", \'\')::smallint = tsp."idTuningSetup"';
-                $idRecordGroup = $hasIdRecord ? 'wr."idRecord",' : '';
+                $setupJoin = 'wr.id_tuning_setup = tsp.id_tuning_setup';
                 $sql = "SELECT
                             " . record_key_sql('wr') . " AS \"idRecord\",
-                            wr.\"idMap\",
-                            wr.\"idVehicle\",
-                            wr.\"idPlayer\",
+                            wr.id_map AS \"idMap\",
+                            wr.id_vehicle AS \"idVehicle\",
+                            wr.id_player AS \"idPlayer\",
                             wr.distance,
                             wr.current,
-                            wr.\"idTuningSetup\",
+                            wr.id_tuning_setup AS \"idTuningSetup\",
                             wr.questionable,
                             COALESCE(wr.questionable_reason, '') AS questionable_reason,
-                            m.\"nameMap\" AS map_name,
-                            v.\"nameVehicle\" AS vehicle_name,
-                            p.\"namePlayer\" AS player_name,
+                            m.name_map AS map_name,
+                            v.name_vehicle AS vehicle_name,
+                            p.name_player AS player_name,
                             COALESCE(p.country, '') AS player_country,
-                            string_agg(tp.\"nameTuningPart\", ', ' ORDER BY tp.\"nameTuningPart\") AS tuning_parts
-                        FROM _worldrecord wr
-                        JOIN _map m ON wr.\"idMap\" = m.\"idMap\"
-                        JOIN _vehicle v ON wr.\"idVehicle\" = v.\"idVehicle\"
-                        LEFT JOIN _player p ON wr.\"idPlayer\" = p.\"idPlayer\"
-                        LEFT JOIN _tuningsetupparts tsp ON {$setupJoin}
-                        LEFT JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
+                            string_agg(tp.name_tuning_part, ', ' ORDER BY tp.name_tuning_part) AS tuning_parts
+                        FROM world_record wr
+                        JOIN map m ON wr.id_map = m.id_map
+                        JOIN vehicle v ON wr.id_vehicle = v.id_vehicle
+                        LEFT JOIN player p ON wr.id_player = p.id_player
+                        LEFT JOIN tuning_setup_part tsp ON {$setupJoin}
+                        LEFT JOIN tuning_part tp ON tsp.id_tuning_part = tp.id_tuning_part
                         WHERE wr.current = 1
                         GROUP BY
-                            {$idRecordGroup}
-                            wr.\"idMap\",
-                            wr.\"idVehicle\",
-                            wr.\"idPlayer\",
+                            wr.id_record,
+                            wr.id_map,
+                            wr.id_vehicle,
+                            wr.id_player,
                             wr.distance,
                             wr.current,
-                            wr.\"idTuningSetup\",
+                            wr.id_tuning_setup,
                             wr.questionable,
                             wr.questionable_reason,
-                            m.\"nameMap\",
-                            v.\"nameVehicle\",
-                            p.\"namePlayer\",
+                            m.name_map,
+                            v.name_vehicle,
+                            p.name_player,
                             p.country
-                        ORDER BY wr.\"idMap\" DESC";
+                        ORDER BY wr.id_map DESC";
                 $stmt = $db->prepare($sql);
                 $stmt->execute();
                 $records = $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -31,22 +31,16 @@ if (mb_strlen($partName) > 17) {
 try {
     $db->beginTransaction();
 
-    $stmt = $db->prepare('SELECT "idTuningPart" FROM _tuningpart WHERE "nameTuningPart" = :name');
+    $stmt = $db->prepare('SELECT id_tuning_part FROM tuning_part WHERE name_tuning_part = :name');
     $stmt->execute([':name' => $partName]);
     if ($stmt->fetch()) {
         $db->rollBack();
         echo json_encode(['error' => 'A tuning part with this name already exists.']);
         exit;
     }
-    if (db_column_has_default($db, '_tuningpart', 'idTuningPart')) {
-        $stmt = $db->prepare('INSERT INTO _tuningpart ("nameTuningPart") VALUES (:name) RETURNING "idTuningPart"');
-        $stmt->execute([':name' => $partName]);
-        $newId = (int)$stmt->fetchColumn();
-    } else {
-        $newId = next_legacy_id($db, '_tuningpart', 'idTuningPart');
-        $stmt = $db->prepare('INSERT INTO _tuningpart ("idTuningPart", "nameTuningPart") VALUES (:id, :name)');
-        $stmt->execute([':id' => $newId, ':name' => $partName]);
-    }
+    $stmt = $db->prepare('INSERT INTO tuning_part (name_tuning_part) VALUES (:name) RETURNING id_tuning_part');
+    $stmt->execute([':name' => $partName]);
+    $newId = (int)$stmt->fetchColumn();
     $iconMessage = '';
     if (!empty($_FILES['icon']['tmp_name'])) {
         $iconFile = $_FILES['icon'];

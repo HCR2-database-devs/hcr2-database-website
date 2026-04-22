@@ -26,7 +26,7 @@ if (!$recordKey) {
 $tuningSetupId = (int)$input['tuningSetupId'];
 
 try {
-    $stmt = $db->prepare('SELECT "idTuningSetup" FROM _worldrecord WHERE ' . record_key_where_sql() . ' AND current = 1 LIMIT 1');
+    $stmt = $db->prepare('SELECT id_tuning_setup FROM world_record WHERE ' . record_key_where_sql() . ' AND current = 1 LIMIT 1');
     $stmt->execute(record_key_params($recordKey));
     $record = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -36,13 +36,13 @@ try {
         exit;
     }
     
-    if ($record['idTuningSetup']) {
+    if (!empty($record['id_tuning_setup'])) {
         http_response_code(400);
         echo json_encode(['error' => 'Record already has a tuning setup assigned']);
         exit;
     }
     
-    $stmt = $db->prepare('SELECT "idTuningSetup" FROM _tuningsetup WHERE "idTuningSetup" = ?');
+    $stmt = $db->prepare('SELECT id_tuning_setup FROM tuning_setup WHERE id_tuning_setup = ?');
     $stmt->execute([$tuningSetupId]);
     if (!$stmt->fetch()) {
         http_response_code(404);
@@ -51,9 +51,9 @@ try {
     }
     
     $db->beginTransaction();
-    $stmt = $db->prepare('UPDATE _worldrecord SET "idTuningSetup" = :setupId WHERE ' . record_key_where_sql() . ' AND current = 1');
+    $stmt = $db->prepare('UPDATE world_record SET id_tuning_setup = :setupId WHERE ' . record_key_where_sql() . ' AND current = 1');
     $stmt->execute(array_merge([
-        ':setupId' => (string)$tuningSetupId,
+        ':setupId' => $tuningSetupId,
     ], record_key_params($recordKey)));
     $dryRun = finish_dry_run_transaction($db);
     

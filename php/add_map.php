@@ -35,7 +35,7 @@ try {
         exit;
     }
 
-    $check = $db->prepare('SELECT "idMap" FROM _map WHERE "nameMap" = :name LIMIT 1');
+    $check = $db->prepare('SELECT id_map FROM map WHERE name_map = :name LIMIT 1');
     $check->execute([':name' => $mapName]);
     if ($check->fetch()) {
         $db->rollBack();
@@ -43,15 +43,9 @@ try {
         exit;
     }
 
-    if (db_column_has_default($db, '_map', 'idMap')) {
-        $stmt = $db->prepare('INSERT INTO _map ("nameMap") VALUES (:nameMap) RETURNING "idMap"');
-        $stmt->execute([':nameMap' => $mapName]);
-        $newId = (int)$stmt->fetchColumn();
-    } else {
-        $newId = next_legacy_id($db, '_map', 'idMap');
-        $stmt = $db->prepare('INSERT INTO _map ("idMap", "nameMap") VALUES (:idMap, :nameMap)');
-        $stmt->execute([':idMap' => $newId, ':nameMap' => $mapName]);
-    }
+    $stmt = $db->prepare('INSERT INTO map (name_map) VALUES (:nameMap) RETURNING id_map');
+    $stmt->execute([':nameMap' => $mapName]);
+    $newId = (int)$stmt->fetchColumn();
 
     $iconMessage = '';
     if (!empty($_FILES['icon']['tmp_name'])) {

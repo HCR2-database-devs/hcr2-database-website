@@ -35,7 +35,7 @@ try {
         exit;
     }
 
-    $check = $db->prepare('SELECT "idVehicle" FROM _vehicle WHERE "nameVehicle" = :name LIMIT 1');
+    $check = $db->prepare('SELECT id_vehicle FROM vehicle WHERE name_vehicle = :name LIMIT 1');
     $check->execute([':name' => $vehicleName]);
     if ($check->fetch()) {
         $db->rollBack();
@@ -43,15 +43,9 @@ try {
         exit;
     }
 
-    if (db_column_has_default($db, '_vehicle', 'idVehicle')) {
-        $stmt = $db->prepare('INSERT INTO _vehicle ("nameVehicle") VALUES (:nameVehicle) RETURNING "idVehicle"');
-        $stmt->execute([':nameVehicle' => $vehicleName]);
-        $newId = (int)$stmt->fetchColumn();
-    } else {
-        $newId = next_legacy_id($db, '_vehicle', 'idVehicle');
-        $stmt = $db->prepare('INSERT INTO _vehicle ("idVehicle", "nameVehicle") VALUES (:idVehicle, :nameVehicle)');
-        $stmt->execute([':idVehicle' => $newId, ':nameVehicle' => $vehicleName]);
-    }
+    $stmt = $db->prepare('INSERT INTO vehicle (name_vehicle) VALUES (:nameVehicle) RETURNING id_vehicle');
+    $stmt->execute([':nameVehicle' => $vehicleName]);
+    $newId = (int)$stmt->fetchColumn();
 
     $iconMessage = '';
     if (!empty($_FILES['icon']['tmp_name'])) {
