@@ -21,7 +21,20 @@ BEGIN
     IF EXISTS (SELECT 1 FROM _worldrecord wr LEFT JOIN _map m ON wr."idMap" = m."idMap" WHERE m."idMap" IS NULL) THEN RAISE EXCEPTION '_worldrecord has orphan map references'; END IF;
     IF EXISTS (SELECT 1 FROM _worldrecord wr LEFT JOIN _vehicle v ON wr."idVehicle" = v."idVehicle" WHERE v."idVehicle" IS NULL) THEN RAISE EXCEPTION '_worldrecord has orphan vehicle references'; END IF;
     IF EXISTS (SELECT 1 FROM _worldrecord wr LEFT JOIN _player p ON wr."idPlayer" = p."idPlayer" WHERE p."idPlayer" IS NULL) THEN RAISE EXCEPTION '_worldrecord has orphan player references'; END IF;
-    IF EXISTS (SELECT 1 FROM _worldrecord wr LEFT JOIN _tuningsetup ts ON NULLIF(wr."idTuningSetup", '')::integer = ts."idTuningSetup" WHERE NULLIF(wr."idTuningSetup", '') IS NOT NULL AND ts."idTuningSetup" IS NULL) THEN RAISE EXCEPTION '_worldrecord has orphan tuning setup references'; END IF;
+    IF EXISTS (
+        SELECT 1
+        FROM _worldrecord wr
+        LEFT JOIN _tuningsetup ts
+            ON CASE
+                WHEN wr."idTuningSetup" ~ '^[0-9]+$' THEN wr."idTuningSetup"::integer
+                ELSE NULL
+            END = ts."idTuningSetup"
+        WHERE wr."idTuningSetup" IS NOT NULL
+          AND wr."idTuningSetup" <> ''
+          AND wr."idTuningSetup" !~ '^[0-9]+$'
+    ) THEN
+        RAISE EXCEPTION '_worldrecord has orphan tuning setup references';
+    END IF;
     IF EXISTS (SELECT 1 FROM _tuningsetupparts tsp LEFT JOIN _tuningsetup ts ON tsp."idTuningSetup" = ts."idTuningSetup" WHERE ts."idTuningSetup" IS NULL) THEN RAISE EXCEPTION '_tuningsetupparts has orphan setup references'; END IF;
     IF EXISTS (SELECT 1 FROM _tuningsetupparts tsp LEFT JOIN _tuningpart tp ON tsp."idTuningPart" = tp."idTuningPart" WHERE tp."idTuningPart" IS NULL) THEN RAISE EXCEPTION '_tuningsetupparts has orphan part references'; END IF;
 END $$;
