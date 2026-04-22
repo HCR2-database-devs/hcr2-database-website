@@ -27,20 +27,20 @@ try {
 
     $inPlaceholders = str_repeat('?,', count($partIds) - 1) . '?';
     $stmt = $db->prepare("
-        SELECT idTuningSetup
+        SELECT \"idTuningSetup\"
         FROM _tuningsetup
-        WHERE idTuningSetup IN (
-            SELECT idTuningSetup
+        WHERE \"idTuningSetup\" IN (
+            SELECT \"idTuningSetup\"
             FROM _tuningsetupparts
-            WHERE idTuningPart IN ($inPlaceholders)
-            GROUP BY idTuningSetup
+            WHERE \"idTuningPart\" IN ($inPlaceholders)
+            GROUP BY \"idTuningSetup\"
             HAVING COUNT(*) = ?
         )
         AND NOT EXISTS (
             SELECT 1
             FROM _tuningsetupparts tsp
-            WHERE tsp.idTuningSetup = _tuningsetup.idTuningSetup
-            AND tsp.idTuningPart NOT IN ($inPlaceholders)
+            WHERE tsp.\"idTuningSetup\" = _tuningsetup.\"idTuningSetup\"
+            AND tsp.\"idTuningPart\" NOT IN ($inPlaceholders)
         )
     ");
     $params = array_merge($partIds, [count($partIds)], $partIds);
@@ -52,17 +52,23 @@ try {
         exit;
     }
 
-    $stmt = $db->prepare("INSERT INTO _tuningsetup DEFAULT VALUES RETURNING idTuningSetup");
-    $stmt->execute();
-    $setupId = (int)$stmt->fetchColumn();
+    if (db_column_has_default($db, '_tuningsetup', 'idTuningSetup')) {
+        $stmt = $db->prepare('INSERT INTO _tuningsetup DEFAULT VALUES RETURNING "idTuningSetup"');
+        $stmt->execute();
+        $setupId = (int)$stmt->fetchColumn();
+    } else {
+        $setupId = next_legacy_id($db, '_tuningsetup', 'idTuningSetup');
+        $stmt = $db->prepare('INSERT INTO _tuningsetup ("idTuningSetup") VALUES (:id)');
+        $stmt->execute([':id' => $setupId]);
+    }
 
-    $stmt = $db->prepare("INSERT INTO _tuningsetupparts (idTuningSetup, idTuningPart) VALUES (?, ?)");
+    $stmt = $db->prepare('INSERT INTO _tuningsetupparts ("idTuningSetup", "idTuningPart") VALUES (?, ?)');
     foreach ($partIds as $partId) {
         $stmt->execute([$setupId, $partId]);
     }
 
-    $db->commit();
-    echo json_encode(['success' => true]);
+    $dryRun = finish_dry_run_transaction($db);
+    echo json_encode(['success' => true, 'dryRun' => $dryRun, 'idTuningSetup' => $setupId]);
 } catch (PDOException $e) {
     if ($db->inTransaction()) {
         $db->rollBack();

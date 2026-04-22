@@ -1,13 +1,9 @@
 <?php
-require_once __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../auth/check_auth.php';
 require_once __DIR__ . '/maintenance_helpers.php';
 header('Content-Type: application/json; charset=utf-8');
 
-if (!is_request_admin_allowed()) {
-    http_response_code(403);
-    echo json_encode(['error' => 'Permission denied']);
-    exit;
-}
+ensure_authorized_json();
 
 $raw = file_get_contents('php://input');
 $data = json_decode($raw, true);
@@ -15,6 +11,14 @@ $action = $data['action'] ?? $_POST['action'] ?? null;
 
 $path = maintenance_flag_path();
 try {
+    if (api_dry_run_enabled()) {
+        $next = $action === 'enable' || $action === 'on' || $action === '1'
+            ? true
+            : (($action === 'disable' || $action === 'off' || $action === '0') ? false : !file_exists($path));
+        echo json_encode(['success' => true, 'dryRun' => true, 'maintenance' => $next]);
+        exit;
+    }
+
     if ($action === 'enable' || $action === 'on' || $action === '1') {
         file_put_contents($path, "1");
         echo json_encode(['success' => true, 'maintenance' => true]);

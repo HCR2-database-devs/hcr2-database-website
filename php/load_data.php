@@ -101,7 +101,13 @@ if (isset($_GET['type'])) {
             break;
         case 'records':
             try {
+                $hasIdRecord = worldrecord_has_id_record($db);
+                $setupJoin = $hasIdRecord
+                    ? 'wr."idTuningSetup" = tsp."idTuningSetup"'
+                    : 'NULLIF(wr."idTuningSetup", \'\')::smallint = tsp."idTuningSetup"';
+                $idRecordGroup = $hasIdRecord ? 'wr."idRecord",' : '';
                 $sql = "SELECT
+                            " . record_key_sql('wr') . " AS \"idRecord\",
                             wr.\"idMap\",
                             wr.\"idVehicle\",
                             wr.\"idPlayer\",
@@ -119,10 +125,11 @@ if (isset($_GET['type'])) {
                         JOIN _map m ON wr.\"idMap\" = m.\"idMap\"
                         JOIN _vehicle v ON wr.\"idVehicle\" = v.\"idVehicle\"
                         LEFT JOIN _player p ON wr.\"idPlayer\" = p.\"idPlayer\"
-                        LEFT JOIN _tuningsetupparts tsp ON CAST(wr.\"idTuningSetup\" AS smallint) = tsp.\"idTuningSetup\"
+                        LEFT JOIN _tuningsetupparts tsp ON {$setupJoin}
                         LEFT JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
                         WHERE wr.current = 1
                         GROUP BY
+                            {$idRecordGroup}
                             wr.\"idMap\",
                             wr.\"idVehicle\",
                             wr.\"idPlayer\",

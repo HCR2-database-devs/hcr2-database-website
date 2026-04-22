@@ -87,6 +87,123 @@ function generic_database_error(string $context = ''): void {
     safe_json_error('Database error', 500);
 }
 
+function api_dry_run_enabled(): bool {
+    $value = strtolower((string)env('API_DRY_RUN', ''));
+    return in_array($value, ['1', 'true', 'yes', 'on'], true);
+}
+
+function finish_dry_run_transaction(PDO $pdo): bool {
+    if (api_dry_run_enabled() && $pdo->inTransaction()) {
+        $pdo->rollBack();
+        return true;
+    }
+
+    if ($pdo->inTransaction()) {
+        $pdo->commit();
+    }
+
+    return false;
+}
+
+function db_column_exists(PDO $pdo, string $table, string $column): bool {
+    static $cache = [];
+    $key = $table . '.' . $column;
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = :table
+          AND column_name = :column
+        LIMIT 1
+    ");
+    $stmt->execute([':table' => $table, ':column' => $column]);
+    return $cache[$key] = (bool)$stmt->fetchColumn();
+}
+
+function db_column_has_default(PDO $pdo, string $table, string $column): bool {
+    static $cache = [];
+    $key = $table . '.' . $column;
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key];
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT column_default
+        FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = :table
+          AND column_name = :column
+        LIMIT 1
+    ");
+    $stmt->execute([':table' => $table, ':column' => $column]);
+    $default = $stmt->fetchColumn();
+    return $cache[$key] = is_string($default) && $default !== '';
+}
+
+function next_legacy_id(PDO $pdo, string $table, string $column): int {
+    $quotedColumn = '"' . str_replace('"', '""', $column) . '"';
+    $stmt = $pdo->query("SELECT COALESCE(MAX($quotedColumn), 0) + 1 AS next_id FROM $table");
+    return (int)$stmt->fetchColumn();
+}
+
+function worldrecord_has_id_record(PDO $pdo): bool {
+    return db_column_exists($pdo, '_worldrecord', 'idRecord');
+}
+
+function record_key_sql(string $alias = 'wr'): string {
+    $pdo = get_database_connection();
+    if (worldrecord_has_id_record($pdo)) {
+        return $alias . '."idRecord"::text';
+    }
+
+    return $alias . '."idMap"::text || \':\' || ' . $alias . '."idVehicle"::text';
+}
+
+function record_key_where_sql(string $alias = ''): string {
+    $pdo = get_database_connection();
+    $prefix = $alias !== '' ? $alias . '.' : '';
+    if (worldrecord_has_id_record($pdo)) {
+        return $prefix . '"idRecord" = :idRecord';
+    }
+
+    return $prefix . '"idMap" = :idMap AND ' . $prefix . '"idVehicle" = :idVehicle';
+}
+
+function parse_record_key($recordId): ?array {
+    if (!is_string($recordId) && !is_int($recordId)) {
+        return null;
+    }
+
+    $recordId = trim((string)$recordId);
+    if (preg_match('/^\d+$/', $recordId)) {
+        return ['idRecord' => (int)$recordId];
+    }
+
+    if (preg_match('/^(\d+):(\d+)$/', $recordId, $matches)) {
+        return [
+            'idMap' => (int)$matches[1],
+            'idVehicle' => (int)$matches[2],
+        ];
+    }
+
+    return null;
+}
+
+function record_key_params(array $recordKey): array {
+    if (isset($recordKey['idRecord'])) {
+        return [':idRecord' => $recordKey['idRecord']];
+    }
+
+    return [
+        ':idMap' => $recordKey['idMap'],
+        ':idVehicle' => $recordKey['idVehicle'],
+    ];
+}
+
 function send_security_headers(): void {
     if (headers_sent()) {
         return;
@@ -160,6 +277,13 @@ function get_database_connection(): PDO {
     ];
 
     $pdo = new PDO($dsn, $config['user'], $config['pass'], $options);
+    $schema = env('DB_SCHEMA') ?: env('PGSCHEMA');
+    if ($schema !== null && $schema !== '') {
+        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $schema)) {
+            throw new RuntimeException('Configuration error: invalid DB_SCHEMA');
+        }
+        $pdo->exec('SET search_path TO "' . str_replace('"', '""', $schema) . '", public');
+    }
     return $pdo;
 }
 
@@ -184,12 +308,16 @@ function resolve_pg_table(PDO $pdo, array $candidates): string {
 }
 
 function pending_submissions_table(PDO $pdo): string {
+    if (db_column_exists($pdo, 'pendingsubmission', 'tuningparts')) {
+        return 'pendingsubmission';
+    }
+
     return resolve_pg_table($pdo, [
-        'public."PendingSubmission"',
-        '"PendingSubmission"',
-        'public.pendingsubmission',
-        'pendingsubmission',
-        'public.pending_submission',
+        '_pendingsubmission',
+        'public._pendingsubmission',
         'pending_submission',
+        'public.pending_submission',
+        'pendingsubmission',
+        'public.pendingsubmission',
     ]);
 }
