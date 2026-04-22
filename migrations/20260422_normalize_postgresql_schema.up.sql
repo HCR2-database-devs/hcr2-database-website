@@ -26,12 +26,12 @@ BEGIN
         FROM _worldrecord wr
         LEFT JOIN _tuningsetup ts
             ON CASE
-                WHEN wr."idTuningSetup" ~ '^[0-9]+$' THEN wr."idTuningSetup"::integer
+                WHEN wr."idTuningSetup"::text ~ '^[0-9]+$' THEN wr."idTuningSetup"::text::integer
                 ELSE NULL
             END = ts."idTuningSetup"
         WHERE wr."idTuningSetup" IS NOT NULL
-          AND wr."idTuningSetup" <> ''
-          AND wr."idTuningSetup" !~ '^[0-9]+$'
+          AND BTRIM(wr."idTuningSetup"::text) <> ''
+          AND (wr."idTuningSetup"::text !~ '^[0-9]+$' OR ts."idTuningSetup" IS NULL)
     ) THEN
         RAISE EXCEPTION '_worldrecord has orphan tuning setup references';
     END IF;
