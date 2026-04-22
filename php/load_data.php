@@ -58,16 +58,16 @@ if (isset($_GET['type'])) {
     $type = $_GET['type'];
     switch ($type) {
         case 'maps':
-            echo get_data($db, 'map');
+            echo get_data($db, 'map', 'id_map AS "idMap", name_map AS "nameMap", special', '', 'name_map');
             break;
         case 'vehicles':
-            echo get_data($db, 'vehicle');
+            echo get_data($db, 'vehicle', 'id_vehicle AS "idVehicle", name_vehicle AS "nameVehicle"', '', 'name_vehicle');
             break;
         case 'players':
-            echo get_data($db, 'player');
+            echo get_data($db, 'player', 'id_player AS "idPlayer", name_player AS "namePlayer", country', '', 'name_player');
             break;
         case 'tuning_parts':
-            echo get_data($db, 'tuning_part', '*', '', 'name_tuning_part');
+            echo get_data($db, 'tuning_part', 'id_tuning_part AS "idTuningPart", name_tuning_part AS "nameTuningPart"', '', 'name_tuning_part');
             break;
         case 'tuning_setups':
             try {
