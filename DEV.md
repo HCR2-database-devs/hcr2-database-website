@@ -59,3 +59,4 @@ cd ..
 - admin page rendering
 - maintenance controls
 - DB integrity check
+- backup create/list/download/delete

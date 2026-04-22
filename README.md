@@ -17,7 +17,7 @@ backend/                 FastAPI API, services, repositories and tests
 frontend/                React/Vite app, public assets and styles
 infra/dev/               Local PostgreSQL dev database
 scripts/dev/             Local setup, reset and smoke-test scripts
-docs/                    Final migration and cutover notes
+docs/                    Current project notes and alignment report
 to_delete/               Deprecated PHP/HTML/JS stack kept only for later deletion
 ```
 
@@ -51,8 +51,8 @@ Local URLs:
 - [SETUP.md](SETUP.md) explains installation and environment setup.
 - [DEV.md](DEV.md) lists useful development commands.
 - [ADMIN.md](ADMIN.md) explains admin access and workflows.
-- [docs/final-migration-status.md](docs/final-migration-status.md) records what was validated.
-- [docs/final-cutover-scope.md](docs/final-cutover-scope.md) records what is intentionally outside the app cutover.
+- [docs/README.md](docs/README.md) records the current stack, supported workflows and validation baseline.
+- [docs/main-refactor-alignment-report.md](docs/main-refactor-alignment-report.md) records the `main` alignment decisions.
 
 ## Deprecated Stack
 

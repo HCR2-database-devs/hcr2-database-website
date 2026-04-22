@@ -1,107 +1,70 @@
-# Rapport d'alignement refonte / main
+# Main Alignment Report
 
 Date: 2026-04-22
 
-## Base de comparaison
+## Compared Branches
 
-- Branche de refonte: `refactor/fastapi-react-migration`
-- Branche cible: `origin/main`
-- Base commune: `ff55f47629d4100f9b80cd0ad5cfee7090cf4972`
+- Refactor branch: `refactor/fastapi-react-migration`
+- Target branch: `origin/main`
+- Merge base: `ff55f47629d4100f9b80cd0ad5cfee7090cf4972`
 
-`main` a continué sur le runtime PHP historique, tandis que la refonte a basculé le runtime officiel vers FastAPI + React/Vite et a isolé l'ancien PHP dans `to_delete/`. La fusion ne pouvait donc pas être un merge direct: elle aurait supprimé le backend/frontend de refonte et restauré l'ancienne structure racine.
+`main` kept evolving the legacy PHP runtime while the refactor branch moved the product to FastAPI, React/Vite and PostgreSQL. A direct merge would have restored the PHP root layout and removed major parts of the refactor, so the useful `main` changes were ported into the new architecture instead.
 
-## Grands écarts identifiés
+## Important Differences From Main
 
-### Structure applicative
+- `main` normalized the PostgreSQL database to lowercase `snake_case` names.
+- `main` consolidated duplicate logical tables into canonical `news` and `pending_submission`.
+- `main` replaced application-side `MAX(id)+1` allocation with PostgreSQL sequences and `RETURNING`.
+- `main` kept frontend-compatible camelCase JSON keys for public PHP endpoints.
+- The refactor branch kept FastAPI/React as the official runtime and the old PHP app isolated under `to_delete/`.
 
-- `main` remet les assets, PHP, CSS et JS legacy en racine.
-- La refonte conserve:
-  - `backend/` pour FastAPI;
-  - `frontend/` pour React/Vite;
-  - `infra/dev/` pour PostgreSQL local;
-  - `to_delete/` comme référence legacy temporaire.
+## Changes Integrated Into The Refactor
 
-Arbitrage: conserver la refonte comme runtime officiel et porter les corrections métier/BDD de `main` dans FastAPI/React.
+- Added the SQL migrations from `main` under `migrations/`.
+- Updated the local dev schema and seed data in `infra/dev/postgres/init/`.
+- Updated FastAPI repositories and services to use canonical tables:
+  - `map`
+  - `vehicle`
+  - `player`
+  - `tuning_part`
+  - `tuning_setup`
+  - `tuning_setup_part`
+  - `world_record`
+  - `pending_submission`
+  - `news`
+- Preserved camelCase response keys for public data and PHP-compatible endpoints.
+- Ported `/php/api_records.php` to FastAPI with API key checks, filters, limit and offset.
+- Added FastAPI compatibility routes for the legacy admin PHP paths still likely to be hit during transition.
+- Added `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `DB_SCHEMA` and `PGSCHEMA` support.
+- Updated tests and the system smoke script for the canonical schema.
 
-### Base de données
+## Conflict Decisions
 
-`main` introduit une normalisation PostgreSQL complète:
+- The PHP root layout from `main` was not restored because it contradicts the refactor target.
+- Runtime code now uses the canonical schema only; legacy underscore tables are migration inputs, not application dependencies.
+- Frontend-facing responses keep camelCase keys even though SQL uses `snake_case`.
+- Browser-based restore and arbitrary SQL import remain out of scope because they are destructive database operations.
+- FastAPI application backups remain supported and now dump canonical tables plus sequence positions.
 
-- tables sans préfixe underscore: `map`, `vehicle`, `player`, `tuning_part`, `tuning_setup`, `tuning_setup_part`, `world_record`, `pending_submission`, `news`;
-- colonnes `snake_case`: `id_map`, `name_map`, `id_record`, `id_tuning_setup`, etc.;
-- séquences PostgreSQL explicites: `map_id_seq`, `world_record_id_seq`, `pending_submission_id_seq`, etc.;
-- clés primaires et étrangères;
-- contrainte `pending_submission_status_check`;
-- index de lecture et d'intégrité;
-- consolidation de `_news` vers `news` et de `_pendingsubmission` vers `pending_submission`;
-- suppression de l'hypothèse `MAX(id)+1` côté application.
+## Sensitive Files Updated
 
-### Contrats API
+- `backend/app/api/compat.py`
+- `backend/app/api/v1/public.py`
+- `backend/app/core/config.py`
+- `backend/app/db/session.py`
+- `backend/app/repositories/public_data.py`
+- `backend/app/repositories/news.py`
+- `backend/app/services/admin_service.py`
+- `backend/app/services/public_data_service.py`
+- `backend/app/services/public_submission_service.py`
+- `infra/dev/postgres/init/001_schema.sql`
+- `infra/dev/postgres/init/002_seed_demo.sql`
+- `scripts/dev/test_system_smoke.mjs`
+- `migrations/*.sql`
 
-`main` standardise les requêtes SQL en `snake_case`, mais restaure des clés camelCase dans les réponses publiques PHP, par exemple `idMap`, `nameVehicle`, `idTuningSetup`.
+## Validation
 
-Arbitrage: utiliser le schéma `snake_case` en interne, mais préserver les réponses camelCase attendues par le front et les routes compat PHP.
-
-## Changements repris depuis main
-
-- Ajout des migrations SQL de `main` dans `migrations/`.
-- Mise à jour du schéma dev PostgreSQL:
-  - `infra/dev/postgres/init/001_schema.sql`
-  - `infra/dev/postgres/init/002_seed_demo.sql`
-- Port des accès BDD FastAPI vers les tables/colonnes canoniques.
-- Passage des créations d'entités aux séquences PostgreSQL avec `RETURNING`, sans `MAX(id)+1`.
-- Port des validations importantes de `main`:
-  - longueurs max map/vehicle/tuning part/player/country;
-  - `distance > 0`;
-  - `questionable` limité à `0` ou `1`;
-  - statuts pending `pending|approved|rejected`;
-  - compatibilité `news` et `pending_submission` canoniques.
-- Port de `/php/api_records.php` dans la façade FastAPI, avec API key, filtres, pagination et format `{ records, count }`.
-- Ajout de routes de compatibilité admin PHP sensibles vers les services FastAPI:
-  - record create/delete/questionable/assign;
-  - add map/vehicle/tuning part/tuning setup;
-  - pending approve/reject;
-  - post news;
-  - maintenance;
-  - admin backup/integrity actions.
-- Support des variables PostgreSQL `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `DB_SCHEMA` et `PGSCHEMA`.
-
-## Conflits et arbitrages
-
-- Le layout PHP racine de `main` n'a pas été restauré: il contredit l'objectif de refonte FastAPI/React.
-- Les scripts PHP de dry-run de `main` n'ont pas été repris comme runtime: ils dépendent de `auth/config.php` et des endpoints PHP racine. Leur logique utile a été portée côté FastAPI.
-- Les migrations SQL de `main` sont conservées comme chemin de production depuis la BDD legacy vers la BDD canonique.
-- Le frontend garde ses fallbacks vers quelques anciennes clés lowercase, mais le backend renvoie maintenant les clés camelCase propres.
-- Les backups FastAPI restent disponibles, contrairement à l'endpoint PHP de `main` qui désactive la création PostgreSQL; ils ont été alignés sur les tables canoniques.
-
-## Fichiers sensibles modifiés
-
-- Backend API/compat:
-  - `backend/app/api/compat.py`
-  - `backend/app/api/v1/public.py`
-- Backend config/DB:
-  - `backend/app/core/config.py`
-  - `backend/app/db/session.py`
-- Backend data/services:
-  - `backend/app/repositories/public_data.py`
-  - `backend/app/repositories/news.py`
-  - `backend/app/services/admin_service.py`
-  - `backend/app/services/public_data_service.py`
-  - `backend/app/services/public_submission_service.py`
-- Tests:
-  - `backend/tests/test_config.py`
-  - `backend/tests/test_public_data_service.py`
-  - `backend/tests/test_public_endpoints.py`
-- BDD/dev:
-  - `infra/dev/postgres/init/001_schema.sql`
-  - `infra/dev/postgres/init/002_seed_demo.sql`
-  - `migrations/*.sql`
-- Smoke:
-  - `scripts/dev/test_system_smoke.mjs`
-
-## Vérifications effectuées
-
-Commandes passées:
+Passed:
 
 ```powershell
 cd backend
@@ -109,32 +72,25 @@ cd backend
 .\.venv\Scripts\python.exe -m pytest
 python -m compileall app tests
 
-cd frontend
+cd ..\frontend
 npm run build
 
+cd ..
 git diff --check
-
 .\scripts\dev\reset-dev-database.ps1
 .\scripts\dev\start-app-stack.ps1 -RestartFastApi -RestartFrontend
 node .\scripts\dev\test_system_smoke.mjs
 ```
 
-Résultats:
+The smoke test passed after shortening generated admin test names so they respect the production schema limits from `main`:
 
-- Ruff: OK.
-- Tests backend: 29 passed.
-- Compilation Python: OK.
-- Build frontend TypeScript/Vite: OK.
-- Diff check: OK, uniquement avertissements CRLF attendus sous Windows.
-- Reset PostgreSQL Docker: OK.
-- Démarrage FastAPI/Vite: OK.
-- Smoke système DB/API/UI: OK.
+- map name: 19 chars max
+- vehicle name: 16 chars max
+- tuning part name: 17 chars max
 
-Le premier lancement du smoke a exposé une incompatibilité des données de test avec les nouvelles limites BDD (`map <= 19`, `vehicle <= 16`, `tuning_part <= 17`). Le script `scripts/dev/test_system_smoke.mjs` utilise maintenant des noms courts conformes au schéma canonique.
+## Watch Points
 
-## Points à surveiller
-
-- Rejouer les migrations SQL sur un clone/staging avant production.
-- Valider les données de production après migration: unicité des noms, absence d'orphelins FK, et présence de `id_record`.
-- Vérifier les anciens clients externes de `/php/api_records.php` avec leurs filtres réels.
-- Vérifier les uploads SVG admin en environnement réel, surtout chemins et permissions d'écriture dans `frontend/public/img`.
+- Rehearse production migrations on a staging clone.
+- Validate production data constraints after migration.
+- Check real external `/php/api_records.php` clients.
+- Check SVG upload permissions on the deployed filesystem.

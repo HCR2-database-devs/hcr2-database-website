@@ -35,7 +35,8 @@ The React admin page supports:
 - post news
 - enable or disable maintenance mode
 - run a DB integrity check
+- create, list, download and delete application SQL backups
 
 ## Operational Note
 
-PostgreSQL backup, restore and SQL import are not implemented as in-app admin actions. Use database tooling such as `pg_dump`, `pg_restore` and deployment-level backups instead.
+PostgreSQL restore and arbitrary SQL import are not implemented as in-app admin actions. Use reviewed database tooling such as `pg_restore` and deployment-level backups for destructive operations.
