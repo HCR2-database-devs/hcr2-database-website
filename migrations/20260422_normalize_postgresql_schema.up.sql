@@ -98,7 +98,7 @@ ALTER TABLE _worldrecord ALTER COLUMN "idMap" TYPE integer;
 ALTER TABLE _worldrecord ALTER COLUMN "idVehicle" TYPE integer;
 ALTER TABLE _worldrecord ALTER COLUMN "idPlayer" TYPE integer;
 ALTER TABLE _worldrecord ALTER COLUMN "idTuningSetup" DROP DEFAULT;
-ALTER TABLE _worldrecord ALTER COLUMN "idTuningSetup" TYPE integer USING NULLIF("idTuningSetup", '')::integer;
+ALTER TABLE _worldrecord ALTER COLUMN "idTuningSetup" TYPE integer USING NULLIF(BTRIM("idTuningSetup"::text), '')::integer;
 ALTER TABLE _worldrecord ALTER COLUMN "idMap" SET NOT NULL;
 ALTER TABLE _worldrecord ALTER COLUMN "idVehicle" SET NOT NULL;
 ALTER TABLE _worldrecord ALTER COLUMN "idPlayer" SET NOT NULL;
