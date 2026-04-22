@@ -157,23 +157,43 @@ CREATE TABLE IF NOT EXISTS news (
 ALTER SEQUENCE news_id_seq OWNED BY news.id;
 ALTER TABLE news ALTER COLUMN id SET DEFAULT nextval('news_id_seq');
 GRANT USAGE, SELECT, UPDATE ON SEQUENCE news_id_seq TO hcr2user;
-INSERT INTO news (id, title, content, author, created_at)
-SELECT id::integer, title, content, author,
-       CASE WHEN NULLIF(created_at, '') IS NULL THEN CURRENT_TIMESTAMP ELSE created_at::timestamp END
-FROM _news
-WHERE title IS NOT NULL AND content IS NOT NULL
-ON CONFLICT (id) DO NOTHING;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = current_schema()
+          AND table_name = '_news'
+    ) THEN
+        INSERT INTO news (id, title, content, author, created_at)
+        SELECT id::integer, title, content, author,
+               CASE WHEN NULLIF(created_at, '') IS NULL THEN CURRENT_TIMESTAMP ELSE created_at::timestamp END
+        FROM _news
+        WHERE title IS NOT NULL AND content IS NOT NULL
+        ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;
 SELECT setval('news_id_seq', GREATEST((SELECT COALESCE(MAX(id), 0) FROM news), 1), true);
 
 ALTER TABLE pendingsubmission ADD COLUMN IF NOT EXISTS tuningparts text;
 ALTER TABLE pendingsubmission ALTER COLUMN id SET DEFAULT nextval('pendingsubmission_id_seq');
 GRANT USAGE, SELECT, UPDATE ON SEQUENCE pendingsubmission_id_seq TO hcr2user;
-INSERT INTO pendingsubmission (id, idmap, idvehicle, distance, playername, playercountry, submitterip, status, submitted_at, tuningparts)
-SELECT id::integer, "idMap"::integer, "idVehicle"::integer, distance, "playerName", "playerCountry", "submitterIp", COALESCE(status, 'pending'),
-       CASE WHEN NULLIF(submitted_at, '') IS NULL THEN CURRENT_TIMESTAMP ELSE submitted_at::timestamp END,
-       "tuningParts"
-FROM _pendingsubmission
-ON CONFLICT (id) DO NOTHING;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = current_schema()
+          AND table_name = '_pendingsubmission'
+    ) THEN
+        INSERT INTO pendingsubmission (id, idmap, idvehicle, distance, playername, playercountry, submitterip, status, submitted_at, tuningparts)
+        SELECT id::integer, "idMap"::integer, "idVehicle"::integer, distance, "playerName", "playerCountry", "submitterIp", COALESCE(status, 'pending'),
+               CASE WHEN NULLIF(submitted_at, '') IS NULL THEN CURRENT_TIMESTAMP ELSE submitted_at::timestamp END,
+               "tuningParts"
+        FROM _pendingsubmission
+        ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;
 SELECT setval('pendingsubmission_id_seq', GREATEST((SELECT COALESCE(MAX(id), 0) FROM pendingsubmission), 1), true);
 UPDATE pendingsubmission SET status = 'pending' WHERE status IS NULL OR status = '';
 ALTER TABLE pendingsubmission ALTER COLUMN status SET DEFAULT 'pending';
