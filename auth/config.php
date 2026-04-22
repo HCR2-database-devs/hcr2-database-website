@@ -312,12 +312,16 @@ function pending_submissions_table(PDO $pdo): string {
         return 'pendingsubmission';
     }
 
+    if (db_column_exists($pdo, '_pendingsubmission', 'idMap')) {
+        return '_pendingsubmission';
+    }
+
     return resolve_pg_table($pdo, [
-        '_pendingsubmission',
-        'public._pendingsubmission',
         'pending_submission',
         'public.pending_submission',
         'pendingsubmission',
         'public.pendingsubmission',
+        '_pendingsubmission',
+        'public._pendingsubmission',
     ]);
 }
