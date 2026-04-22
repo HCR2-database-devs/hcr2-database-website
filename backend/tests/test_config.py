@@ -48,3 +48,20 @@ def test_settings_database_url_takes_precedence() -> None:
     )
 
     assert settings.postgres_dsn == "postgresql://direct.example.test/hcr2"
+
+
+def test_settings_support_pg_environment_aliases() -> None:
+    settings = Settings(
+        PGHOST="pg.example.test",
+        PGPORT="5433",
+        PGDATABASE="hcr2",
+        PGUSER="pg user",
+        PGPASSWORD="pg pass",
+    )
+
+    assert settings.postgres_dsn == "postgresql://pg+user:pg+pass@pg.example.test:5433/hcr2"
+
+
+def test_settings_exposes_schema_aliases() -> None:
+    assert Settings(DB_SCHEMA="rehearsal").postgres_schema == "rehearsal"
+    assert Settings(PGSCHEMA="fallback").postgres_schema == "fallback"

@@ -50,16 +50,26 @@ class AdminService:
         self._maintenance_flag = REPO_ROOT / "MAINTENANCE"
         self._backups_dir = REPO_ROOT / "backups"
         self._backup_tables = (
-            "_map",
-            "_vehicle",
-            "_player",
-            "_tuningpart",
-            "_tuningsetup",
-            "_tuningsetupparts",
-            "_worldrecord",
-            "pendingsubmission",
+            "map",
+            "vehicle",
+            "player",
+            "tuning_part",
+            "tuning_setup",
+            "tuning_setup_part",
+            "world_record",
+            "pending_submission",
             "news",
         )
+        self._backup_sequences = {
+            "map": ("map_id_seq", "id_map"),
+            "vehicle": ("vehicle_id_seq", "id_vehicle"),
+            "player": ("player_id_seq", "id_player"),
+            "tuning_part": ("tuning_part_id_seq", "id_tuning_part"),
+            "tuning_setup": ("tuning_setup_id_seq", "id_tuning_setup"),
+            "world_record": ("world_record_id_seq", "id_record"),
+            "pending_submission": ("pending_submission_id_seq", "id"),
+            "news": ("news_id_seq", "id"),
+        }
 
     def list_records(self) -> list[dict[str, Any]]:
         with open_connection(self._config) as connection:
@@ -67,31 +77,37 @@ class AdminService:
                 cursor.execute(
                     """
                     SELECT
-                        wr.idrecord AS "idRecord",
-                        wr.idmap AS "idMap",
-                        wr.idvehicle AS "idVehicle",
-                        wr.idplayer AS "idPlayer",
-                        wr.idtuningsetup AS "idTuningSetup",
+                        wr.id_record AS "idRecord",
+                        wr.id_map AS "idMap",
+                        wr.id_vehicle AS "idVehicle",
+                        wr.id_player AS "idPlayer",
+                        wr.id_tuning_setup AS "idTuningSetup",
                         wr.distance,
                         wr.current,
                         wr.questionable,
                         COALESCE(wr.questionable_reason, '') AS questionable_reason,
-                        m.namemap AS map_name,
-                        v.namevehicle AS vehicle_name,
-                        p.nameplayer AS player_name,
+                        m.name_map AS map_name,
+                        v.name_vehicle AS vehicle_name,
+                        p.name_player AS player_name,
                         p.country AS player_country,
-                        string_agg(tp.nametuningpart, ', ') AS tuning_parts
-                    FROM _worldrecord AS wr
-                    LEFT JOIN _map AS m ON wr.idmap = m.idmap
-                    LEFT JOIN _vehicle AS v ON wr.idvehicle = v.idvehicle
-                    LEFT JOIN _player AS p ON wr.idplayer = p.idplayer
-                    LEFT JOIN _tuningsetupparts tsp ON wr.idtuningsetup = tsp.idtuningsetup
-                    LEFT JOIN _tuningpart tp ON tsp.idtuningpart = tp.idtuningpart
+                        string_agg(
+                            tp.name_tuning_part,
+                            ', '
+                            ORDER BY tp.name_tuning_part
+                        ) AS tuning_parts
+                    FROM world_record AS wr
+                    LEFT JOIN map AS m ON wr.id_map = m.id_map
+                    LEFT JOIN vehicle AS v ON wr.id_vehicle = v.id_vehicle
+                    LEFT JOIN player AS p ON wr.id_player = p.id_player
+                    LEFT JOIN tuning_setup_part tsp
+                        ON wr.id_tuning_setup = tsp.id_tuning_setup
+                    LEFT JOIN tuning_part tp ON tsp.id_tuning_part = tp.id_tuning_part
                     WHERE wr.current = 1
-                    GROUP BY wr.idrecord, wr.idmap, wr.idvehicle, wr.idplayer,
-                        wr.idtuningsetup, wr.distance, wr.current, wr.questionable,
-                        wr.questionable_reason, m.namemap, v.namevehicle, p.nameplayer, p.country
-                    ORDER BY m.namemap, v.namevehicle
+                    GROUP BY wr.id_record, wr.id_map, wr.id_vehicle, wr.id_player,
+                        wr.id_tuning_setup, wr.distance, wr.current, wr.questionable,
+                        wr.questionable_reason, m.name_map, v.name_vehicle,
+                        p.name_player, p.country
+                    ORDER BY m.name_map, v.name_vehicle
                     """
                 )
                 return [dict(row) for row in cursor.fetchall()]
@@ -103,21 +119,21 @@ class AdminService:
                     """
                     SELECT
                         p.id,
-                        p.idmap AS "idMap",
-                        p.idvehicle AS "idVehicle",
+                        p.id_map AS "idMap",
+                        p.id_vehicle AS "idVehicle",
                         p.distance,
-                        p.playername AS "playerName",
-                        p.playercountry AS "playerCountry",
-                        p.tuningparts AS "tuningParts",
+                        p.player_name AS "playerName",
+                        p.player_country AS "playerCountry",
+                        p.tuning_parts AS "tuningParts",
                         p.status,
                         p.submitted_at,
-                        m.namemap AS "mapName",
-                        v.namevehicle AS "vehicleName"
-                    FROM pendingsubmission p
-                    LEFT JOIN _map m ON p.idmap = m.idmap
-                    LEFT JOIN _vehicle v ON p.idvehicle = v.idvehicle
+                        m.name_map AS "mapName",
+                        v.name_vehicle AS "vehicleName"
+                    FROM pending_submission p
+                    LEFT JOIN map m ON p.id_map = m.id_map
+                    LEFT JOIN vehicle v ON p.id_vehicle = v.id_vehicle
                     WHERE p.status = 'pending'
-                    ORDER BY p.submitted_at DESC
+                    ORDER BY p.submitted_at DESC, p.id DESC
                     """
                 )
                 return {"pending": [dict(row) for row in cursor.fetchall()]}
@@ -130,19 +146,19 @@ class AdminService:
 
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
-                self._ensure_exists(cursor, "_map", "idmap", payload.map_id, "Map not found.")
+                self._ensure_exists(cursor, "map", "id_map", payload.map_id, "Map not found.")
                 self._ensure_exists(
                     cursor,
-                    "_vehicle",
-                    "idvehicle",
+                    "vehicle",
+                    "id_vehicle",
                     payload.vehicle_id,
                     "Vehicle not found.",
                 )
                 if payload.tuning_setup_id is not None:
                     self._ensure_exists(
                         cursor,
-                        "_tuningsetup",
-                        "idtuningsetup",
+                        "tuning_setup",
+                        "id_tuning_setup",
                         payload.tuning_setup_id,
                         "Tuning setup not found.",
                     )
@@ -150,17 +166,17 @@ class AdminService:
                 player_id = self._resolve_player(cursor, payload)
 
                 cursor.execute(
-                    "DELETE FROM _worldrecord WHERE idmap = %s AND idvehicle = %s",
+                    "DELETE FROM world_record WHERE id_map = %s AND id_vehicle = %s",
                     (payload.map_id, payload.vehicle_id),
                 )
                 cursor.execute(
                     """
-                    INSERT INTO _worldrecord (
-                        idmap, idvehicle, idplayer, distance, current,
-                        idtuningsetup, questionable, questionable_reason
+                    INSERT INTO world_record (
+                        id_map, id_vehicle, id_player, distance, current,
+                        id_tuning_setup, questionable, questionable_reason
                     )
                     VALUES (%s, %s, %s, %s, 1, %s, %s, %s)
-                    RETURNING idrecord
+                    RETURNING id_record
                     """,
                     (
                         payload.map_id,
@@ -172,17 +188,23 @@ class AdminService:
                         _clean_text(payload.questionable_reason) or None,
                     ),
                 )
-                record_id = cursor.fetchone()["idrecord"]
+                record_id = cursor.fetchone()["id_record"]
 
-                map_name = self._name_for(cursor, "_map", "namemap", "idmap", payload.map_id)
+                map_name = self._name_for(cursor, "map", "name_map", "id_map", payload.map_id)
                 vehicle_name = self._name_for(
                     cursor,
-                    "_vehicle",
-                    "namevehicle",
-                    "idvehicle",
+                    "vehicle",
+                    "name_vehicle",
+                    "id_vehicle",
                     payload.vehicle_id,
                 )
-                player_name = self._name_for(cursor, "_player", "nameplayer", "idplayer", player_id)
+                player_name = self._name_for(
+                    cursor,
+                    "player",
+                    "name_player",
+                    "id_player",
+                    player_id,
+                )
 
         return {
             "success": True,
@@ -194,11 +216,15 @@ class AdminService:
             "distance": payload.distance,
         }
 
-    def delete_record(self, payload: DeleteRecordRequest) -> dict[str, bool]:
+    def delete_record(self, payload: DeleteRecordRequest) -> dict[str, Any]:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM _worldrecord WHERE idrecord = %s", (payload.record_id,))
-        return {"success": True}
+                cursor.execute(
+                    "DELETE FROM world_record WHERE id_record = %s AND current = 1",
+                    (payload.record_id,),
+                )
+                deleted = cursor.rowcount
+        return {"success": True, "deleted": deleted}
 
     def set_questionable(self, payload: SetQuestionableRequest) -> dict[str, Any]:
         if payload.questionable not in (0, 1):
@@ -206,18 +232,17 @@ class AdminService:
 
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
-                self._ensure_exists(
-                    cursor,
-                    "_worldrecord",
-                    "idrecord",
-                    payload.record_id,
-                    "Record not found",
+                cursor.execute(
+                    "SELECT 1 FROM world_record WHERE id_record = %s AND current = 1 LIMIT 1",
+                    (payload.record_id,),
                 )
+                if cursor.fetchone() is None:
+                    raise AdminNotFoundError("Record not found")
                 cursor.execute(
                     """
-                    UPDATE _worldrecord
+                    UPDATE world_record
                     SET questionable = %s, questionable_reason = %s
-                    WHERE idrecord = %s
+                    WHERE id_record = %s AND current = 1
                     """,
                     (payload.questionable, _clean_text(payload.note) or None, payload.record_id),
                 )
@@ -227,24 +252,28 @@ class AdminService:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "SELECT idtuningsetup FROM _worldrecord WHERE idrecord = %s",
+                    "SELECT id_tuning_setup FROM world_record WHERE id_record = %s AND current = 1",
                     (payload.record_id,),
                 )
                 record = cursor.fetchone()
                 if record is None:
                     raise AdminNotFoundError("Record not found")
-                if record["idtuningsetup"]:
+                if record["id_tuning_setup"]:
                     raise AdminServiceError("Record already has a tuning setup assigned")
 
                 self._ensure_exists(
                     cursor,
-                    "_tuningsetup",
-                    "idtuningsetup",
+                    "tuning_setup",
+                    "id_tuning_setup",
                     payload.tuning_setup_id,
                     "Tuning setup not found",
                 )
                 cursor.execute(
-                    "UPDATE _worldrecord SET idtuningsetup = %s WHERE idrecord = %s",
+                    """
+                    UPDATE world_record
+                    SET id_tuning_setup = %s
+                    WHERE id_record = %s AND current = 1
+                    """,
                     (payload.tuning_setup_id, payload.record_id),
                 )
         return {"success": True}
@@ -253,57 +282,67 @@ class AdminService:
         name = _clean_text(payload.map_name)
         if not name:
             raise AdminServiceError("Map name is required.")
+        self._ensure_max_length(name, 19, "Map name must be 19 characters or fewer.")
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 self._ensure_unique_name(
                     cursor,
-                    "_map",
-                    "namemap",
+                    "map",
+                    "name_map",
                     name,
                     "Map already exists in database.",
                 )
-                new_id = self._next_manual_id(cursor, "_map", "idmap")
-                cursor.execute("INSERT INTO _map (idmap, namemap) VALUES (%s, %s)", (new_id, name))
+                cursor.execute(
+                    "INSERT INTO map (name_map) VALUES (%s) RETURNING id_map",
+                    (name,),
+                )
+                new_id = cursor.fetchone()["id_map"]
         return {"success": True, "idMap": new_id, "nameMap": name, "iconMessage": ""}
 
     def add_vehicle(self, payload: AddVehicleRequest) -> dict[str, Any]:
         name = _clean_text(payload.vehicle_name)
         if not name:
             raise AdminServiceError("Vehicle name is required.")
+        self._ensure_max_length(name, 16, "Vehicle name must be 16 characters or fewer.")
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 self._ensure_unique_name(
                     cursor,
-                    "_vehicle",
-                    "namevehicle",
+                    "vehicle",
+                    "name_vehicle",
                     name,
                     "Vehicle already exists in database.",
                 )
-                new_id = self._next_manual_id(cursor, "_vehicle", "idvehicle")
                 cursor.execute(
-                    "INSERT INTO _vehicle (idvehicle, namevehicle) VALUES (%s, %s)",
-                    (new_id, name),
+                    "INSERT INTO vehicle (name_vehicle) VALUES (%s) RETURNING id_vehicle",
+                    (name,),
                 )
+                new_id = cursor.fetchone()["id_vehicle"]
         return {"success": True, "idVehicle": new_id, "nameVehicle": name, "iconMessage": ""}
 
     def add_tuning_part(self, payload: AddTuningPartRequest) -> dict[str, Any]:
         name = _clean_text(payload.part_name)
         if not name:
             raise AdminServiceError("Tuning part name is required.")
+        self._ensure_max_length(name, 17, "Tuning part name must be 17 characters or fewer.")
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 self._ensure_unique_name(
                     cursor,
-                    "_tuningpart",
-                    "nametuningpart",
+                    "tuning_part",
+                    "name_tuning_part",
                     name,
                     "A tuning part with this name already exists.",
                 )
                 cursor.execute(
-                    "INSERT INTO _tuningpart (nametuningpart) VALUES (%s) RETURNING idtuningpart",
+                    """
+                    INSERT INTO tuning_part (name_tuning_part)
+                    VALUES (%s)
+                    RETURNING id_tuning_part
+                    """,
                     (name,),
                 )
-                new_id = cursor.fetchone()["idtuningpart"]
+                new_id = cursor.fetchone()["id_tuning_part"]
         return {"success": True, "idTuningPart": new_id, "nameTuningPart": name, "iconMessage": ""}
 
     def save_icon(
@@ -352,42 +391,42 @@ class AdminService:
                 submission = self._get_pending_submission(cursor, submission_id)
 
                 cursor.execute(
-                    "DELETE FROM _worldrecord WHERE idmap = %s AND idvehicle = %s",
-                    (submission["idmap"], submission["idvehicle"]),
+                    "DELETE FROM world_record WHERE id_map = %s AND id_vehicle = %s",
+                    (submission["id_map"], submission["id_vehicle"]),
                 )
 
                 player_id = self._find_or_create_player(
                     cursor,
-                    _clean_text(submission.get("playername")),
-                    _clean_text(submission.get("playercountry")),
+                    _clean_text(submission.get("player_name")),
+                    _clean_text(submission.get("player_country")),
                 )
                 cursor.execute(
                     """
-                    INSERT INTO _worldrecord (idmap, idvehicle, idplayer, distance, current)
+                    INSERT INTO world_record (id_map, id_vehicle, id_player, distance, current)
                     VALUES (%s, %s, %s, %s, 1)
-                    RETURNING idrecord
+                    RETURNING id_record
                     """,
                     (
-                        submission["idmap"],
-                        submission["idvehicle"],
+                        submission["id_map"],
+                        submission["id_vehicle"],
                         player_id,
                         submission["distance"],
                     ),
                 )
-                record_id = cursor.fetchone()["idrecord"]
+                record_id = cursor.fetchone()["id_record"]
 
-                tuning_parts = _clean_text(submission.get("tuningparts"))
+                tuning_parts = _clean_text(submission.get("tuning_parts"))
                 if tuning_parts:
                     part_ids = self._part_ids_from_names(cursor, tuning_parts)
                     if 3 <= len(part_ids) <= 4:
                         setup_id = self._create_setup(cursor, part_ids)
                         cursor.execute(
-                            "UPDATE _worldrecord SET idtuningsetup = %s WHERE idrecord = %s",
+                            "UPDATE world_record SET id_tuning_setup = %s WHERE id_record = %s",
                             (setup_id, record_id),
                         )
 
                 cursor.execute(
-                    "UPDATE pendingsubmission SET status = 'approved' WHERE id = %s",
+                    "UPDATE pending_submission SET status = 'approved' WHERE id = %s",
                     (submission_id,),
                 )
         return {"success": True}
@@ -397,7 +436,7 @@ class AdminService:
             with connection.cursor() as cursor:
                 self._get_pending_submission(cursor, submission_id)
                 cursor.execute(
-                    "UPDATE pendingsubmission SET status = 'rejected' WHERE id = %s",
+                    "UPDATE pending_submission SET status = 'rejected' WHERE id = %s",
                     (submission_id,),
                 )
         return {"success": True}
@@ -446,13 +485,13 @@ class AdminService:
                 ok = cursor.fetchone()["ok"]
                 counts: dict[str, int] = {}
                 for table in (
-                    "_map",
-                    "_vehicle",
-                    "_player",
-                    "_tuningpart",
-                    "_tuningsetup",
-                    "_worldrecord",
-                    "pendingsubmission",
+                    "map",
+                    "vehicle",
+                    "player",
+                    "tuning_part",
+                    "tuning_setup",
+                    "world_record",
+                    "pending_submission",
                     "news",
                 ):
                     cursor.execute(f"SELECT count(*) AS count FROM {table}")
@@ -504,8 +543,8 @@ class AdminService:
         if payload.player_id is not None:
             self._ensure_exists(
                 cursor,
-                "_player",
-                "idplayer",
+                "player",
+                "id_player",
                 payload.player_id,
                 "Selected player does not exist.",
             )
@@ -516,24 +555,34 @@ class AdminService:
             raise AdminServiceError("No valid player selected or provided.")
         if not _clean_text(payload.country):
             raise AdminServiceError("Please provide a country for the new player.")
+        self._ensure_max_length(new_name, 15, "Player name is too long for the database schema.")
+        self._ensure_max_length(
+            _clean_text(payload.country),
+            32,
+            "Country is too long for the database schema.",
+        )
         return self._find_or_create_player(cursor, new_name, _clean_text(payload.country))
 
     def _find_or_create_player(self, cursor: Any, name: str, country: str) -> int:
         if not name:
             raise AdminServiceError("No valid player selected or provided.")
-        cursor.execute("SELECT idplayer FROM _player WHERE nameplayer = %s LIMIT 1", (name,))
+        self._ensure_max_length(name, 15, "Player name is too long for the database schema.")
+        self._ensure_max_length(country, 32, "Country is too long for the database schema.")
+        cursor.execute("SELECT id_player FROM player WHERE name_player = %s LIMIT 1", (name,))
         existing = cursor.fetchone()
         if existing:
-            return int(existing["idplayer"])
-        new_id = self._next_manual_id(cursor, "_player", "idplayer")
+            return int(existing["id_player"])
         cursor.execute(
-            "INSERT INTO _player (idplayer, nameplayer, country) VALUES (%s, %s, %s)",
-            (new_id, name, country or None),
+            "INSERT INTO player (name_player, country) VALUES (%s, %s) RETURNING id_player",
+            (name, country or ""),
         )
-        return new_id
+        return int(cursor.fetchone()["id_player"])
 
     def _get_pending_submission(self, cursor: Any, submission_id: int) -> dict[str, Any]:
-        cursor.execute("SELECT * FROM pendingsubmission WHERE id = %s LIMIT 1", (submission_id,))
+        cursor.execute(
+            "SELECT * FROM pending_submission WHERE id = %s LIMIT 1",
+            (submission_id,),
+        )
         submission = cursor.fetchone()
         if submission is None:
             raise AdminNotFoundError("Submission not found")
@@ -546,21 +595,25 @@ class AdminService:
         part_ids: list[int] = []
         for name in names:
             cursor.execute(
-                "SELECT idtuningpart FROM _tuningpart WHERE nametuningpart = %s LIMIT 1",
+                "SELECT id_tuning_part FROM tuning_part WHERE name_tuning_part = %s LIMIT 1",
                 (name,),
             )
             row = cursor.fetchone()
             if row is None:
                 return []
-            part_ids.append(int(row["idtuningpart"]))
+            part_ids.append(int(row["id_tuning_part"]))
         return sorted(part_ids)
 
     def _ensure_parts_exist(self, cursor: Any, part_ids: list[int]) -> None:
         cursor.execute(
-            "SELECT idtuningpart FROM _tuningpart WHERE idtuningpart = ANY(%s::int[])",
+            """
+            SELECT id_tuning_part
+            FROM tuning_part
+            WHERE id_tuning_part = ANY(%s::int[])
+            """,
             (part_ids,),
         )
-        found = {int(row["idtuningpart"]) for row in cursor.fetchall()}
+        found = {int(row["id_tuning_part"]) for row in cursor.fetchall()}
         missing = [part_id for part_id in part_ids if part_id not in found]
         if missing:
             raise AdminNotFoundError(f"Tuning part not found: {missing[0]}")
@@ -568,11 +621,13 @@ class AdminService:
     def _find_setup_by_parts(self, cursor: Any, part_ids: list[int]) -> int | None:
         cursor.execute(
             """
-            SELECT idtuningsetup
+            SELECT id_tuning_setup
             FROM (
-                SELECT idtuningsetup, array_agg(idtuningpart ORDER BY idtuningpart) AS part_ids
-                FROM _tuningsetupparts
-                GROUP BY idtuningsetup
+                SELECT
+                    id_tuning_setup,
+                    array_agg(id_tuning_part ORDER BY id_tuning_part) AS part_ids
+                FROM tuning_setup_part
+                GROUP BY id_tuning_setup
             ) grouped
             WHERE part_ids = %s::int[]
             LIMIT 1
@@ -580,14 +635,17 @@ class AdminService:
             (part_ids,),
         )
         row = cursor.fetchone()
-        return int(row["idtuningsetup"]) if row else None
+        return int(row["id_tuning_setup"]) if row else None
 
     def _create_setup(self, cursor: Any, part_ids: list[int]) -> int:
-        cursor.execute("INSERT INTO _tuningsetup DEFAULT VALUES RETURNING idtuningsetup")
-        setup_id = int(cursor.fetchone()["idtuningsetup"])
+        cursor.execute("INSERT INTO tuning_setup DEFAULT VALUES RETURNING id_tuning_setup")
+        setup_id = int(cursor.fetchone()["id_tuning_setup"])
         for part_id in part_ids:
             cursor.execute(
-                "INSERT INTO _tuningsetupparts (idtuningsetup, idtuningpart) VALUES (%s, %s)",
+                """
+                INSERT INTO tuning_setup_part (id_tuning_setup, id_tuning_part)
+                VALUES (%s, %s)
+                """,
                 (setup_id, part_id),
             )
         return setup_id
@@ -618,9 +676,9 @@ class AdminService:
         if cursor.fetchone() is not None:
             raise AdminConflictError(message)
 
-    def _next_manual_id(self, cursor: Any, table: str, column: str) -> int:
-        cursor.execute(f"SELECT COALESCE(MAX({column}), 0) + 1 AS next_id FROM {table}")
-        return int(cursor.fetchone()["next_id"])
+    def _ensure_max_length(self, value: str, max_length: int, message: str) -> None:
+        if len(value) > max_length:
+            raise AdminServiceError(message)
 
     def _name_for(
         self,
@@ -717,7 +775,7 @@ class AdminService:
                     """
                     SELECT column_name
                     FROM information_schema.columns
-                    WHERE table_schema = 'public' AND table_name = %s
+                    WHERE table_schema = current_schema() AND table_name = %s
                     ORDER BY ordinal_position
                     """,
                     (table,),
@@ -743,6 +801,19 @@ class AdminService:
                         f"INSERT INTO {self._quote_ident(table)} "
                         f"({column_sql}) VALUES ({values});"
                     )
+
+        lines.append("")
+        lines.append("-- Sequence positions")
+        for table, (sequence, column) in self._backup_sequences.items():
+            quoted_table = self._quote_ident(table)
+            quoted_column = self._quote_ident(column)
+            lines.append(
+                "SELECT setval("
+                f"'{sequence}', "
+                f"COALESCE((SELECT MAX({quoted_column}) FROM {quoted_table}), 1), "
+                f"EXISTS (SELECT 1 FROM {quoted_table})"
+                ");"
+            )
 
         lines.extend(["COMMIT;", ""])
         return "\n".join(lines)

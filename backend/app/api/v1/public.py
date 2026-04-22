@@ -65,6 +65,21 @@ def list_records(service: PublicDataServiceDep) -> Any:
     return _load_or_database_error(service, "records")
 
 
+@router.get("/records/search", response_model=None)
+def search_records(
+    request: Request,
+    service: PublicDataServiceDep,
+    settings: SettingsDep,
+) -> Any:
+    api_key = request.query_params.get("api_key") or request.headers.get("X-API-Key")
+    if not api_key or api_key not in settings.api_keys:
+        return JSONResponse({"error": "Unauthorized: invalid API key"}, status_code=401)
+    try:
+        return service.search_records(dict(request.query_params))
+    except DATABASE_ERROR_TYPES as exc:
+        return database_error_response(exc)  # type: ignore[return-value]
+
+
 @router.get("/news", response_model=None)
 def list_news(
     service: NewsServiceDep,

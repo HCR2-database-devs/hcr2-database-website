@@ -20,6 +20,9 @@ class FakePublicDataService:
             return [{"idRecord": 1, "distance": 1234, "map_name": "Countryside"}]
         raise InvalidLoadDataType("Invalid data type")
 
+    def search_records(self, filters: dict[str, Any]) -> dict[str, Any]:
+        return {"records": [{"idRecord": 1, "limit": filters.get("limit")}], "count": 1}
+
 
 class FakeNewsService:
     def list_news(self, raw_limit: str | int | None = None) -> dict[str, list[dict[str, Any]]]:
@@ -36,6 +39,7 @@ class FakeSubmissionService:
 
 def _client() -> TestClient:
     app = create_app()
+    app.dependency_overrides[get_settings] = lambda: Settings(API_KEYS="dev-api-key")
     app.dependency_overrides[dependencies.get_public_data_service] = FakePublicDataService
     app.dependency_overrides[dependencies.get_news_service] = FakeNewsService
     app.dependency_overrides[dependencies.get_public_submission_service] = FakeSubmissionService
@@ -75,6 +79,20 @@ def test_compat_news_route_keeps_raw_limit_query_for_service() -> None:
 
     assert response.status_code == 200
     assert response.json()["news"][0]["limit"] == "20"
+
+
+def test_compat_api_records_requires_api_key() -> None:
+    response = _client().get("/php/api_records.php")
+
+    assert response.status_code == 401
+    assert response.json() == {"error": "Unauthorized: invalid API key"}
+
+
+def test_compat_api_records_uses_public_search_contract() -> None:
+    response = _client().get("/php/api_records.php?api_key=dev-api-key&limit=2")
+
+    assert response.status_code == 200
+    assert response.json() == {"records": [{"idRecord": 1, "limit": "2"}], "count": 1}
 
 
 def test_news_limit_normalization_matches_public_contract() -> None:

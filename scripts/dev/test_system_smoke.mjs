@@ -204,7 +204,7 @@ async function checkApiSurface() {
 }
 
 async function checkAdminApiSurface() {
-  const suffix = Date.now();
+  const suffix = String(Date.now()).slice(-10);
 
   const pending = await adminJson("/api/v1/admin/pending");
   if (!Array.isArray(pending.pending)) {
@@ -215,24 +215,24 @@ async function checkAdminApiSurface() {
 
   const map = await adminJson("/api/v1/admin/maps", {
     method: "POST",
-    body: JSON.stringify({ mapName: `Admin Smoke Map ${suffix}` }),
+    body: JSON.stringify({ mapName: `M${suffix}` }),
   });
   const vehicle = await adminJson("/api/v1/admin/vehicles", {
     method: "POST",
-    body: JSON.stringify({ vehicleName: `Admin Smoke Vehicle ${suffix}` }),
+    body: JSON.stringify({ vehicleName: `V${suffix}` }),
   });
   const part = await adminJson("/api/v1/admin/tuning-parts", {
     method: "POST",
-    body: JSON.stringify({ partName: `Admin Smoke Part ${suffix}` }),
+    body: JSON.stringify({ partName: `P${suffix}` }),
   });
   if (!map.success || !vehicle.success || !part.success) {
     throw new Error("Admin catalog additions did not return success");
   }
   console.log("OK admin catalog additions");
 
-  const formMap = await adminFormJson("/api/v1/admin/maps/form", [["mapName", `Admin Smoke Form Map ${suffix}`]]);
-  const formVehicle = await adminFormJson("/api/v1/admin/vehicles/form", [["vehicleName", `Admin Smoke Form Vehicle ${suffix}`]]);
-  const formPart = await adminFormJson("/api/v1/admin/tuning-parts/form", [["partName", `Admin Smoke Form Part ${suffix}`]]);
+  const formMap = await adminFormJson("/api/v1/admin/maps/form", [["mapName", `FM${suffix}`]]);
+  const formVehicle = await adminFormJson("/api/v1/admin/vehicles/form", [["vehicleName", `FV${suffix}`]]);
+  const formPart = await adminFormJson("/api/v1/admin/tuning-parts/form", [["partName", `FP${suffix}`]]);
   if (!formMap.success || !formVehicle.success || !formPart.success) {
     throw new Error("Admin multipart catalog additions did not return success");
   }
@@ -322,7 +322,7 @@ async function checkAdminApiSurface() {
   console.log("OK admin maintenance controls");
 
   const integrity = await adminJson("/api/v1/admin/integrity", { method: "GET" });
-  if (!integrity.ok || !integrity.counts || integrity.counts._worldrecord < 1) {
+  if (!integrity.ok || !integrity.counts || integrity.counts.world_record < 1) {
     throw new Error(`Admin integrity returned unexpected payload: ${JSON.stringify(integrity)}`);
   }
   console.log("OK admin integrity check");
@@ -341,7 +341,7 @@ async function checkAdminApiSurface() {
 
   const backupDownload = await adminFetch(`/api/v1/admin/backups/${encodeURIComponent(createdBackup.filename)}/download`);
   const backupText = await backupDownload.text();
-  if (!backupDownload.ok || !backupText.includes("BEGIN;") || !backupText.includes("_worldrecord")) {
+  if (!backupDownload.ok || !backupText.includes("BEGIN;") || !backupText.includes("world_record")) {
     throw new Error(`Admin backup download returned unexpected payload: ${backupDownload.status} ${backupText.slice(0, 200)}`);
   }
   console.log("OK admin backup download");

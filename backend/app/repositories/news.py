@@ -17,8 +17,8 @@ class PostgresNewsRepository:
                 cursor.execute(
                     """
                     SELECT id, title, content, author, created_at
-                    FROM News
-                    ORDER BY created_at DESC
+                    FROM news
+                    ORDER BY created_at DESC, id DESC
                     LIMIT %(limit)s
                     """,
                     {"limit": limit},

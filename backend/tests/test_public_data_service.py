@@ -28,6 +28,9 @@ class FakePublicDataRepository:
     def list_records(self) -> list[dict[str, Any]]:
         return [{"idRecord": 1, "distance": 1234, "map_name": "Countryside"}]
 
+    def search_records(self, filters: dict[str, Any]) -> list[dict[str, Any]]:
+        return [{"idRecord": 1, "filters": filters}]
+
 
 def test_public_data_service_dispatches_public_types() -> None:
     service = PublicDataService(FakePublicDataRepository())
@@ -38,6 +41,15 @@ def test_public_data_service_dispatches_public_types() -> None:
     assert service.load_data("tuning_parts")[0]["nameTuningPart"] == "Wings"
     assert service.load_data("tuning_setups")[0]["parts"][0]["nameTuningPart"] == "Wings"
     assert service.load_data("records")[0]["distance"] == 1234
+
+
+def test_public_data_service_search_records_keeps_api_records_shape() -> None:
+    service = PublicDataService(FakePublicDataRepository())
+
+    result = service.search_records({"limit": "1"})
+
+    assert result["count"] == 1
+    assert result["records"][0]["filters"] == {"limit": "1"}
 
 
 def test_public_data_service_preserves_missing_type_error() -> None:

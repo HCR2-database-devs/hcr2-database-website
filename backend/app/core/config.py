@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     db_user: str | None = Field(default=None, validation_alias="DB_USER")
     db_pass: str | None = Field(default=None, validation_alias="DB_PASS")
     database_url: str | None = Field(default=None, validation_alias="DATABASE_URL")
+    pg_host: str | None = Field(default=None, validation_alias="PGHOST")
+    pg_port: str | None = Field(default=None, validation_alias="PGPORT")
+    pg_database: str | None = Field(default=None, validation_alias="PGDATABASE")
+    pg_user: str | None = Field(default=None, validation_alias="PGUSER")
+    pg_password: str | None = Field(default=None, validation_alias="PGPASSWORD")
+    db_schema: str | None = Field(default=None, validation_alias="DB_SCHEMA")
+    pg_schema: str | None = Field(default=None, validation_alias="PGSCHEMA")
 
     auth_shared_secret: str | None = Field(default=None, validation_alias="AUTH_SHARED_SECRET")
     allowed_discord_ids: Annotated[list[str], NoDecode] = Field(
@@ -66,12 +73,21 @@ class Settings(BaseSettings):
     def postgres_dsn(self) -> str:
         if self.database_url:
             return self.database_url
-        required = [self.db_host, self.db_port, self.db_name, self.db_user, self.db_pass]
+        host = self.db_host or self.pg_host
+        port = self.db_port or self.pg_port or "5432"
+        name = self.db_name or self.pg_database
+        user_name = self.db_user or self.pg_user
+        password_value = self.db_pass or self.pg_password
+        required = [host, port, name, user_name, password_value]
         if any(value in (None, "") for value in required):
             return ""
-        user = quote_plus(str(self.db_user))
-        password = quote_plus(str(self.db_pass))
-        return f"postgresql://{user}:{password}@{self.db_host}:{self.db_port}/{self.db_name}"
+        user = quote_plus(str(user_name))
+        password = quote_plus(str(password_value))
+        return f"postgresql://{user}:{password}@{host}:{port}/{name}"
+
+    @property
+    def postgres_schema(self) -> str | None:
+        return self.db_schema or self.pg_schema
 
 
 @lru_cache

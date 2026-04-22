@@ -61,8 +61,8 @@ class PublicSubmissionService:
                     cursor.execute(
                         """
                         SELECT COUNT(1) AS c
-                        FROM pendingsubmission
-                        WHERE submitterip = %(ip)s
+                        FROM pending_submission
+                        WHERE submitter_ip = %(ip)s
                           AND submitted_at >= NOW() - INTERVAL '1 hour'
                         """,
                         {"ip": submitter_ip},
@@ -73,12 +73,12 @@ class PublicSubmissionService:
 
                 cursor.execute(
                     """
-                    INSERT INTO pendingsubmission
-                        (idmap, idvehicle, distance, playername, playercountry,
-                         tuningparts, submitterip)
+                    INSERT INTO pending_submission
+                        (id_map, id_vehicle, distance, player_name, player_country,
+                         tuning_parts, submitter_ip, status)
                     VALUES
                         (%(map_id)s, %(vehicle_id)s, %(distance)s, %(player_name)s,
-                         %(player_country)s, %(tuning_parts)s, %(submitter_ip)s)
+                         %(player_country)s, %(tuning_parts)s, %(submitter_ip)s, 'pending')
                     """,
                     {
                         "map_id": map_id,
