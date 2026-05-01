@@ -1,4 +1,6 @@
 <?php
+define('QUERY_TIMEOUT', 5); // seconds
+
 if (!function_exists('safe_json_error')) {
     function safe_json_error(string $message, int $statusCode = 500): void {
         if (!headers_sent()) {
@@ -13,7 +15,7 @@ if (!function_exists('safe_json_error')) {
 try {
     require_once __DIR__ . '/../auth/config.php';
 } catch (Throwable $e) {
-    safe_json_error('Server configuration error');
+    safe_json_error('Server configuration error', 500);
 }
 
 require_once __DIR__ . '/maintenance_helpers.php';
@@ -23,7 +25,8 @@ header('Content-Type: application/json; charset=utf-8');
 try {
     $db = get_database_connection();
 } catch (Throwable $e) {
-    generic_database_error('load_data connection failed: ' . $e->getMessage());
+    error_log('load_data connection failed: ' . $e->getMessage());
+    safe_json_error('Service temporarily unavailable', 503);
 }
 
 function get_data($db, $table, $select = '*', $where = '', $order = '', $limit = '') {
@@ -45,12 +48,20 @@ function get_data($db, $table, $select = '*', $where = '', $order = '', $limit =
         }
 
         $stmt = $db->prepare($sql);
+        $start_time = microtime(true);
         $stmt->execute();
+        
+        $elapsed = microtime(true) - $start_time;
+        if ($elapsed > QUERY_TIMEOUT) {
+            error_log("load_data query timeout for table $table: {$elapsed}s");
+            return json_encode(['error' => 'Query timeout']);
+        }
+        
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return json_encode($data);
     } catch (Throwable $e) {
         error_log("Database error in get_data for table $table: " . $e->getMessage());
-        return json_encode(['error' => 'Database error', 'details' => $e->getMessage()]);
+        return json_encode(['error' => 'Database error']);
     }
 }
 
@@ -81,7 +92,15 @@ if (isset($_GET['type'])) {
                     ORDER BY ts.\"idTuningSetup\"
                 ";
                 $stmt = $db->prepare($sql);
+                $start_time = microtime(true);
                 $stmt->execute();
+                
+                $elapsed = microtime(true) - $start_time;
+                if ($elapsed > QUERY_TIMEOUT) {
+                    error_log("load_data tuning_setups timeout: {$elapsed}s");
+                    safe_json_error('Query timeout', 504);
+                }
+                
                 $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 foreach ($data as &$row) {
                     if ($row['parts'] !== null) {
@@ -96,7 +115,7 @@ if (isset($_GET['type'])) {
                 echo json_encode($data);
             } catch (Throwable $e) {
                 error_log('load_data tuning_setups failed: ' . $e->getMessage());
-                generic_database_error('load_data tuning_setups failed: ' . $e->getMessage());
+                safe_json_error('Database error', 503);
             }
             break;
         case 'records':
@@ -134,15 +153,28 @@ if (isset($_GET['type'])) {
                             m.\"nameMap\",
                             v.\"nameVehicle\",
                             p.\"namePlayer\",
-                            p.country
+                            p.country,
+                            wr.\"idPlayer\"
                         ORDER BY wr.\"idMap\" DESC";
                 $stmt = $db->prepare($sql);
+                $start_time = microtime(true);
                 $stmt->execute();
+                
+                $elapsed = microtime(true) - $start_time;
+                if ($elapsed > QUERY_TIMEOUT) {
+                    error_log("load_data records timeout: {$elapsed}s");
+                    safe_json_error('Query timeout', 504);
+                }
+                
                 $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 echo json_encode($records);
             } catch (Throwable $e) {
                 error_log('load_data records failed: ' . $e->getMessage());
-                generic_database_error('load_data records failed: ' . $e->getMessage());
+
+// Clean up resources
+$stmt = null;
+$db = null;
+                safe_json_error('Database error', 503);
             }
             break;
         default:
