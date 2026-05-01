@@ -73,6 +73,9 @@ function safeLike($value) {
     return '%' . str_replace(['%', '_'], ['\\%', '\\_'], $value) . '%';
 }
 
+// Log received parameters for debugging
+error_log('api_records received params: ' . json_encode($_GET));
+
 if (!empty($_GET['map'])) {
     $where[] = 'LOWER(m.name_map) = LOWER(:map)';
     $params[':map'] = $_GET['map'];
@@ -107,6 +110,8 @@ if (!empty($_GET['q'])) {
     $where[] = '(LOWER(m.name_map) LIKE LOWER(:q) OR LOWER(v.name_vehicle) LIKE LOWER(:q) OR LOWER(p.name_player) LIKE LOWER(:q) OR LOWER(wr.questionable_reason) LIKE LOWER(:q))';
     $params[':q'] = $q;
 }
+
+error_log('api_records final where clause: ' . implode(' AND ', $where));
 
 $limit = 100;
 if (isset($_GET['limit']) && is_numeric($_GET['limit'])) {
@@ -190,6 +195,7 @@ try {
 } catch (PDOException $e) {
     error_log('api_records query failed: ' . $e->getMessage());
     error_log('api_records SQL: ' . $sql);
+    error_log('api_records WHERE clause: ' . implode(' AND ', $where));
     error_log('api_records params: ' . json_encode($params));
     http_response_code(503);
     echo json_encode(['error' => 'Database query failed']);
