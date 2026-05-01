@@ -81,7 +81,6 @@ if (!empty($_GET['map'])) {
     $params[':map'] = $_GET['map'];
 }
 
-// Support both 'vehicle' and 'car' parameter names
 $vehicle = $_GET['vehicle'] ?? $_GET['car'] ?? null;
 if (!empty($vehicle)) {
     $where[] = 'LOWER(v.name_vehicle) = LOWER(:vehicle)';
