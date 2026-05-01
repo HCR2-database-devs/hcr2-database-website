@@ -80,10 +80,14 @@ if (!empty($_GET['map'])) {
     $where[] = 'LOWER(m.name_map) = LOWER(:map)';
     $params[':map'] = $_GET['map'];
 }
-if (!empty($_GET['vehicle'])) {
+
+// Support both 'vehicle' and 'car' parameter names
+$vehicle = $_GET['vehicle'] ?? $_GET['car'] ?? null;
+if (!empty($vehicle)) {
     $where[] = 'LOWER(v.name_vehicle) = LOWER(:vehicle)';
-    $params[':vehicle'] = $_GET['vehicle'];
+    $params[':vehicle'] = $vehicle;
 }
+
 if (!empty($_GET['player'])) {
     $where[] = 'LOWER(p.name_player) = LOWER(:player)';
     $params[':player'] = $_GET['player'];
