@@ -193,8 +193,10 @@ try {
     echo json_encode(['records' => $rows, 'count' => count($rows)]);
 } catch (PDOException $e) {
     error_log('api_records query failed: ' . $e->getMessage());
+    error_log('api_records SQL: ' . $sql);
+    error_log('api_records params: ' . json_encode($params));
     http_response_code(503);
-    echo json_encode(['error' => 'Database query failed']);
+    echo json_encode(['error' => 'Database query failed', 'details' => $e->getMessage()]);
     exit;
 } catch (Throwable $e) {
     error_log('api_records unexpected error: ' . $e->getMessage());
