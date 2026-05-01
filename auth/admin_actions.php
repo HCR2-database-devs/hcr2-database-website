@@ -42,6 +42,10 @@ try {
         $path = realpath($backups_dir . '/' . basename($filename));
         if (!$path || strpos($path, realpath($backups_dir)) !== 0) throw new Exception('Invalid filename');
         if (!file_exists($path)) throw new Exception('File not found');
+        if (api_dry_run_enabled()) {
+            echo json_encode(['success' => true, 'dryRun' => true]);
+            exit;
+        }
         unlink($path);
         echo json_encode(['success' => true]);
         exit;

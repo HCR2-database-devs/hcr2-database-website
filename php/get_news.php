@@ -13,7 +13,13 @@ $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
 if ($limit <= 0 || $limit > 100) $limit = 10;
 
 try {
-    $stmt = $db->prepare('SELECT id, title, content, author, created_at FROM News ORDER BY created_at DESC LIMIT :limit');
+    $sql = "
+        SELECT id, title, content, author, created_at
+        FROM news
+        ORDER BY created_at DESC, id DESC
+        LIMIT :limit
+    ";
+    $stmt = $db->prepare($sql);
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);

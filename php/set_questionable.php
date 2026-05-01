@@ -12,13 +12,13 @@ try {
         exit;
     }
 
-    $recordId = $input['recordId'] ?? null;
+    $recordKey = parse_record_key($input['recordId'] ?? null);
     $questionable = $input['questionable'] ?? null;
     $note = $input['note'] ?? $input['reason'] ?? null;
 
-    if (!$recordId) {
+    if (!$recordKey) {
         http_response_code(400);
-        echo json_encode(['error' => 'Missing recordId']);
+        echo json_encode(['error' => 'Invalid recordId']);
         exit;
     }
 
@@ -30,24 +30,33 @@ try {
 
     try {
         $pdo = get_database_connection();
-        $checkStmt = $pdo->prepare('SELECT idRecord FROM _worldrecord WHERE idRecord = ?');
-        $checkStmt->execute([$recordId]);
+        $checkStmt = $pdo->prepare('SELECT 1 FROM world_record WHERE ' . record_key_where_sql() . ' AND current = 1 LIMIT 1');
+        $checkStmt->execute(record_key_params($recordKey));
         if (!$checkStmt->fetch()) {
             http_response_code(404);
             echo json_encode(['error' => 'Record not found']);
             exit;
         }
 
-        $updateStmt = $pdo->prepare('UPDATE _worldrecord SET questionable = ?, questionable_reason = ? WHERE idRecord = ?');
-        $updateStmt->execute([$questionable, $note, $recordId]);
+        $pdo->beginTransaction();
+        $updateStmt = $pdo->prepare('UPDATE world_record SET questionable = :questionable, questionable_reason = :note WHERE ' . record_key_where_sql() . ' AND current = 1');
+        $updateStmt->execute(array_merge([
+            ':questionable' => $questionable,
+            ':note' => $note,
+        ], record_key_params($recordKey)));
+        $dryRun = finish_dry_run_transaction($pdo);
 
         http_response_code(200);
         echo json_encode([
             'success' => true,
+            'dryRun' => $dryRun,
             'message' => 'Record status updated successfully'
         ]);
 
     } catch (PDOException $e) {
+        if (isset($pdo) && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         generic_database_error('set_questionable failed: ' . $e->getMessage());
     }
 

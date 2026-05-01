@@ -1,6 +1,4 @@
 <?php
-define('QUERY_TIMEOUT', 5); // seconds
-
 if (!function_exists('safe_json_error')) {
     function safe_json_error(string $message, int $statusCode = 500): void {
         if (!headers_sent()) {
@@ -15,7 +13,7 @@ if (!function_exists('safe_json_error')) {
 try {
     require_once __DIR__ . '/../auth/config.php';
 } catch (Throwable $e) {
-    safe_json_error('Server configuration error', 500);
+    safe_json_error('Server configuration error');
 }
 
 require_once __DIR__ . '/maintenance_helpers.php';
@@ -25,12 +23,11 @@ header('Content-Type: application/json; charset=utf-8');
 try {
     $db = get_database_connection();
 } catch (Throwable $e) {
-    error_log('load_data connection failed: ' . $e->getMessage());
-    safe_json_error('Service temporarily unavailable', 503);
+    generic_database_error('load_data connection failed: ' . $e->getMessage());
 }
 
 function get_data($db, $table, $select = '*', $where = '', $order = '', $limit = '') {
-    $allowed_tables = ['_map', '_vehicle', '_player', '_tuningpart'];
+    $allowed_tables = ['map', 'vehicle', 'player', 'tuning_part'];
     if (!in_array($table, $allowed_tables, true)) {
         return json_encode(['error' => 'Invalid table']);
     }
@@ -48,20 +45,12 @@ function get_data($db, $table, $select = '*', $where = '', $order = '', $limit =
         }
 
         $stmt = $db->prepare($sql);
-        $start_time = microtime(true);
         $stmt->execute();
-        
-        $elapsed = microtime(true) - $start_time;
-        if ($elapsed > QUERY_TIMEOUT) {
-            error_log("load_data query timeout for table $table: {$elapsed}s");
-            return json_encode(['error' => 'Query timeout']);
-        }
-        
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return json_encode($data);
     } catch (Throwable $e) {
         error_log("Database error in get_data for table $table: " . $e->getMessage());
-        return json_encode(['error' => 'Database error']);
+        return json_encode(['error' => 'Database error', 'details' => $e->getMessage()]);
     }
 }
 
@@ -69,38 +58,30 @@ if (isset($_GET['type'])) {
     $type = $_GET['type'];
     switch ($type) {
         case 'maps':
-            echo get_data($db, '_map');
+            echo get_data($db, 'map', 'id_map AS "idMap", name_map AS "nameMap", special', '', 'name_map');
             break;
         case 'vehicles':
-            echo get_data($db, '_vehicle');
+            echo get_data($db, 'vehicle', 'id_vehicle AS "idVehicle", name_vehicle AS "nameVehicle"', '', 'name_vehicle');
             break;
         case 'players':
-            echo get_data($db, '_player');
+            echo get_data($db, 'player', 'id_player AS "idPlayer", name_player AS "namePlayer", country', '', 'name_player');
             break;
         case 'tuning_parts':
-            echo get_data($db, '_tuningpart', '*', '', '"nameTuningPart"');
+            echo get_data($db, 'tuning_part', 'id_tuning_part AS "idTuningPart", name_tuning_part AS "nameTuningPart"', '', 'name_tuning_part');
             break;
         case 'tuning_setups':
             try {
                 $sql = "
-                    SELECT ts.\"idTuningSetup\" AS \"idTuningSetup\",
-                           string_agg(tp.\"nameTuningPart\", ', ' ORDER BY tp.\"nameTuningPart\") AS parts
-                    FROM _tuningsetup ts
-                    LEFT JOIN _tuningsetupparts tsp ON ts.\"idTuningSetup\" = tsp.\"idTuningSetup\"
-                    LEFT JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
-                    GROUP BY ts.\"idTuningSetup\"
-                    ORDER BY ts.\"idTuningSetup\"
+                    SELECT ts.id_tuning_setup AS \"idTuningSetup\",
+                           string_agg(tp.name_tuning_part, ', ' ORDER BY tp.name_tuning_part) AS parts
+                    FROM tuning_setup ts
+                    LEFT JOIN tuning_setup_part tsp ON ts.id_tuning_setup = tsp.id_tuning_setup
+                    LEFT JOIN tuning_part tp ON tsp.id_tuning_part = tp.id_tuning_part
+                    GROUP BY ts.id_tuning_setup
+                    ORDER BY ts.id_tuning_setup
                 ";
                 $stmt = $db->prepare($sql);
-                $start_time = microtime(true);
                 $stmt->execute();
-                
-                $elapsed = microtime(true) - $start_time;
-                if ($elapsed > QUERY_TIMEOUT) {
-                    error_log("load_data tuning_setups timeout: {$elapsed}s");
-                    safe_json_error('Query timeout', 504);
-                }
-                
                 $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 foreach ($data as &$row) {
                     if ($row['parts'] !== null) {
@@ -115,66 +96,56 @@ if (isset($_GET['type'])) {
                 echo json_encode($data);
             } catch (Throwable $e) {
                 error_log('load_data tuning_setups failed: ' . $e->getMessage());
-                safe_json_error('Database error', 503);
+                generic_database_error('load_data tuning_setups failed: ' . $e->getMessage());
             }
             break;
         case 'records':
             try {
+                $setupJoin = 'wr.id_tuning_setup = tsp.id_tuning_setup';
                 $sql = "SELECT
-                            wr.\"idMap\",
-                            wr.\"idVehicle\",
-                            wr.\"idPlayer\",
+                            " . record_key_sql('wr') . " AS \"idRecord\",
+                            wr.id_map AS \"idMap\",
+                            wr.id_vehicle AS \"idVehicle\",
+                            wr.id_player AS \"idPlayer\",
                             wr.distance,
                             wr.current,
-                            wr.\"idTuningSetup\",
+                            wr.id_tuning_setup AS \"idTuningSetup\",
                             wr.questionable,
                             COALESCE(wr.questionable_reason, '') AS questionable_reason,
-                            m.\"nameMap\" AS map_name,
-                            v.\"nameVehicle\" AS vehicle_name,
-                            p.\"namePlayer\" AS player_name,
+                            m.name_map AS map_name,
+                            v.name_vehicle AS vehicle_name,
+                            p.name_player AS player_name,
                             COALESCE(p.country, '') AS player_country,
-                            string_agg(tp.\"nameTuningPart\", ', ' ORDER BY tp.\"nameTuningPart\") AS tuning_parts
-                        FROM _worldrecord wr
-                        JOIN _map m ON wr.\"idMap\" = m.\"idMap\"
-                        JOIN _vehicle v ON wr.\"idVehicle\" = v.\"idVehicle\"
-                        LEFT JOIN _player p ON wr.\"idPlayer\" = p.\"idPlayer\"
-                        LEFT JOIN _tuningsetupparts tsp ON CAST(wr.\"idTuningSetup\" AS smallint) = tsp.\"idTuningSetup\"
-                        LEFT JOIN _tuningpart tp ON tsp.\"idTuningPart\" = tp.\"idTuningPart\"
+                            string_agg(tp.name_tuning_part, ', ' ORDER BY tp.name_tuning_part) AS tuning_parts
+                        FROM world_record wr
+                        JOIN map m ON wr.id_map = m.id_map
+                        JOIN vehicle v ON wr.id_vehicle = v.id_vehicle
+                        LEFT JOIN player p ON wr.id_player = p.id_player
+                        LEFT JOIN tuning_setup_part tsp ON {$setupJoin}
+                        LEFT JOIN tuning_part tp ON tsp.id_tuning_part = tp.id_tuning_part
                         WHERE wr.current = 1
                         GROUP BY
-                            wr.\"idMap\",
-                            wr.\"idVehicle\",
-                            wr.\"idPlayer\",
+                            wr.id_record,
+                            wr.id_map,
+                            wr.id_vehicle,
+                            wr.id_player,
                             wr.distance,
                             wr.current,
-                            wr.\"idTuningSetup\",
+                            wr.id_tuning_setup,
                             wr.questionable,
                             wr.questionable_reason,
-                            m.\"nameMap\",
-                            v.\"nameVehicle\",
-                            p.\"namePlayer\",
-                            p.country,
-                            wr.\"idPlayer\"
-                        ORDER BY wr.\"idMap\" DESC";
+                            m.name_map,
+                            v.name_vehicle,
+                            p.name_player,
+                            p.country
+                        ORDER BY wr.id_map DESC";
                 $stmt = $db->prepare($sql);
-                $start_time = microtime(true);
                 $stmt->execute();
-                
-                $elapsed = microtime(true) - $start_time;
-                if ($elapsed > QUERY_TIMEOUT) {
-                    error_log("load_data records timeout: {$elapsed}s");
-                    safe_json_error('Query timeout', 504);
-                }
-                
                 $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 echo json_encode($records);
             } catch (Throwable $e) {
                 error_log('load_data records failed: ' . $e->getMessage());
-
-// Clean up resources
-$stmt = null;
-$db = null;
-                safe_json_error('Database error', 503);
+                generic_database_error('load_data records failed: ' . $e->getMessage());
             }
             break;
         default:

@@ -19,25 +19,33 @@ if (!is_array($data)) {
 $mapName = $data['mapName'] ?? null;
 
 try {
+    $db->beginTransaction();
+
     if (empty($mapName)) {
+        $db->rollBack();
         echo json_encode(['error' => 'Map name is required.']);
         exit;
     }
 
     $mapName = trim($mapName);
+    if (mb_strlen($mapName) > 19) {
+        $db->rollBack();
+        http_response_code(400);
+        echo json_encode(['error' => 'Map name must be 19 characters or fewer.']);
+        exit;
+    }
 
-    $check = $db->prepare('SELECT idMap FROM _map WHERE nameMap = :name LIMIT 1');
+    $check = $db->prepare('SELECT id_map FROM map WHERE name_map = :name LIMIT 1');
     $check->execute([':name' => $mapName]);
     if ($check->fetch()) {
+        $db->rollBack();
         echo json_encode(['error' => 'Map already exists in database.']);
         exit;
     }
 
-    $row = $db->query('SELECT COALESCE(MAX(idMap), 0) AS m FROM _map')->fetch(PDO::FETCH_ASSOC);
-    $newId = (int)$row['m'] + 1;
-
-    $stmt = $db->prepare('INSERT INTO _map (idMap, nameMap) VALUES (:idMap, :nameMap)');
-    $stmt->execute([':idMap' => $newId, ':nameMap' => $mapName]);
+    $stmt = $db->prepare('INSERT INTO map (name_map) VALUES (:nameMap) RETURNING id_map');
+    $stmt->execute([':nameMap' => $mapName]);
+    $newId = (int)$stmt->fetchColumn();
 
     $iconMessage = '';
     if (!empty($_FILES['icon']['tmp_name'])) {
@@ -46,17 +54,20 @@ try {
         $mimeType = $iconFile['type'];
         
         if (!in_array($mimeType, ['image/svg+xml', 'text/plain']) && !preg_match('/\.svg$/i', $fileName)) {
+            $db->rollBack();
             echo json_encode(['error' => 'Only SVG files are allowed for icons.']);
             exit;
         }
         
         if ($iconFile['size'] > 1048576) {
+            $db->rollBack();
             echo json_encode(['error' => 'Icon file must be smaller than 1MB.']);
             exit;
         }
         
         $fileContent = file_get_contents($iconFile['tmp_name']);
         if (strpos($fileContent, '<svg') === false) {
+            $db->rollBack();
             echo json_encode(['error' => 'File does not appear to be a valid SVG.']);
             exit;
         }
@@ -68,15 +79,21 @@ try {
             mkdir(__DIR__ . '/../img/map_icons/', 0755, true);
         }
         
-        if (move_uploaded_file($iconFile['tmp_name'], $iconPath)) {
+        if (api_dry_run_enabled()) {
+            $iconMessage = '(dry-run: icon upload skipped)';
+        } elseif (move_uploaded_file($iconFile['tmp_name'], $iconPath)) {
             $iconMessage = '(icon uploaded: ' . $iconFilename . ')';
         } else {
             $iconMessage = '(warning: icon save failed)';
         }
     }
 
-    echo json_encode(['success' => true, 'idMap' => $newId, 'nameMap' => $mapName, 'iconMessage' => $iconMessage]);
+    $dryRun = finish_dry_run_transaction($db);
+    echo json_encode(['success' => true, 'dryRun' => $dryRun, 'idMap' => $newId, 'nameMap' => $mapName, 'iconMessage' => $iconMessage]);
 } catch (PDOException $e) {
+    if ($db->inTransaction()) {
+        $db->rollBack();
+    }
     generic_database_error('add_map failed: ' . $e->getMessage());
 }
 ?>

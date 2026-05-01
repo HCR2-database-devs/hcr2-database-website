@@ -173,4 +173,7 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 .ignore
+
+# Local DB backup artifacts
+backups/*.dump
 .sqlite

@@ -6,6 +6,10 @@ enforce_maintenance_json();
 header('Content-Type: application/json; charset=utf-8');
 
 function verify_hcaptcha($token, $secret) {
+    if (api_dry_run_enabled()) {
+        return true;
+    }
+
     if (empty($token) || empty($secret)) {
         return false;
     }
@@ -69,11 +73,7 @@ try {
     exit;
 }
 
-try {
-    $pendingTable = pending_submissions_table($db);
-} catch (Throwable $e) {
-    generic_database_error('public_submit table resolution failed: ' . $e->getMessage());
-}
+$pendingTable = 'pending_submission';
 
 
 $raw = file_get_contents('php://input');
@@ -103,7 +103,7 @@ if (!is_array($tuningParts)) {
     }
 }
 
-if (!verify_hcaptcha($hcaptcha_response, $HCAPTCHA_SECRET_KEY)) {
+if (!verify_hcaptcha($hcaptcha_response, HCAPTCHA_SECRET_KEY)) {
     http_response_code(400);
     echo json_encode(['error' => 'hCaptcha verification failed. Please try again.']);
     exit;
@@ -147,8 +147,9 @@ if (count($tuningParts) < 3 || count($tuningParts) > 4) {
 }
 try {
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-    if ($ip) {
-        $rstmt = $db->prepare("SELECT COUNT(1) AS c FROM {$pendingTable} WHERE submitterIp = :ip AND submitted_at >= NOW() - INTERVAL '1 hour'");
+    if ($ip && !api_dry_run_enabled()) {
+        $rateSql = "SELECT COUNT(1) AS c FROM {$pendingTable} WHERE submitter_ip = :ip AND submitted_at >= NOW() - INTERVAL '1 hour'";
+        $rstmt = $db->prepare($rateSql);
         $rstmt->execute([':ip' => $ip]);
         $rc = $rstmt->fetch(PDO::FETCH_ASSOC);
         if ($rc && isset($rc['c']) && (int)$rc['c'] >= 5) {
@@ -157,19 +158,24 @@ try {
             exit;
         }
     }
-    $stmt = $db->prepare("INSERT INTO {$pendingTable} (idMap, idVehicle, distance, playerName, playerCountry, tuningParts, submitterIp) VALUES (:idMap, :idVehicle, :distance, :playerName, :playerCountry, :tuningParts, :ip)");
+    $db->beginTransaction();
+    $stmt = $db->prepare("INSERT INTO {$pendingTable} (id_map, id_vehicle, distance, player_name, player_country, tuning_parts, submitter_ip, status) VALUES (:idMap, :idVehicle, :distance, :playerName, :playerCountry, :tuningParts, :ip, 'pending')");
     $stmt->execute([
-        ':idMap' => $mapId,
-        ':idVehicle' => $vehicleId,
-        ':distance' => $distance,
-        ':playerName' => $playerName,
-        ':playerCountry' => $playerCountry,
-        ':tuningParts' => implode(', ', $tuningParts),
-        ':ip' => $_SERVER['REMOTE_ADDR'] ?? ''
-    ]);
+            ':idMap' => $mapId,
+            ':idVehicle' => $vehicleId,
+            ':distance' => $distance,
+            ':playerName' => $playerName,
+            ':playerCountry' => $playerCountry,
+            ':tuningParts' => implode(', ', $tuningParts),
+            ':ip' => $_SERVER['REMOTE_ADDR'] ?? ''
+        ]);
 
-    echo json_encode(['success' => true, 'message' => 'Submission received and is pending review by admins.']);
+    $dryRun = finish_dry_run_transaction($db);
+    echo json_encode(['success' => true, 'dryRun' => $dryRun, 'message' => 'Submission received and is pending review by admins.']);
 } catch (PDOException $e) {
+    if ($db->inTransaction()) {
+        $db->rollBack();
+    }
     generic_database_error('public_submit failed: ' . $e->getMessage());
 }
 

@@ -1,17 +1,6 @@
 <?php
-require_once __DIR__ . '/../auth/config.php';
-if (session_status() === PHP_SESSION_NONE) session_start();
-
-$logged = isset($_SESSION['discord']) && isset($_SESSION['discord']['id']);
-$allowed = false;
-if ($logged && !empty($ALLOWED_DISCORD_IDS)) {
-    $allowed = in_array((string)$_SESSION['discord']['id'], $ALLOWED_DISCORD_IDS, true);
-}
-if (!$logged || !$allowed) {
-    http_response_code(403);
-    echo json_encode(['error' => 'Unauthorized']);
-    exit;
-}
+require_once __DIR__ . '/../auth/check_auth.php';
+ensure_authorized_json();
 
 header('Content-Type: application/json');
 
@@ -28,12 +17,17 @@ if (!$input || !isset($input['recordId']) || !isset($input['tuningSetupId'])) {
     exit;
 }
 
-$recordId = (int)$input['recordId'];
+$recordKey = parse_record_key($input['recordId']);
+if (!$recordKey) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Invalid recordId']);
+    exit;
+}
 $tuningSetupId = (int)$input['tuningSetupId'];
 
 try {
-    $stmt = $db->prepare("SELECT idTuningSetup FROM _worldrecord WHERE idRecord = ?");
-    $stmt->execute([$recordId]);
+    $stmt = $db->prepare('SELECT id_tuning_setup FROM world_record WHERE ' . record_key_where_sql() . ' AND current = 1 LIMIT 1');
+    $stmt->execute(record_key_params($recordKey));
     $record = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$record) {
@@ -42,13 +36,13 @@ try {
         exit;
     }
     
-    if ($record['idTuningSetup']) {
+    if (!empty($record['id_tuning_setup'])) {
         http_response_code(400);
         echo json_encode(['error' => 'Record already has a tuning setup assigned']);
         exit;
     }
     
-    $stmt = $db->prepare("SELECT idTuningSetup FROM _tuningsetup WHERE idTuningSetup = ?");
+    $stmt = $db->prepare('SELECT id_tuning_setup FROM tuning_setup WHERE id_tuning_setup = ?');
     $stmt->execute([$tuningSetupId]);
     if (!$stmt->fetch()) {
         http_response_code(404);
@@ -56,12 +50,19 @@ try {
         exit;
     }
     
-    $stmt = $db->prepare("UPDATE _worldrecord SET idTuningSetup = ? WHERE idRecord = ?");
-    $stmt->execute([$tuningSetupId, $recordId]);
+    $db->beginTransaction();
+    $stmt = $db->prepare('UPDATE world_record SET id_tuning_setup = :setupId WHERE ' . record_key_where_sql() . ' AND current = 1');
+    $stmt->execute(array_merge([
+        ':setupId' => $tuningSetupId,
+    ], record_key_params($recordKey)));
+    $dryRun = finish_dry_run_transaction($db);
     
-    echo json_encode(['success' => true]);
+    echo json_encode(['success' => true, 'dryRun' => $dryRun]);
     
 } catch (PDOException $e) {
+    if ($db->inTransaction()) {
+        $db->rollBack();
+    }
     generic_database_error('assign_setup failed: ' . $e->getMessage());
 }
 ?>

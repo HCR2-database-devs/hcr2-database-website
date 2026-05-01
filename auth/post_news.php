@@ -29,14 +29,19 @@ if (isset($_SESSION['discord']) && isset($_SESSION['discord']['username'])) {
 }
 
 try {
-    $stmt = $db->prepare('INSERT INTO News (title, content, author) VALUES (:title, :content, :author)');
+    $db->beginTransaction();
+    $stmt = $db->prepare('INSERT INTO news (title, content, author) VALUES (:title, :content, :author)');
     $stmt->execute([
         ':title' => $title_safe,
         ':content' => $content_safe,
         ':author' => $author
     ]);
 
-    echo json_encode(['success' => true]);
+    $dryRun = finish_dry_run_transaction($db);
+    echo json_encode(['success' => true, 'dryRun' => $dryRun]);
 } catch (PDOException $e) {
+    if ($db->inTransaction()) {
+        $db->rollBack();
+    }
     generic_database_error('post_news failed: ' . $e->getMessage());
 }

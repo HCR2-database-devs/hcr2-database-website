@@ -27,20 +27,20 @@ try {
 
     $inPlaceholders = str_repeat('?,', count($partIds) - 1) . '?';
     $stmt = $db->prepare("
-        SELECT idTuningSetup
-        FROM _tuningsetup
-        WHERE idTuningSetup IN (
-            SELECT idTuningSetup
-            FROM _tuningsetupparts
-            WHERE idTuningPart IN ($inPlaceholders)
-            GROUP BY idTuningSetup
+            SELECT id_tuning_setup
+        FROM tuning_setup
+        WHERE id_tuning_setup IN (
+            SELECT id_tuning_setup
+            FROM tuning_setup_part
+            WHERE id_tuning_part IN ($inPlaceholders)
+            GROUP BY id_tuning_setup
             HAVING COUNT(*) = ?
         )
         AND NOT EXISTS (
             SELECT 1
-            FROM _tuningsetupparts tsp
-            WHERE tsp.idTuningSetup = _tuningsetup.idTuningSetup
-            AND tsp.idTuningPart NOT IN ($inPlaceholders)
+            FROM tuning_setup_part tsp
+            WHERE tsp.id_tuning_setup = tuning_setup.id_tuning_setup
+              AND tsp.id_tuning_part NOT IN ($inPlaceholders)
         )
     ");
     $params = array_merge($partIds, [count($partIds)], $partIds);
@@ -52,17 +52,17 @@ try {
         exit;
     }
 
-    $stmt = $db->prepare("INSERT INTO _tuningsetup DEFAULT VALUES RETURNING idTuningSetup");
+    $stmt = $db->prepare('INSERT INTO tuning_setup DEFAULT VALUES RETURNING id_tuning_setup');
     $stmt->execute();
     $setupId = (int)$stmt->fetchColumn();
 
-    $stmt = $db->prepare("INSERT INTO _tuningsetupparts (idTuningSetup, idTuningPart) VALUES (?, ?)");
+    $stmt = $db->prepare('INSERT INTO tuning_setup_part (id_tuning_setup, id_tuning_part) VALUES (?, ?)');
     foreach ($partIds as $partId) {
         $stmt->execute([$setupId, $partId]);
     }
 
-    $db->commit();
-    echo json_encode(['success' => true]);
+    $dryRun = finish_dry_run_transaction($db);
+    echo json_encode(['success' => true, 'dryRun' => $dryRun, 'idTuningSetup' => $setupId]);
 } catch (PDOException $e) {
     if ($db->inTransaction()) {
         $db->rollBack();
