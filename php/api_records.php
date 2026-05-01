@@ -159,10 +159,6 @@ $sql = "SELECT
 try {
     $stmt = $db->prepare($sql);
     
-    if (method_exists($stmt, 'setAttribute')) {
-        $stmt->setAttribute(PDO::ATTR_TIMEOUT, QUERY_TIMEOUT);
-    }
-    
     foreach ($params as $k => $v) {
         $stmt->bindValue($k, $v, PDO::PARAM_STR);
     }
@@ -196,7 +192,7 @@ try {
     error_log('api_records SQL: ' . $sql);
     error_log('api_records params: ' . json_encode($params));
     http_response_code(503);
-    echo json_encode(['error' => 'Database query failed', 'details' => $e->getMessage()]);
+    echo json_encode(['error' => 'Database query failed']);
     exit;
 } catch (Throwable $e) {
     error_log('api_records unexpected error: ' . $e->getMessage());
