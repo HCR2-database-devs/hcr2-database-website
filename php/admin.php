@@ -47,6 +47,20 @@ if (!in_array((string)$user['sub'], $ALLOWED_DISCORD_IDS, true)) {
       button:hover { background:#0056b3; }
       .topbar { display:flex; justify-content:space-between; align-items:center; max-width:900px; margin:0 auto 20px; }
       .topbar a { text-decoration:none; color:#007bff; }
+      
+      .edit-news-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center; }
+      .edit-news-overlay.active { display:flex; }
+      .edit-news-modal { background:#fff; border-radius:8px; padding:24px; width:90%; max-width:600px; box-shadow:0 4px 20px rgba(0,0,0,0.3); }
+      .edit-news-modal h2 { margin-top:0; margin-bottom:16px; color:#007bff; }
+      .edit-news-modal label { display:block; margin-top:12px; margin-bottom:4px; font-weight:bold; }
+      .edit-news-modal input[type="text"], .edit-news-modal textarea { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-family:Arial,sans-serif; box-sizing:border-box; }
+      .edit-news-modal textarea { min-height:200px; resize:vertical; }
+      .edit-news-modal-buttons { display:flex; gap:8px; margin-top:20px; justify-content:flex-end; }
+      .edit-news-modal-buttons button { width:auto; padding:10px 20px; }
+      .edit-news-modal-buttons .cancel-btn { background:#ccc; color:#000; }
+      .edit-news-modal-buttons .cancel-btn:hover { background:#bbb; }
+      .edit-news-modal-buttons .save-btn { background:#28a745; }
+      .edit-news-modal-buttons .save-btn:hover { background:#218838; }
     </style>
 </head>
 <body>
@@ -348,6 +362,21 @@ if (!in_array((string)$user['sub'], $ALLOWED_DISCORD_IDS, true)) {
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Edit News Modal -->
+    <div id="edit-news-overlay" class="edit-news-overlay">
+        <div class="edit-news-modal">
+            <h2>Edit News</h2>
+            <label for="edit-news-title">Title</label>
+            <input type="text" id="edit-news-title" placeholder="News title">
+            <label for="edit-news-content">Content</label>
+            <textarea id="edit-news-content" placeholder="News content"></textarea>
+            <div class="edit-news-modal-buttons">
+                <button class="cancel-btn" onclick="closeEditNewsModal()">Cancel</button>
+                <button class="save-btn" onclick="saveEditedNews()">Save</button>
+            </div>
+        </div>
     </div>
 
 <script>
@@ -1048,6 +1077,12 @@ window.onload = () => {
     loadAdminNews();
     listBackups();
     refreshMaintenance();
+    
+    document.getElementById('edit-news-overlay').addEventListener('click', (e) => {
+        if (e.target.id === 'edit-news-overlay') {
+            closeEditNewsModal();
+        }
+    });
 };
 
 async function postNews(e) {
@@ -1110,6 +1145,72 @@ function formatNewsDate(dateString) {
     return `${relative} (${time})`;
 }
 
+async function editNewsItem(id) {
+    try {
+        const res = await fetch('/php/get_news.php?limit=100', { credentials: 'same-origin' });
+        const data = await res.json();
+        const newsItem = data.news.find(n => n.id === id);
+        if (!newsItem) {
+            alert('News item not found.');
+            return;
+        }
+        
+        document.getElementById('edit-news-title').value = newsItem.title;
+        document.getElementById('edit-news-content').value = newsItem.content;
+        window.currentEditingNewsId = id;
+        
+        document.getElementById('edit-news-overlay').classList.add('active');
+        document.getElementById('edit-news-title').focus();
+    } catch (err) {
+        console.error('Failed to load news item', err);
+        alert('Failed to load news item.');
+    }
+}
+
+function closeEditNewsModal() {
+    document.getElementById('edit-news-overlay').classList.remove('active');
+    window.currentEditingNewsId = null;
+    document.getElementById('edit-news-title').value = '';
+    document.getElementById('edit-news-content').value = '';
+}
+
+async function saveEditedNews() {
+    const id = window.currentEditingNewsId;
+    if (!id) {
+        alert('No news item selected.');
+        return;
+    }
+    
+    const title = document.getElementById('edit-news-title').value.trim();
+    const content = document.getElementById('edit-news-content').value.trim();
+    
+    if (!title || !content) {
+        alert('Title and content cannot be empty.');
+        return;
+    }
+    
+    try {
+        const res = await fetch('/auth/edit_news.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, title, content })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            alert('Save failed: ' + (data.error || 'Unknown error'));
+            return;
+        }
+        if (data.success) {
+            closeEditNewsModal();
+            loadAdminNews();
+        }
+    } catch (err) {
+        console.error('Save news failed', err);
+        alert('Network error saving news.');
+    }
+}
+
 async function deleteNewsItem(id) {
     if (!confirm('Are you sure you want to delete this news item?')) return;
     try {
@@ -1130,40 +1231,6 @@ async function deleteNewsItem(id) {
     } catch (err) {
         console.error('Delete news failed', err);
         alert('Network error deleting news.');
-    }
-}
-
-async function editNewsItem(id) {
-    const title = prompt('Edit title:');
-    if (title === null) return;
-    if (title.trim() === '') {
-        alert('Title cannot be empty.');
-        return;
-    }
-    const content = prompt('Edit content:');
-    if (content === null) return;
-    if (content.trim() === '') {
-        alert('Content cannot be empty.');
-        return;
-    }
-    try {
-        const res = await fetch('/auth/edit_news.php', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, title, content })
-        });
-        const data = await res.json();
-        if (!res.ok) {
-            alert('Edit failed: ' + (data.error || 'Unknown error'));
-            return;
-        }
-        if (data.success) {
-            loadAdminNews();
-        }
-    } catch (err) {
-        console.error('Edit news failed', err);
-        alert('Network error editing news.');
     }
 }
 
