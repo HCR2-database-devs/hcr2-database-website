@@ -1080,6 +1080,93 @@ async function postNews(e) {
     }
 }
 
+function getRelativeTime(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const secondsAgo = Math.floor((now - date) / 1000);
+    
+    if (secondsAgo < 60) return 'just now';
+    const minutesAgo = Math.floor(secondsAgo / 60);
+    if (minutesAgo < 60) return minutesAgo + ' min ago';
+    const hoursAgo = Math.floor(minutesAgo / 60);
+    if (hoursAgo < 24) return hoursAgo + ' hour' + (hoursAgo !== 1 ? 's' : '') + ' ago';
+    const daysAgo = Math.floor(hoursAgo / 24);
+    if (daysAgo === 1) return 'yesterday';
+    if (daysAgo < 7) return daysAgo + ' days ago';
+    if (daysAgo < 30) {
+        const weeksAgo = Math.floor(daysAgo / 7);
+        return weeksAgo + ' week' + (weeksAgo !== 1 ? 's' : '') + ' ago';
+    }
+    const monthsAgo = Math.floor(daysAgo / 30);
+    if (monthsAgo < 12) return monthsAgo + ' month' + (monthsAgo !== 1 ? 's' : '') + ' ago';
+    const yearsAgo = Math.floor(monthsAgo / 12);
+    return yearsAgo + ' year' + (yearsAgo !== 1 ? 's' : '') + ' ago';
+}
+
+function formatNewsDate(dateString) {
+    const date = new Date(dateString);
+    const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const relative = getRelativeTime(dateString);
+    return `${relative} (${time})`;
+}
+
+async function deleteNewsItem(id) {
+    if (!confirm('Are you sure you want to delete this news item?')) return;
+    try {
+        const res = await fetch('/auth/delete_news.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            alert('Delete failed: ' + (data.error || 'Unknown error'));
+            return;
+        }
+        if (data.success) {
+            loadAdminNews();
+        }
+    } catch (err) {
+        console.error('Delete news failed', err);
+        alert('Network error deleting news.');
+    }
+}
+
+async function editNewsItem(id) {
+    const title = prompt('Edit title:');
+    if (title === null) return;
+    if (title.trim() === '') {
+        alert('Title cannot be empty.');
+        return;
+    }
+    const content = prompt('Edit content:');
+    if (content === null) return;
+    if (content.trim() === '') {
+        alert('Content cannot be empty.');
+        return;
+    }
+    try {
+        const res = await fetch('/auth/edit_news.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, title, content })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            alert('Edit failed: ' + (data.error || 'Unknown error'));
+            return;
+        }
+        if (data.success) {
+            loadAdminNews();
+        }
+    } catch (err) {
+        console.error('Edit news failed', err);
+        alert('Network error editing news.');
+    }
+}
+
 async function loadAdminNews() {
     const el = document.getElementById('admin-news-list');
     if (!el) return;
@@ -1092,7 +1179,18 @@ async function loadAdminNews() {
         if (items.length === 0) { el.textContent = 'No news yet.'; return; }
         let html = '<ul style="list-style:none;padding:0;margin:0;">';
         items.forEach(n => {
-            html += `<li style="padding:8px;border-bottom:1px solid #eee;"><strong>${esc(n.title)}</strong><div style="font-size:12px;color:#666;margin:6px 0;">${n.created_at} — ${esc(n.author||'')}</div><div style="white-space:pre-wrap;">${esc(n.content)}</div></li>`;
+            const dateFormatted = formatNewsDate(n.created_at);
+            html += `<li style="padding:12px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+                <div style="flex-grow:1;">
+                    <strong style="font-size:15px;">${esc(n.title)}</strong>
+                    <div style="font-size:12px;color:#888;margin:6px 0;">${dateFormatted} — ${esc(n.author||'')}</div>
+                    <div style="white-space:pre-wrap;font-size:14px;margin-top:6px;">${esc(n.content)}</div>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+                    <button onclick="editNewsItem(${n.id})" style="background:#28a745;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;">Edit</button>
+                    <button onclick="deleteNewsItem(${n.id})" style="background:#dc3545;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;">Delete</button>
+                </div>
+            </li>`;
         });
         html += '</ul>';
         el.innerHTML = html;

@@ -1664,6 +1664,36 @@ function hideNoteModal() {
     if (overlay) overlay.style.display = 'none';
 }
 
+function getRelativeTimePublic(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const secondsAgo = Math.floor((now - date) / 1000);
+    
+    if (secondsAgo < 60) return 'just now';
+    const minutesAgo = Math.floor(secondsAgo / 60);
+    if (minutesAgo < 60) return minutesAgo + ' min ago';
+    const hoursAgo = Math.floor(minutesAgo / 60);
+    if (hoursAgo < 24) return hoursAgo + ' hour' + (hoursAgo !== 1 ? 's' : '') + ' ago';
+    const daysAgo = Math.floor(hoursAgo / 24);
+    if (daysAgo === 1) return 'yesterday';
+    if (daysAgo < 7) return daysAgo + ' days ago';
+    if (daysAgo < 30) {
+        const weeksAgo = Math.floor(daysAgo / 7);
+        return weeksAgo + ' week' + (weeksAgo !== 1 ? 's' : '') + ' ago';
+    }
+    const monthsAgo = Math.floor(daysAgo / 30);
+    if (monthsAgo < 12) return monthsAgo + ' month' + (monthsAgo !== 1 ? 's' : '') + ' ago';
+    const yearsAgo = Math.floor(monthsAgo / 12);
+    return yearsAgo + ' year' + (yearsAgo !== 1 ? 's' : '') + ' ago';
+}
+
+function formatNewsDatePublic(dateString) {
+    const date = new Date(dateString);
+    const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const relative = getRelativeTimePublic(dateString);
+    return `${relative} (${time})`;
+}
+
 async function loadNews() {
     const el = document.getElementById('news-list');
     if (!el) return;
@@ -1681,11 +1711,11 @@ async function loadNews() {
             return;
         }
         const html = items.map(n => {
-            const created = n.created_at ? n.created_at : '';
+            const created = n.created_at ? formatNewsDatePublic(n.created_at) : '';
             const title = esc(n.title || '');
             const content = esc(n.content || '');
             const author = esc(n.author || '');
-            return `<div class="news-item" style="padding:12px; border-bottom:1px solid #eee;"><h3 style=\"margin:0 0 6px 0;\">${title}</h3><div style=\"font-size:13px;color:#666;margin-bottom:8px;\">${created} — ${author}</div><div style=\"white-space:pre-wrap;\">${content}</div></div>`;
+            return `<div class="news-item" style="padding:12px; border-bottom:1px solid #eee;"><h3 style=\"margin:0 0 6px 0;\">${title}</h3><div style=\"font-size:13px;color:#888;margin-bottom:8px;\">${created} — ${author}</div><div style=\"white-space:pre-wrap;\">${content}</div></div>`;
         }).join('');
         el.innerHTML = html;
     } catch (err) {
