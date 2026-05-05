@@ -27,9 +27,24 @@ if (!in_array((string)$user['sub'], $ALLOWED_DISCORD_IDS, true)) {
     <style>
       body { font-family: Arial, sans-serif; background:#f4f4f9; color:#333; padding:20px; }
       h1 { color:#007bff; }
-      .form-container { background:#fff; padding:20px; border-radius:8px; max-width:900px; margin:20px auto; box-shadow:0 2px 6px rgba(0,0,0,0.08); }
+      
+      .accordion-container { max-width:900px; margin:0 auto; }
+      .accordion-item { background:#fff; margin:12px 0; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.08); overflow:hidden; }
+      .accordion-header { background:#f8f9fa; padding:16px 20px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; border:1px solid #e0e0e0; transition:all 0.2s ease; user-select:none; }
+      .accordion-header:hover { background:#f0f1f3; }
+      .accordion-header.active { background:#007bff; color:#fff; border-color:#007bff; }
+      .accordion-header h2 { margin:0; font-size:18px; flex-grow:1; }
+      .accordion-toggle { font-size:20px; transition:transform 0.2s ease; }
+      .accordion-header.active .accordion-toggle { transform:rotate(180deg); }
+      .accordion-content { display:none; padding:20px; border-top:1px solid #e0e0e0; }
+      .accordion-content.active { display:block; }
+      
+      .form-container { background:transparent; padding:0; border-radius:0; max-width:none; margin:0; box-shadow:none; }
+      .form-container h2 { display:none; }
+      
       input, select, button { width:100%; padding:10px; margin:8px 0; border:1px solid #ccc; border-radius:6px; }
-      button { background:#007bff; color:#fff; border:none; cursor:pointer; }
+      button { background:#007bff; color:#fff; border:none; cursor:pointer; transition:background 0.2s; }
+      button:hover { background:#0056b3; }
       .topbar { display:flex; justify-content:space-between; align-items:center; max-width:900px; margin:0 auto 20px; }
       .topbar a { text-decoration:none; color:#007bff; }
     </style>
@@ -51,10 +66,17 @@ if (!in_array((string)$user['sub'], $ALLOWED_DISCORD_IDS, true)) {
         </div>
     </div>
 
-
-    <div class="form-container">
-        <h2>Submit a New Record ✅</h2>
-        <form id="record-form" onsubmit="submitRecord(event)">
+    <div class="accordion-container">
+      <!-- Submit Record -->
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <h2>Submit a New Record ✅</h2>
+          <span class="accordion-toggle">▼</span>
+        </div>
+        <div class="accordion-content">
+          <div class="form-container">
+            <h2>Submit a New Record ✅</h2>
+            <form id="record-form" onsubmit="submitRecord(event)">
             <label>Map</label>
             <select id="map-select" required></select>
             <label>Vehicle</label>
@@ -80,11 +102,20 @@ if (!in_array((string)$user['sub'], $ALLOWED_DISCORD_IDS, true)) {
             <button type="submit">Submit Record</button>
         </form>
         <p id="form-message"></p>
-    </div>
+          </div>
+        </div>
+      </div>
 
-    <div class="form-container">
-        <h2>Delete a Record ❌</h2>
-        <form id="delete-form" onsubmit="deleteRecord(event)">
+      <!-- Delete Record -->
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <h2>Delete a Record ❌</h2>
+          <span class="accordion-toggle">▼</span>
+        </div>
+        <div class="accordion-content">
+          <div class="form-container">
+            <h2>Delete a Record ❌</h2>
+            <form id="delete-form" onsubmit="deleteRecord(event)">
             <label>Filter Record</label>
             <input type="text" id="delete-filter" placeholder="Filter by distance, map, vehicle, or player..." oninput="filterDeleteRecords()">
             <label>Record</label>
@@ -92,11 +123,20 @@ if (!in_array((string)$user['sub'], $ALLOWED_DISCORD_IDS, true)) {
             <button type="submit">Delete Record</button>
         </form>
         <p id="delete-message"></p>
-    </div>
-    
-    <div class="form-container">
-        <h2>Mark Records as Questionable ❓</h2>
-        <form id="questionable-form" onsubmit="markQuestionable(event)">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Mark Records as Questionable -->
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <h2>Mark Records as Questionable ❓</h2>
+          <span class="accordion-toggle">▼</span>
+        </div>
+        <div class="accordion-content">
+          <div class="form-container">
+            <h2>Mark Records as Questionable ❓</h2>
+            <form id="questionable-form" onsubmit="markQuestionable(event)">
             <label>Filter Record</label>
             <input type="text" id="questionable-filter-input" placeholder="Filter by distance, map, vehicle, or player..." oninput="filterQuestionableRecords()">
             <label>Record</label>
@@ -112,11 +152,20 @@ if (!in_array((string)$user['sub'], $ALLOWED_DISCORD_IDS, true)) {
             <button type="submit">Update Status</button>
         </form>
         <p id="questionable-message"></p>
-    </div>
-    
-    <div class="form-container">
-        <h2>Assign Tuning Setup to Existing Record 🔧</h2>
-        <form id="assign-setup-form" onsubmit="assignSetup(event)">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Assign Tuning Setup -->
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <h2>Assign Tuning Setup to Existing Record 🔧</h2>
+          <span class="accordion-toggle">▼</span>
+        </div>
+        <div class="accordion-content">
+          <div class="form-container">
+            <h2>Assign Tuning Setup to Existing Record 🔧</h2>
+            <form id="assign-setup-form" onsubmit="assignSetup(event)">
             <label>Filter Record (without tuning setup)</label>
             <input type="text" id="assign-filter" placeholder="Filter by distance, map, vehicle, or player..." oninput="filterAssignRecords()">
             <label>Record (without tuning setup)</label>
@@ -127,11 +176,20 @@ if (!in_array((string)$user['sub'], $ALLOWED_DISCORD_IDS, true)) {
             <button type="submit">Assign Setup</button>
         </form>
         <p id="assign-message"></p>
-    </div>
+          </div>
+        </div>
+      </div>
 
-    <div class="form-container">
-        <h2>Add a Vehicle ➕</h2>
-        <form id="add-vehicle-form" onsubmit="addVehicle(event)" enctype="multipart/form-data">
+      <!-- Add Vehicle -->
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <h2>Add a Vehicle ➕</h2>
+          <span class="accordion-toggle">▼</span>
+        </div>
+        <div class="accordion-content">
+          <div class="form-container">
+            <h2>Add a Vehicle ➕</h2>
+            <form id="add-vehicle-form" onsubmit="addVehicle(event)" enctype="multipart/form-data">
             <label>Vehicle Name</label>
             <input type="text" id="vehicle-name-input" required placeholder="e.g., Jeep">
             <label>Icon (SVG - optional)</label>
@@ -140,11 +198,20 @@ if (!in_array((string)$user['sub'], $ALLOWED_DISCORD_IDS, true)) {
             <button type="submit">Add Vehicle</button>
         </form>
         <p id="add-vehicle-message"></p>
-    </div>
+          </div>
+        </div>
+      </div>
 
-    <div class="form-container">
-        <h2>Add a Map ➕</h2>
-        <form id="add-map-form" onsubmit="addMap(event)" enctype="multipart/form-data">
+      <!-- Add Map -->
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <h2>Add a Map ➕</h2>
+          <span class="accordion-toggle">▼</span>
+        </div>
+        <div class="accordion-content">
+          <div class="form-container">
+            <h2>Add a Map ➕</h2>
+            <form id="add-map-form" onsubmit="addMap(event)" enctype="multipart/form-data">
             <label>Map Name</label>
             <input type="text" id="map-name-input" required placeholder="e.g., Forest Trials">
             <label>Icon (SVG - optional)</label>
@@ -153,11 +220,20 @@ if (!in_array((string)$user['sub'], $ALLOWED_DISCORD_IDS, true)) {
             <button type="submit">Add Map</button>
         </form>
         <p id="add-map-message"></p>
-    </div>
-    
-    <div class="form-container">
-        <h2>Add Tuning Part ➕</h2>
-        <form id="add-tuning-part-form" onsubmit="addTuningPart(event)" enctype="multipart/form-data">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Add Tuning Part -->
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <h2>Add Tuning Part ➕</h2>
+          <span class="accordion-toggle">▼</span>
+        </div>
+        <div class="accordion-content">
+          <div class="form-container">
+            <h2>Add Tuning Part ➕</h2>
+            <form id="add-tuning-part-form" onsubmit="addTuningPart(event)" enctype="multipart/form-data">
             <label>Tuning Part Name</label>
             <input type="text" id="tuning-part-name-input" required placeholder="e.g., Turbo">
             <label>Icon (SVG - optional)</label>
@@ -166,26 +242,53 @@ if (!in_array((string)$user['sub'], $ALLOWED_DISCORD_IDS, true)) {
             <button type="submit">Add Tuning Part</button>
         </form>
         <p id="add-tuning-part-message"></p>
-    </div>
+          </div>
+        </div>
+      </div>
 
-    <div class="form-container">
-        <h2>Add Tuning Setup ➕</h2>
-        <form id="add-tuning-setup-form" onsubmit="addTuningSetup(event)">
+      <!-- Add Tuning Setup -->
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <h2>Add Tuning Setup ➕</h2>
+          <span class="accordion-toggle">▼</span>
+        </div>
+        <div class="accordion-content">
+          <div class="form-container">
+            <h2>Add Tuning Setup ➕</h2>
+            <form id="add-tuning-setup-form" onsubmit="addTuningSetup(event)">
             <label>Select Tuning Parts (3-4)</label>
             <div id="tuning-parts-checkboxes"></div>
             <button type="submit">Add Tuning Setup</button>
         </form>
         <p id="add-tuning-setup-message"></p>
-    </div>
+          </div>
+        </div>
+      </div>
 
-    <div class="form-container" id="pending-submissions-container">
-        <h2>Pending Submissions (from users)</h2>
-        <div id="pending-list">Loading...</div>
-    </div>
+      <!-- Pending Submissions -->
+      <div class="accordion-item" id="pending-submissions-container">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <h2>Pending Submissions (from users)</h2>
+          <span class="accordion-toggle">▼</span>
+        </div>
+        <div class="accordion-content">
+          <div class="form-container">
+            <h2>Pending Submissions (from users)</h2>
+            <div id="pending-list">Loading...</div>
+          </div>
+        </div>
+      </div>
 
-    <div class="form-container">
-        <h2>Site News (Admins)</h2>
-        <form id="news-form" onsubmit="postNews(event)">
+      <!-- Site News -->
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <h2>Site News (Admins)</h2>
+          <span class="accordion-toggle">▼</span>
+        </div>
+        <div class="accordion-content">
+          <div class="form-container">
+            <h2>Site News (Admins)</h2>
+            <form id="news-form" onsubmit="postNews(event)">
             <label>Title</label>
             <input type="text" id="news-title-input" required>
             <label>Content</label>
@@ -195,11 +298,20 @@ if (!in_array((string)$user['sub'], $ALLOWED_DISCORD_IDS, true)) {
         <p id="news-message"></p>
         <h3 style="margin-top:18px;">Recent News</h3>
         <div id="admin-news-list">Loading...</div>
-    </div>
+          </div>
+        </div>
+      </div>
 
-    <div class="form-container">
-        <h2>Database & Backups</h2>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <!-- Database & Backups -->
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <h2>Database & Backups</h2>
+          <span class="accordion-toggle">▼</span>
+        </div>
+        <div class="accordion-content">
+          <div class="form-container">
+            <h2>Database & Backups</h2>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <a href="/auth/admin_actions.php?action=download_db" style="display:inline-block; padding:10px 14px; background:#007bff; color:#fff; border-radius:6px; text-decoration:none;">Download DB</a>
             <button type="button" onclick="createBackup()">Create Backup</button>
             <button type="button" onclick="listBackups()" style="background:#ccc;color:#000;">List Backups</button>
@@ -213,9 +325,18 @@ if (!in_array((string)$user['sub'], $ALLOWED_DISCORD_IDS, true)) {
             <div style="display:flex; gap:8px; margin-top:8px;"><button type="submit">Import SQL</button></div>
             <p id="import-message"></p>
         </form>
-    </div>
+          </div>
+        </div>
+      </div>
 
-    <div class="form-container" id="maintenance-container">
+      <!-- Maintenance Mode -->
+      <div class="accordion-item" id="maintenance-container">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <h2>Maintenance Mode</h2>
+          <span class="accordion-toggle">▼</span>
+        </div>
+        <div class="accordion-content">
+          <div class="form-container">
         <h2>Maintenance Mode</h2>
         <p id="maintenance-status">Loading...</p>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -224,9 +345,27 @@ if (!in_array((string)$user['sub'], $ALLOWED_DISCORD_IDS, true)) {
             <button type="button" onclick="refreshMaintenance()" style="background:#f0f0f0;color:#000;">Refresh</button>
         </div>
         <p id="maintenance-message"></p>
+          </div>
+        </div>
+      </div>
     </div>
 
 <script>
+
+function toggleAccordion(header) {
+    const isActive = header.classList.contains('active');
+    const content = header.nextElementSibling;
+    
+    if (isActive) {
+        header.classList.remove('active');
+        content.classList.remove('active');
+    } else {
+        header.classList.add('active');
+        content.classList.add('active');
+    }
+}
+
+
 function esc(input) {
     if (input === null || input === undefined) return '';
     return String(input)
