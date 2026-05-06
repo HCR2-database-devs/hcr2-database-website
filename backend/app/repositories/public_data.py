@@ -124,17 +124,21 @@ class PostgresPublicDataRepository:
         where = ["wr.current = 1"]
         params: dict[str, Any] = {}
 
-        like_filters = {
+        exact_filters = {
             "map": ("m.name_map", "map"),
-            "vehicle": ("v.name_vehicle", "vehicle"),
             "player": ("p.name_player", "player"),
             "country": ("p.country", "country"),
         }
-        for raw_key, (column, param_key) in like_filters.items():
-            value = self._like_value(filters.get(raw_key))
+        for raw_key, (column, param_key) in exact_filters.items():
+            value = self._text_value(filters.get(raw_key))
             if value is not None:
-                where.append(f"LOWER({column}) LIKE LOWER(%({param_key})s)")
+                where.append(f"LOWER({column}) = LOWER(%({param_key})s)")
                 params[param_key] = value
+
+        vehicle_value = self._text_value(filters.get("vehicle") or filters.get("car"))
+        if vehicle_value is not None:
+            where.append("LOWER(v.name_vehicle) = LOWER(%(vehicle)s)")
+            params["vehicle"] = vehicle_value
 
         questionable = filters.get("questionable")
         if questionable in {"0", "1", 0, 1}:
@@ -211,6 +215,13 @@ class PostgresPublicDataRepository:
         if not text:
             return None
         return "%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+
+    @staticmethod
+    def _text_value(value: Any) -> str | None:
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
 
     @staticmethod
     def _int_filter(value: Any) -> int | None:

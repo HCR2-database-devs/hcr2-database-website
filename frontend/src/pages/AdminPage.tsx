@@ -12,6 +12,7 @@ import {
   backupDownloadUrl,
   createBackup,
   deleteAdminRecord,
+  deleteAdminNews,
   deleteBackup,
   getAdminRecords,
   getMaintenanceStatus,
@@ -22,10 +23,11 @@ import {
   runIntegrityCheck,
   setMaintenance,
   setRecordQuestionable,
-  submitAdminRecord
+  submitAdminRecord,
+  updateAdminNews
 } from "../services/admin";
 import { getNews, getPublicData } from "../services/publicData";
-import type { AdminRecord, DataRow, IntegrityStatus } from "../types/api";
+import type { AdminRecord, DataRow, IntegrityStatus, NewsItem } from "../types/api";
 
 type RecordFormState = {
   mapId: string;
@@ -118,6 +120,9 @@ export function AdminPage() {
   const [selectedPartIds, setSelectedPartIds] = useState<number[]>([]);
   const [newsTitle, setNewsTitle] = useState("");
   const [newsContent, setNewsContent] = useState("");
+  const [editingNewsId, setEditingNewsId] = useState<number | null>(null);
+  const [editingNewsTitle, setEditingNewsTitle] = useState("");
+  const [editingNewsContent, setEditingNewsContent] = useState("");
   const [integrity, setIntegrity] = useState<IntegrityStatus | null>(null);
   const [backupMessage, setBackupMessage] = useState("");
   const [backupError, setBackupError] = useState("");
@@ -318,6 +323,42 @@ export function AdminPage() {
       setNewsTitle("");
       setNewsContent("");
     }, "News posted.");
+  }
+
+  function startEditingNews(item: NewsItem) {
+    setEditingNewsId(item.id);
+    setEditingNewsTitle(item.title);
+    setEditingNewsContent(item.content);
+  }
+
+  function cancelEditingNews() {
+    setEditingNewsId(null);
+    setEditingNewsTitle("");
+    setEditingNewsContent("");
+  }
+
+  async function handleUpdateNews(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (editingNewsId === null) {
+      return;
+    }
+    await runAction(async () => {
+      await updateAdminNews(editingNewsId, editingNewsTitle, editingNewsContent);
+      cancelEditingNews();
+    }, "News updated.");
+  }
+
+  async function handleDeleteNews(newsId: number) {
+    const confirmed = window.confirm("Delete this news item?");
+    if (!confirmed) {
+      return;
+    }
+    await runAction(async () => {
+      await deleteAdminNews(newsId);
+      if (editingNewsId === newsId) {
+        cancelEditingNews();
+      }
+    }, "News deleted.");
   }
 
   function togglePart(partId: number) {
@@ -733,6 +774,7 @@ export function AdminPage() {
                   <th>Player</th>
                   <th>Country</th>
                   <th>Tuning Parts</th>
+                  <th>IP</th>
                   <th>When</th>
                   <th>Actions</th>
                 </tr>
@@ -747,6 +789,7 @@ export function AdminPage() {
                     <td>{submission.playerName}</td>
                     <td>{submission.playerCountry}</td>
                     <td>{submission.tuningParts}</td>
+                    <td>{submission.submitterIp ?? ""}</td>
                     <td>{submission.submitted_at}</td>
                     <td className="admin-table-actions">
                       <button
@@ -790,6 +833,33 @@ export function AdminPage() {
           </div>
         </form>
         <p id="news-message" />
+        {editingNewsId !== null && (
+          <form id="news-edit-form" className="admin-block" onSubmit={handleUpdateNews}>
+            <h3 className="admin-subtitle">Edit News</h3>
+            <label>Title</label>
+            <input
+              id="news-edit-title-input"
+              type="text"
+              required
+              value={editingNewsTitle}
+              onChange={(event) => setEditingNewsTitle(event.target.value)}
+            />
+            <label>Content</label>
+            <textarea
+              id="news-edit-content-input"
+              required
+              rows={6}
+              value={editingNewsContent}
+              onChange={(event) => setEditingNewsContent(event.target.value)}
+            />
+            <div className="admin-actions">
+              <button type="submit">Save News</button>
+              <button type="button" onClick={cancelEditingNews} className="button-ghost">
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
         <div id="admin-news-list">
           {newsQuery.isLoading && <p>Loading news...</p>}
           {newsQuery.data?.news.map((item) => (
@@ -797,6 +867,14 @@ export function AdminPage() {
               <h3>{item.title}</h3>
               <div className="frontend-muted">{item.created_at} - {item.author ?? ""}</div>
               <div className="frontend-pre-wrap">{item.content}</div>
+              <div className="admin-actions admin-actions--compact">
+                <button type="button" onClick={() => startEditingNews(item)} className="button-ghost">
+                  Edit
+                </button>
+                <button type="button" onClick={() => handleDeleteNews(item.id)} className="button-ghost">
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
         </div>

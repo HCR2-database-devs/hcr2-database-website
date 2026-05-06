@@ -13,10 +13,12 @@ from app.schemas.admin import (
     AddTuningSetupRequest,
     AddVehicleRequest,
     AssignSetupRequest,
+    DeleteNewsRequest,
     DeleteRecordRequest,
     PostNewsRequest,
     SetQuestionableRequest,
     SubmitRecordRequest,
+    UpdateNewsRequest,
 )
 
 
@@ -125,6 +127,7 @@ class AdminService:
                         p.player_name AS "playerName",
                         p.player_country AS "playerCountry",
                         p.tuning_parts AS "tuningParts",
+                        p.submitter_ip AS "submitterIp",
                         p.status,
                         p.submitted_at,
                         m.name_map AS "mapName",
@@ -441,7 +444,7 @@ class AdminService:
                 )
         return {"success": True}
 
-    def post_news(self, payload: PostNewsRequest, author: str | None) -> dict[str, bool]:
+    def post_news(self, payload: PostNewsRequest, author: str | None) -> dict[str, Any]:
         title = _strip_tags(payload.title)
         content = _strip_tags(payload.content)
         if not title or not content:
@@ -449,10 +452,36 @@ class AdminService:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "INSERT INTO news (title, content, author) VALUES (%s, %s, %s)",
+                    """
+                    INSERT INTO news (title, content, author)
+                    VALUES (%s, %s, %s)
+                    RETURNING id
+                    """,
                     (title, content, author or ""),
                 )
-        return {"success": True}
+                news_id = int(cursor.fetchone()["id"])
+        return {"success": True, "id": news_id}
+
+    def update_news(self, news_id: int, payload: UpdateNewsRequest) -> dict[str, Any]:
+        title = _strip_tags(payload.title)
+        content = _strip_tags(payload.content)
+        if news_id <= 0 or not title or not content:
+            raise AdminServiceError("News ID, title, and content are required.")
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE news SET title = %s, content = %s WHERE id = %s",
+                    (title, content, news_id),
+                )
+        return {"success": True, "dryRun": False}
+
+    def delete_news(self, payload: DeleteNewsRequest) -> dict[str, Any]:
+        if payload.id <= 0:
+            raise AdminServiceError("Invalid news ID.")
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM news WHERE id = %s", (payload.id,))
+        return {"success": True, "dryRun": False}
 
     def maintenance_status(self, allowed: bool) -> dict[str, bool]:
         return {"maintenance": self._maintenance_flag.exists(), "allowed": allowed}

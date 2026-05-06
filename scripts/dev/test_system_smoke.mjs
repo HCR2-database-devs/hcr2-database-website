@@ -296,16 +296,45 @@ async function checkAdminApiSurface() {
   }
 
   const title = `Admin smoke news ${suffix}`;
-  await adminJson("/api/v1/admin/news", {
+  const postedNews = await adminJson("/api/v1/admin/news", {
     method: "POST",
     body: JSON.stringify({ title, content: "Created by admin smoke test." }),
   });
+  if (!postedNews.success || !postedNews.id) {
+    throw new Error(`Admin news post did not return a news id: ${JSON.stringify(postedNews)}`);
+  }
   await checkJson(
     "backend admin news post visible publicly",
     backendBaseUrl,
     "/api/v1/news?limit=20",
     (data) => Array.isArray(data.news) && data.news.some((item) => item.title === title),
   );
+  console.log("OK admin news post");
+
+  const editableTitle = `Admin smoke editable news ${suffix}`;
+  const editableUpdatedTitle = `${editableTitle} updated`;
+  const editableNews = await adminJson("/api/v1/admin/news", {
+    method: "POST",
+    body: JSON.stringify({ title: editableTitle, content: "Created for edit/delete smoke test." }),
+  });
+  await adminJson(`/api/v1/admin/news/${editableNews.id}`, {
+    method: "PUT",
+    body: JSON.stringify({ title: editableUpdatedTitle, content: "Updated by admin smoke test." }),
+  });
+  await checkJson(
+    "backend admin news edit visible publicly",
+    backendBaseUrl,
+    "/api/v1/news?limit=20",
+    (data) => Array.isArray(data.news) && data.news.some((item) => item.title === editableUpdatedTitle),
+  );
+  await adminJson(`/api/v1/admin/news/${editableNews.id}`, { method: "DELETE" });
+  await checkJson(
+    "backend admin news delete removed item",
+    backendBaseUrl,
+    "/api/v1/news?limit=20",
+    (data) => Array.isArray(data.news) && !data.news.some((item) => item.title === editableUpdatedTitle),
+  );
+  console.log("OK admin news edit/delete");
 
   await adminJson("/api/v1/admin/maintenance", {
     method: "PATCH",

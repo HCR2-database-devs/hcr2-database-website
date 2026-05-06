@@ -75,6 +75,15 @@ class PostNewsRequest(AdminPayload):
     content: str
 
 
+class UpdateNewsRequest(AdminPayload):
+    title: str
+    content: str
+
+
+class DeleteNewsRequest(AdminPayload):
+    id: int
+
+
 class SetMaintenanceRequest(AdminPayload):
     action: str | None = None
     maintenance: bool | None = None

@@ -10,12 +10,14 @@ from app.schemas.admin import (
     AddTuningSetupRequest,
     AddVehicleRequest,
     AssignSetupRequest,
+    DeleteNewsRequest,
     DeleteRecordRequest,
     PendingActionRequest,
     PostNewsRequest,
     SetMaintenanceRequest,
     SetQuestionableRequest,
     SubmitRecordRequest,
+    UpdateNewsRequest,
 )
 from app.services.admin_service import (
     AdminConflictError,
@@ -364,6 +366,60 @@ def post_news(
     admin = _admin_status(request, auth_service)
     try:
         return service.post_news(payload, str(admin.get("username") or ""))
+    except AdminServiceError as exc:
+        return _error_response(exc)
+
+
+@router.put("/news/{news_id}", response_model=None)
+def update_news(
+    news_id: int,
+    payload: UpdateNewsRequest,
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    _admin_status(request, auth_service)
+    try:
+        return service.update_news(news_id, payload)
+    except AdminServiceError as exc:
+        return _error_response(exc)
+
+
+@router.patch("/news/{news_id}", response_model=None)
+def patch_news(
+    news_id: int,
+    payload: UpdateNewsRequest,
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    return update_news(news_id, payload, request, service, auth_service)
+
+
+@router.delete("/news/{news_id}", response_model=None)
+def delete_news_by_path(
+    news_id: int,
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    _admin_status(request, auth_service)
+    try:
+        return service.delete_news(DeleteNewsRequest(id=news_id))
+    except AdminServiceError as exc:
+        return _error_response(exc)
+
+
+@router.post("/news/delete", response_model=None)
+def delete_news(
+    payload: DeleteNewsRequest,
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    _admin_status(request, auth_service)
+    try:
+        return service.delete_news(payload)
     except AdminServiceError as exc:
         return _error_response(exc)
 

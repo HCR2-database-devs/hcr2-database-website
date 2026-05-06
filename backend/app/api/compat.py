@@ -18,11 +18,13 @@ from app.schemas.admin import (
     AddTuningSetupRequest,
     AddVehicleRequest,
     AssignSetupRequest,
+    DeleteNewsRequest,
     DeleteRecordRequest,
     PostNewsRequest,
     SetMaintenanceRequest,
     SetQuestionableRequest,
     SubmitRecordRequest,
+    UpdateNewsRequest,
 )
 from app.services.admin_service import (
     AdminConflictError,
@@ -380,6 +382,47 @@ async def compatibility_post_news(
             str(admin.get("username") or ""),
         )
     except AdminServiceError as exc:
+        return _admin_error(exc)
+
+
+@router.post("/auth/edit_news.php", response_model=None)
+async def compatibility_edit_news(
+    request: Request,
+    admin_service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    admin = _admin_status(request, auth_service)
+    if isinstance(admin, JSONResponse):
+        return admin
+    data = await _request_data(request)
+    try:
+        news_id = int(data.get("id") or 0)
+        payload = UpdateNewsRequest(
+            title=str(data.get("title") or ""),
+            content=str(data.get("content") or ""),
+        )
+        return admin_service.update_news(news_id, payload)
+    except (ValueError, AdminServiceError) as exc:
+        if isinstance(exc, ValueError):
+            return _admin_error(AdminServiceError("News ID, title, and content are required."))
+        return _admin_error(exc)
+
+
+@router.post("/auth/delete_news.php", response_model=None)
+async def compatibility_delete_news(
+    request: Request,
+    admin_service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    admin = _admin_status(request, auth_service)
+    if isinstance(admin, JSONResponse):
+        return admin
+    data = await _request_data(request)
+    try:
+        return admin_service.delete_news(DeleteNewsRequest(id=int(data.get("id") or 0)))
+    except (ValueError, AdminServiceError) as exc:
+        if isinstance(exc, ValueError):
+            return _admin_error(AdminServiceError("Invalid news ID."))
         return _admin_error(exc)
 
 

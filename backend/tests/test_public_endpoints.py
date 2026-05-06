@@ -37,12 +37,39 @@ class FakeSubmissionService:
         )
 
 
+class FakeAuthService:
+    def status_from_cookie(self, cookie: str | None) -> dict[str, Any]:
+        return {"logged": True, "allowed": True, "id": "dev-admin", "username": "Dev Admin"}
+
+
+class FakeAdminService:
+    def list_pending(self) -> dict[str, list[dict[str, Any]]]:
+        return {"pending": [{"id": 1, "submitterIp": "127.0.0.1"}]}
+
+    def post_news(self, payload: Any, author: str | None) -> dict[str, Any]:
+        return {"success": True, "id": 7, "title": payload.title, "author": author}
+
+    def update_news(self, news_id: int, payload: Any) -> dict[str, Any]:
+        return {"success": True, "dryRun": False, "id": news_id, "title": payload.title}
+
+    def delete_news(self, payload: Any) -> dict[str, Any]:
+        return {"success": True, "dryRun": False, "id": payload.id}
+
+
 def _client() -> TestClient:
     app = create_app()
     app.dependency_overrides[get_settings] = lambda: Settings(API_KEYS="dev-api-key")
     app.dependency_overrides[dependencies.get_public_data_service] = FakePublicDataService
     app.dependency_overrides[dependencies.get_news_service] = FakeNewsService
     app.dependency_overrides[dependencies.get_public_submission_service] = FakeSubmissionService
+    return TestClient(app)
+
+
+def _admin_client() -> TestClient:
+    app = create_app()
+    app.dependency_overrides[get_settings] = lambda: Settings(API_KEYS="dev-api-key")
+    app.dependency_overrides[dependencies.get_auth_service] = FakeAuthService
+    app.dependency_overrides[dependencies.get_admin_service] = FakeAdminService
     return TestClient(app)
 
 
@@ -131,3 +158,40 @@ def test_compat_public_submit_hcaptcha_failure_matches_php_shape() -> None:
 
     assert response.status_code == 400
     assert response.json() == {"error": "hCaptcha verification failed. Please try again."}
+
+
+def test_admin_pending_includes_submitter_ip_from_main_contract() -> None:
+    response = _admin_client().get("/api/v1/admin/pending")
+
+    assert response.status_code == 200
+    assert response.json()["pending"][0]["submitterIp"] == "127.0.0.1"
+
+
+def test_admin_news_update_and_delete_routes_match_latest_main_contract() -> None:
+    client = _admin_client()
+
+    posted = client.post("/api/v1/admin/news", json={"title": "Title", "content": "Body"})
+    updated = client.put("/api/v1/admin/news/7", json={"title": "Updated", "content": "Body"})
+    deleted = client.delete("/api/v1/admin/news/7")
+
+    assert posted.status_code == 200
+    assert posted.json() == {"success": True, "id": 7, "title": "Title", "author": "Dev Admin"}
+    assert updated.status_code == 200
+    assert updated.json()["title"] == "Updated"
+    assert deleted.status_code == 200
+    assert deleted.json()["id"] == 7
+
+
+def test_legacy_news_edit_and_delete_routes_remain_compatible() -> None:
+    client = _admin_client()
+
+    edited = client.post(
+        "/auth/edit_news.php",
+        json={"id": 7, "title": "Edited", "content": "Body"},
+    )
+    deleted = client.post("/auth/delete_news.php", json={"id": 7})
+
+    assert edited.status_code == 200
+    assert edited.json()["title"] == "Edited"
+    assert deleted.status_code == 200
+    assert deleted.json() == {"success": True, "dryRun": False, "id": 7}

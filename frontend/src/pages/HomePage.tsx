@@ -22,6 +22,22 @@ const guidelines = [
   "Admins may revise or remove records when evidence changes or a rule violation is found."
 ];
 
+const moderationNotes = [
+  "Questionable records include runs from players with a cheating history or records with missing, unclear or insufficient proof.",
+  "A questionable record can be reviewed again when better proof, a clear video or a reliable replay is provided.",
+  "Blacklisted records are removed from the public record set instead of being kept as uncertain entries.",
+  "TAS-assisted records are allowed when disclosed and can be marked verified when the evidence is clear."
+];
+
+const staff = [
+  ["Nipatsu", "Owner"],
+  ["Titanium", "Owner"],
+  ["Bir Insan", "Admin"],
+  ["Danioduck", "Admin"],
+  ["Noya", "Admin, Developer"],
+  ["Adam", "Admin, Discord bot developer"]
+];
+
 export function HomePage() {
   return (
     <main className="home-page">
@@ -108,6 +124,45 @@ export function HomePage() {
             </p>
           </div>
         </div>
+      </section>
+
+      <section className="content-section content-section--split" aria-labelledby="moderation-title">
+        <div className="section-heading">
+          <p className="eyebrow">Moderation</p>
+          <h2 id="moderation-title">Questionable records</h2>
+        </div>
+        <ul className="rule-list">
+          {moderationNotes.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="content-section" aria-labelledby="staff-title">
+        <div className="section-heading">
+          <p className="eyebrow">Team</p>
+          <h2 id="staff-title">Staff</h2>
+        </div>
+        <div className="feature-grid">
+          {staff.map(([name, role]) => (
+            <article className="feature-card" key={name}>
+              <h3>{name}</h3>
+              <p>{role}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="content-section content-section--compact" aria-labelledby="partners-title">
+        <div className="section-heading">
+          <p className="eyebrow">Partner</p>
+          <h2 id="partners-title">Adam's HCR2 Bot</h2>
+        </div>
+        <p className="section-copy">
+          Adam's HCR2 Bot brings HCR2 database lookups and community tools into Discord. The site
+          keeps the database canonical, while the bot makes those records easier to access from
+          community servers.
+        </p>
       </section>
 
       <section className="content-section content-section--compact" aria-labelledby="updates-title">

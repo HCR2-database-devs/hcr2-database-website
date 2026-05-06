@@ -48,6 +48,7 @@ export type PendingSubmission = {
   playerName?: string | null;
   playerCountry?: string | null;
   tuningParts?: string | null;
+  submitterIp?: string | null;
   status: string;
   submitted_at: string;
   mapName?: string | null;

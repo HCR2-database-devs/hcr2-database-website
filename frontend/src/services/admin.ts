@@ -79,7 +79,17 @@ export function rejectPendingSubmission(id: number) {
 }
 
 export function postAdminNews(title: string, content: string) {
-  return jsonRequest<SuccessResponse>("/api/v1/admin/news", "POST", { title, content });
+  return jsonRequest<SuccessResponse & { id?: number }>("/api/v1/admin/news", "POST", { title, content });
+}
+
+export function updateAdminNews(id: number, title: string, content: string) {
+  return jsonRequest<SuccessResponse>(`/api/v1/admin/news/${id}`, "PUT", { title, content });
+}
+
+export function deleteAdminNews(id: number) {
+  return fetchJson<SuccessResponse>(`/api/v1/admin/news/${id}`, {
+    method: "DELETE"
+  });
 }
 
 export function getMaintenanceStatus() {

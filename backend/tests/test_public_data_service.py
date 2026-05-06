@@ -2,6 +2,7 @@ from typing import Any
 
 import pytest
 
+from app.repositories.public_data import PostgresPublicDataRepository
 from app.services.public_data_service import (
     InvalidLoadDataType,
     MissingLoadDataType,
@@ -32,6 +33,18 @@ class FakePublicDataRepository:
         return [{"idRecord": 1, "filters": filters}]
 
 
+class CapturingPostgresPublicDataRepository(PostgresPublicDataRepository):
+    def __init__(self) -> None:
+        super().__init__()
+        self.last_sql = ""
+        self.last_params: dict[str, Any] = {}
+
+    def _fetch_all(self, sql: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        self.last_sql = sql
+        self.last_params = params or {}
+        return []
+
+
 def test_public_data_service_dispatches_public_types() -> None:
     service = PublicDataService(FakePublicDataRepository())
 
@@ -50,6 +63,30 @@ def test_public_data_service_search_records_keeps_api_records_shape() -> None:
 
     assert result["count"] == 1
     assert result["records"][0]["filters"] == {"limit": "1"}
+
+
+def test_postgres_search_records_uses_exact_main_filters_and_car_alias() -> None:
+    repository = CapturingPostgresPublicDataRepository()
+
+    repository.search_records(
+        {
+            "map": "Countryside",
+            "car": "Hill Climber",
+            "player": "Demo Driver",
+            "country": "FR",
+            "q": "proof",
+        }
+    )
+
+    assert "LOWER(m.name_map) = LOWER(%(map)s)" in repository.last_sql
+    assert "LOWER(v.name_vehicle) = LOWER(%(vehicle)s)" in repository.last_sql
+    assert "LOWER(p.name_player) = LOWER(%(player)s)" in repository.last_sql
+    assert "LOWER(p.country) = LOWER(%(country)s)" in repository.last_sql
+    assert repository.last_params["map"] == "Countryside"
+    assert repository.last_params["vehicle"] == "Hill Climber"
+    assert repository.last_params["player"] == "Demo Driver"
+    assert repository.last_params["country"] == "FR"
+    assert repository.last_params["q"] == "%proof%"
 
 
 def test_public_data_service_preserves_missing_type_error() -> None:

@@ -1205,6 +1205,14 @@ tbody tr:hover {
   margin-top: 0;
 }
 
+.admin-actions--compact {
+  margin-top: 10px;
+}
+
+.admin-actions--compact button {
+  min-height: 34px;
+}
+
 .admin-notice {
   background: var(--success-soft);
   border: 1px solid color-mix(in srgb, var(--success) 26%, transparent);
