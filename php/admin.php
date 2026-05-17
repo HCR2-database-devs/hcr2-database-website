@@ -75,7 +75,7 @@ if (!in_array((string)$user['sub'], $ALLOWED_DISCORD_IDS, true)) {
                 );
                 ?>
             </span>
-            &nbsp;|&nbsp;<a href="/logout">Logout</a>
+            &nbsp;|&nbsp;<a href="/auth/logout.php">Logout</a>
             &nbsp;|&nbsp;<a href="/index.html">Back to Public</a>
         </div>
     </div>
