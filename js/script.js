@@ -1493,10 +1493,10 @@ window.onload = () => {
 
  
 async function initGithubVersion() {
-    const repo = 'Nipatsuplayer/hcr2-database-with-website';
+    const repo = 'HCR2-database-devs/hcr2-database-website';
     const versionEl = document.getElementById('github-version');
     const linkEl = document.getElementById('github-link');
-    if (!versionEl || !linkEl) return;
+    if (!linkEl) return;
 
     try {
         let res = await fetchWithTimeout(`https://api.github.com/repos/${repo}/releases/latest`, { }, 3000).catch(()=>null);
