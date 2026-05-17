@@ -194,11 +194,11 @@
                     <label>Vehicle</label>
                     <select id="public-vehicle-select" required></select>
                     <label>Distance</label>
-                    <input type="number" id="public-distance-input" required min="1">
+                    <input type="number" id="public-distance-input" required min="1" max="1000000">
                     <label>Player name</label>
-                    <input type="text" id="public-player-name" required>
+                    <input type="text" id="public-player-name" required maxlength="20">
                     <label>Country (optional)</label>
-                    <input type="text" id="public-player-country">
+                    <input type="text" id="public-player-country" maxlength="20">
                     <label>Tuning parts (choose 3 or 4)</label>
                     <div id="public-tuning-parts" style="text-align:left; max-height:180px; overflow:auto; border:1px solid rgba(0,0,0,0.06); padding:8px; border-radius:8px; background:transparent;"></div>
                     <div id="hcaptcha-widget" data-sitekey="" required></div>
