@@ -51,6 +51,10 @@ cd ..
 .\scripts\dev\start-app-stack.ps1 -RestartFastApi -RestartFrontend
 ```
 
+With `-RestartFastApi` and `-RestartFrontend`, the script only stops local processes that match
+this project's FastAPI or Vite commands. If another application is using port `8000` or `5173`, it
+refuses to stop it and prints an error instead.
+
 Open `http://127.0.0.1:5173`.
 
 ## Demo Admin Cookie

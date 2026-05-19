@@ -189,6 +189,8 @@ frontend/.vite/
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
+backend/fastapi-dev.pid
+frontend/vite-dev.pid
 
 # Local databases, backups and exported data
 MAINTENANCE
