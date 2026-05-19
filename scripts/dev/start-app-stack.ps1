@@ -411,6 +411,41 @@ function Ensure-BackendDependencies {
     }
 }
 
+function Test-ConfiguredPostgresConnection {
+    $python = Join-Path $backendRoot ".venv\Scripts\python.exe"
+    $script = @'
+from urllib.parse import urlsplit
+
+from app.core.config import get_settings
+from app.db.session import open_connection
+
+settings = get_settings()
+dsn = settings.postgres_dsn
+parts = urlsplit(dsn)
+target = f"{parts.hostname}:{parts.port or 5432}/{parts.path.lstrip('/')}"
+schema = settings.postgres_schema or "<default>"
+
+try:
+    with open_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+except Exception as exc:
+    print(f"Configured PostgreSQL is not reachable: {target} schema={schema}")
+    print(f"{type(exc).__name__}: {exc}")
+    raise SystemExit(1)
+
+print(f"Configured PostgreSQL connection OK: {target} schema={schema}")
+'@
+
+    Invoke-ProjectCommand `
+        $python `
+        @("-c", $script) `
+        $backendRoot `
+        30 `
+        "Checking configured PostgreSQL connection"
+}
+
 function Set-EnvDefault([hashtable]$Values, [string]$Name, [string]$Value) {
     if ([string]::IsNullOrWhiteSpace((Get-ConfiguredValue $Values $Name))) {
         [Environment]::SetEnvironmentVariable($Name, $Value, "Process")
@@ -427,7 +462,11 @@ function Set-BackendDevEnvironment([hashtable]$Values) {
 }
 
 function Set-LocalPostgresEnvironment {
-    [Environment]::SetEnvironmentVariable("DATABASE_URL", "", "Process")
+    [Environment]::SetEnvironmentVariable(
+        "DATABASE_URL",
+        "postgresql://${localDbUser}:${localDbPass}@${localDbHost}:${localDbPort}/${localDbName}",
+        "Process"
+    )
     [Environment]::SetEnvironmentVariable("PGHOST", "", "Process")
     [Environment]::SetEnvironmentVariable("PGPORT", "", "Process")
     [Environment]::SetEnvironmentVariable("PGDATABASE", "", "Process")
@@ -477,6 +516,11 @@ Write-Output "Preparing local application stack..."
 $backendEnvValues = Get-BackendEnvValues
 $useConfiguredDatabase = Test-ConfiguredDatabase $backendEnvValues
 $useLocalDatabase = $UseLocalPostgres -or (-not $useConfiguredDatabase)
+
+if (-not $useLocalDatabase) {
+    Ensure-BackendDependencies
+    Test-ConfiguredPostgresConnection
+}
 
 if ($RestartFastApi) {
     Stop-ProjectService "FastAPI" 8000 $fastApiPidFile
