@@ -55,6 +55,14 @@ With `-RestartFastApi` and `-RestartFrontend`, the script only stops local proce
 this project's FastAPI or Vite commands. If another application is using port `8000` or `5173`, it
 refuses to stop it and prints an error instead.
 
+If Docker Desktop is slow to respond, the Docker startup step times out after 45 seconds by default.
+You can raise the limit for one run:
+
+```powershell
+$env:DEV_DOCKER_TIMEOUT_SECONDS = "120"
+.\scripts\dev\start-app-stack.ps1 -RestartFastApi -RestartFrontend
+```
+
 Open `http://127.0.0.1:5173`.
 
 ## Demo Admin Cookie

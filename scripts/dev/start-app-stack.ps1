@@ -116,9 +116,10 @@ function Stop-ProjectService([string]$ServiceName, [int]$Port, [string]$PidFile)
 }
 
 function Wait-HttpOk([string]$Url, [string]$Name) {
+    Write-Output "Waiting for $Name at $Url..."
     for ($i = 1; $i -le 30; $i++) {
         try {
-            $response = Invoke-WebRequest -UseBasicParsing $Url -TimeoutSec 5
+            $response = Invoke-WebRequest -UseBasicParsing $Url -TimeoutSec 2
             if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 300) {
                 return $response
             }
@@ -143,11 +144,17 @@ function Set-BackendDevEnvironment {
     $env:CORS_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 }
 
-& (Join-Path $PSScriptRoot "start-dev-stack.ps1")
+Write-Output "Preparing local application stack..."
 
 if ($RestartFastApi) {
     Stop-ProjectService "FastAPI" 8000 $fastApiPidFile
 }
+
+if ($RestartFrontend) {
+    Stop-ProjectService "Vite" 5173 $frontendPidFile
+}
+
+& (Join-Path $PSScriptRoot "start-dev-stack.ps1")
 
 if ($null -eq (Get-ListeningProcessId 8000)) {
     Set-BackendDevEnvironment
@@ -174,10 +181,6 @@ try {
     Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:8000/api/v1/maps" -TimeoutSec 10 | Out-Null
 } catch {
     throw "FastAPI is reachable but cannot read demo data. Re-run with -RestartFastApi if an old process is using port 8000."
-}
-
-if ($RestartFrontend) {
-    Stop-ProjectService "Vite" 5173 $frontendPidFile
 }
 
 if ($null -eq (Get-ListeningProcessId 5173)) {
