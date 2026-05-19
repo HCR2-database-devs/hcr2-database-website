@@ -44,11 +44,27 @@ npm install
 cd ..
 ```
 
-## Start Local Stack
+## Start Application Stack
+
+```powershell
+.\scripts\dev\start-app-stack.ps1 -RestartFastApi -RestartFrontend
+```
+
+By default, the application stack uses PostgreSQL settings from `.env` when they are configured.
+Set either `DATABASE_URL` or the `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASS` values
+in `backend/.env` to test against a remote PostgreSQL database.
+
+If no PostgreSQL settings are configured, the script falls back to the local Docker PostgreSQL
+database. You can also force the local Docker database explicitly:
+
+```powershell
+.\scripts\dev\start-app-stack.ps1 -RestartFastApi -RestartFrontend -UseLocalPostgres
+```
+
+Only use the reset script for the local Docker database:
 
 ```powershell
 .\scripts\dev\reset-dev-database.ps1
-.\scripts\dev\start-app-stack.ps1 -RestartFastApi -RestartFrontend
 ```
 
 With `-RestartFastApi` and `-RestartFrontend`, the script only stops local processes that match

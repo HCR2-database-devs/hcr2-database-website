@@ -1,6 +1,7 @@
 param(
     [switch]$RestartFastApi,
-    [switch]$RestartFrontend
+    [switch]$RestartFrontend,
+    [switch]$UseLocalPostgres
 )
 
 $ErrorActionPreference = "Stop"
@@ -10,6 +11,12 @@ $backendRoot = Join-Path $repoRoot "backend"
 $frontendRoot = Join-Path $repoRoot "frontend"
 $fastApiPidFile = Join-Path $backendRoot "fastapi-dev.pid"
 $frontendPidFile = Join-Path $frontendRoot "vite-dev.pid"
+
+$localDbHost = "127.0.0.1"
+$localDbPort = "54329"
+$localDbName = "hcr2_dev"
+$localDbUser = "hcr2_dev"
+$localDbPass = "hcr2_dev_password"
 
 function Get-ListeningProcessId([int]$Port) {
     $listener = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -156,6 +163,114 @@ function Wait-HttpOk([string]$Url, [string]$Name) {
     throw "$Name did not become reachable at $Url."
 }
 
+function Read-EnvFile([string]$Path) {
+    $values = @{}
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return $values
+    }
+
+    foreach ($line in (Get-Content -LiteralPath $Path)) {
+        $trimmed = $line.Trim()
+        if ($trimmed -eq "" -or $trimmed.StartsWith("#")) {
+            continue
+        }
+        $separatorIndex = $trimmed.IndexOf("=")
+        if ($separatorIndex -lt 1) {
+            continue
+        }
+        $key = $trimmed.Substring(0, $separatorIndex).Trim()
+        $value = $trimmed.Substring($separatorIndex + 1).Trim()
+        if (
+            ($value.StartsWith('"') -and $value.EndsWith('"')) -or
+            ($value.StartsWith("'") -and $value.EndsWith("'"))
+        ) {
+            $value = $value.Substring(1, $value.Length - 2)
+        }
+        $values[$key.ToUpperInvariant()] = $value
+    }
+    return $values
+}
+
+function Get-ConfiguredValue([hashtable]$Values, [string]$Name) {
+    $lookupName = $Name.ToUpperInvariant()
+    if ($Values.ContainsKey($lookupName) -and -not [string]::IsNullOrWhiteSpace($Values[$lookupName])) {
+        return $Values[$lookupName]
+    }
+
+    $environmentValue = [Environment]::GetEnvironmentVariable($Name, "Process")
+    if (-not [string]::IsNullOrWhiteSpace($environmentValue)) {
+        return $environmentValue
+    }
+
+    return $null
+}
+
+function Test-LocalPostgresConfig(
+    [string]$HostValue,
+    [string]$PortValue,
+    [string]$NameValue,
+    [string]$UserValue,
+    [string]$PassValue
+) {
+    return (
+        $HostValue -eq $localDbHost -and
+        ($PortValue -eq $localDbPort -or [string]::IsNullOrWhiteSpace($PortValue)) -and
+        $NameValue -eq $localDbName -and
+        $UserValue -eq $localDbUser -and
+        $PassValue -eq $localDbPass
+    )
+}
+
+function Test-ConfiguredDatabase([hashtable]$Values) {
+    $databaseUrl = Get-ConfiguredValue $Values "DATABASE_URL"
+    if (-not [string]::IsNullOrWhiteSpace($databaseUrl)) {
+        return $true
+    }
+
+    $hostValue = Get-ConfiguredValue $Values "DB_HOST"
+    if ([string]::IsNullOrWhiteSpace($hostValue)) {
+        $hostValue = Get-ConfiguredValue $Values "PGHOST"
+    }
+    $portValue = Get-ConfiguredValue $Values "DB_PORT"
+    if ([string]::IsNullOrWhiteSpace($portValue)) {
+        $portValue = Get-ConfiguredValue $Values "PGPORT"
+    }
+    $nameValue = Get-ConfiguredValue $Values "DB_NAME"
+    if ([string]::IsNullOrWhiteSpace($nameValue)) {
+        $nameValue = Get-ConfiguredValue $Values "PGDATABASE"
+    }
+    $userValue = Get-ConfiguredValue $Values "DB_USER"
+    if ([string]::IsNullOrWhiteSpace($userValue)) {
+        $userValue = Get-ConfiguredValue $Values "PGUSER"
+    }
+    $passValue = Get-ConfiguredValue $Values "DB_PASS"
+    if ([string]::IsNullOrWhiteSpace($passValue)) {
+        $passValue = Get-ConfiguredValue $Values "PGPASSWORD"
+    }
+
+    if (Test-LocalPostgresConfig $hostValue $portValue $nameValue $userValue $passValue) {
+        return $false
+    }
+
+    return (
+        -not [string]::IsNullOrWhiteSpace($hostValue) -and
+        -not [string]::IsNullOrWhiteSpace($nameValue) -and
+        -not [string]::IsNullOrWhiteSpace($userValue) -and
+        -not [string]::IsNullOrWhiteSpace($passValue)
+    )
+}
+
+function Get-BackendEnvValues {
+    $values = @{}
+    foreach ($envFile in @((Join-Path $repoRoot ".env"), (Join-Path $backendRoot ".env"))) {
+        $fileValues = Read-EnvFile $envFile
+        foreach ($key in $fileValues.Keys) {
+            $values[$key] = $fileValues[$key]
+        }
+    }
+    return $values
+}
+
 function Join-ProcessArguments([string[]]$ArgumentList) {
     return ($ArgumentList | ForEach-Object {
         $argument = [string]$_
@@ -272,21 +387,72 @@ function Ensure-BackendDependencies {
     }
 }
 
-function Set-BackendDevEnvironment {
-    $env:DB_HOST = "127.0.0.1"
-    $env:DB_PORT = "54329"
-    $env:DB_NAME = "hcr2_dev"
-    $env:DB_USER = "hcr2_dev"
-    $env:DB_PASS = "hcr2_dev_password"
-    $env:AUTH_SHARED_SECRET = "dev-only-hcr2-secret"
-    $env:ALLOWED_DISCORD_IDS = "dev-admin"
-    $env:API_KEYS = "dev-api-key"
-    $env:HCAPTCHA_SITE_KEY = "dev-hcaptcha-site-key"
-    $env:HCAPTCHA_SECRET_KEY = "dev-hcaptcha-secret-key"
-    $env:CORS_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
+function Set-EnvDefault([hashtable]$Values, [string]$Name, [string]$Value) {
+    if ([string]::IsNullOrWhiteSpace((Get-ConfiguredValue $Values $Name))) {
+        [Environment]::SetEnvironmentVariable($Name, $Value, "Process")
+    }
+}
+
+function Set-BackendDevEnvironment([hashtable]$Values) {
+    Set-EnvDefault $Values "AUTH_SHARED_SECRET" "dev-only-hcr2-secret"
+    Set-EnvDefault $Values "ALLOWED_DISCORD_IDS" "dev-admin"
+    Set-EnvDefault $Values "API_KEYS" "dev-api-key"
+    Set-EnvDefault $Values "HCAPTCHA_SITE_KEY" "dev-hcaptcha-site-key"
+    Set-EnvDefault $Values "HCAPTCHA_SECRET_KEY" "dev-hcaptcha-secret-key"
+    Set-EnvDefault $Values "CORS_ORIGINS" "http://localhost:5173,http://127.0.0.1:5173"
+}
+
+function Set-LocalPostgresEnvironment {
+    [Environment]::SetEnvironmentVariable("DATABASE_URL", "", "Process")
+    [Environment]::SetEnvironmentVariable("PGHOST", "", "Process")
+    [Environment]::SetEnvironmentVariable("PGPORT", "", "Process")
+    [Environment]::SetEnvironmentVariable("PGDATABASE", "", "Process")
+    [Environment]::SetEnvironmentVariable("PGUSER", "", "Process")
+    [Environment]::SetEnvironmentVariable("PGPASSWORD", "", "Process")
+    [Environment]::SetEnvironmentVariable("DB_SCHEMA", "", "Process")
+    [Environment]::SetEnvironmentVariable("PGSCHEMA", "", "Process")
+    [Environment]::SetEnvironmentVariable("DB_HOST", $localDbHost, "Process")
+    [Environment]::SetEnvironmentVariable("DB_PORT", $localDbPort, "Process")
+    [Environment]::SetEnvironmentVariable("DB_NAME", $localDbName, "Process")
+    [Environment]::SetEnvironmentVariable("DB_USER", $localDbUser, "Process")
+    [Environment]::SetEnvironmentVariable("DB_PASS", $localDbPass, "Process")
+}
+
+function Clear-LocalPostgresEnvironment {
+    $databaseUrl = [Environment]::GetEnvironmentVariable("DATABASE_URL", "Process")
+    if (
+        [string]::IsNullOrWhiteSpace($databaseUrl) -or
+        (
+            (Test-TextContains $databaseUrl $localDbHost) -and
+            (Test-TextContains $databaseUrl $localDbPort) -and
+            (Test-TextContains $databaseUrl $localDbName)
+        )
+    ) {
+        [Environment]::SetEnvironmentVariable("DATABASE_URL", $null, "Process")
+    }
+
+    $hostValue = [Environment]::GetEnvironmentVariable("DB_HOST", "Process")
+    $portValue = [Environment]::GetEnvironmentVariable("DB_PORT", "Process")
+    $nameValue = [Environment]::GetEnvironmentVariable("DB_NAME", "Process")
+    $userValue = [Environment]::GetEnvironmentVariable("DB_USER", "Process")
+    $passValue = [Environment]::GetEnvironmentVariable("DB_PASS", "Process")
+    if (Test-LocalPostgresConfig $hostValue $portValue $nameValue $userValue $passValue) {
+        foreach ($name in @("DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASS")) {
+            [Environment]::SetEnvironmentVariable($name, $null, "Process")
+        }
+    }
+
+    foreach ($name in @("PGHOST", "PGPORT", "PGDATABASE", "PGUSER", "PGPASSWORD", "DB_SCHEMA", "PGSCHEMA")) {
+        if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name, "Process"))) {
+            [Environment]::SetEnvironmentVariable($name, $null, "Process")
+        }
+    }
 }
 
 Write-Output "Preparing local application stack..."
+$backendEnvValues = Get-BackendEnvValues
+$useConfiguredDatabase = Test-ConfiguredDatabase $backendEnvValues
+$useLocalDatabase = $UseLocalPostgres -or (-not $useConfiguredDatabase)
 
 if ($RestartFastApi) {
     Stop-ProjectService "FastAPI" 8000 $fastApiPidFile
@@ -296,11 +462,22 @@ if ($RestartFrontend) {
     Stop-ProjectService "Vite" 5173 $frontendPidFile
 }
 
-& (Join-Path $PSScriptRoot "start-dev-stack.ps1")
+if ($useLocalDatabase) {
+    if ($UseLocalPostgres) {
+        Write-Output "Using local Docker PostgreSQL because -UseLocalPostgres was provided."
+    } else {
+        Write-Output "No configured PostgreSQL settings found; using local Docker PostgreSQL."
+    }
+    & (Join-Path $PSScriptRoot "start-dev-stack.ps1")
+    Set-LocalPostgresEnvironment
+} else {
+    Write-Output "Using configured PostgreSQL settings from environment/.env."
+    Clear-LocalPostgresEnvironment
+}
 
 if ($null -eq (Get-ListeningProcessId 8000)) {
     Ensure-BackendDependencies
-    Set-BackendDevEnvironment
+    Set-BackendDevEnvironment $backendEnvValues
     $stdout = Join-Path $backendRoot "fastapi-dev.log"
     $stderr = Join-Path $backendRoot "fastapi-dev.err.log"
     Remove-Item -LiteralPath $stdout, $stderr -ErrorAction SilentlyContinue
@@ -355,6 +532,10 @@ try {
 }
 
 Write-Output "Application stack ready:"
-Write-Output "- PostgreSQL: 127.0.0.1:54329"
+if ($useLocalDatabase) {
+    Write-Output "- PostgreSQL: 127.0.0.1:54329"
+} else {
+    Write-Output "- PostgreSQL: configured environment/.env"
+}
 Write-Output "- FastAPI: http://127.0.0.1:8000"
 Write-Output "- React/Vite: http://127.0.0.1:5173"
