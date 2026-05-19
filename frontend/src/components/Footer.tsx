@@ -19,8 +19,6 @@ export function Footer() {
           >
             GitHub
           </a>
-          <span>Version: </span>
-          <span id="github-version">loading...</span>
           <a
             href="https://en.tipeee.com/hcr2-database"
             target="_blank"

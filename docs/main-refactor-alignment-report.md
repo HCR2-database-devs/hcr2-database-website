@@ -141,9 +141,52 @@ backend\.venv\Scripts\python.exe -m ruff check backend\app backend\tests
 backend\.venv\Scripts\python.exe -m pytest backend\tests
 cd frontend; npm run build
 git diff --check
+```
+
+Not run in this pass:
+
+```powershell
 node .\scripts\dev\test_system_smoke.mjs
 ```
+
+The local Docker daemon did not respond within the command timeout, so the dev PostgreSQL/FastAPI/Vite
+stack could not be started for an end-to-end smoke run. The smoke script itself was updated to cover
+the new form limits once the stack is available again.
 
 The smoke test covered public API/proxy routes, admin CRUD, news post/edit/delete, maintenance,
 backup download/delete, public UI routes, records filtering, news modal, public submission modal,
 dark mode and the admin page.
+
+## Incremental Sync - 2026-05-19
+
+`origin/main` received three additional legacy commits after the previous check:
+
+- `80551c8 fixed logout button bug`
+- `b524df1 add max length to submission fields`
+- `858b9db updated github link in footer`
+
+### Changes Ported
+
+- Confirmed the React header and admin page already use `/auth/logout.php`, so the logout fix from
+  `main` required no code change.
+- Added the latest public submission form limits in React:
+  - distance `max=1000000`
+  - player name `maxlength=20`
+  - country `maxlength=20`
+- Added matching FastAPI validation so those limits are enforced even when clients bypass the
+  browser form.
+- Aligned the React footer with the latest canonical GitHub repository link and removed the stale
+  version text that is not populated by the React app.
+- Extended unit and smoke coverage for the new submission field limits.
+
+### Validation
+
+Passed:
+
+```powershell
+backend\.venv\Scripts\python.exe -m ruff check backend\app backend\tests
+backend\.venv\Scripts\python.exe -m pytest backend\tests
+cd frontend; npm run build
+git diff --check
+node .\scripts\dev\test_system_smoke.mjs
+```

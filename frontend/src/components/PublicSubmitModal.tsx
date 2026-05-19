@@ -191,15 +191,15 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
 
           <label>
             Distance
-            <input id="public-distance-input" name="distance" type="number" required min="1" />
+            <input id="public-distance-input" name="distance" type="number" required min="1" max="1000000" />
           </label>
           <label>
             Player Name
-            <input id="public-player-name" name="playerName" required />
+            <input id="public-player-name" name="playerName" required maxLength={20} />
           </label>
           <label>
             Country (optional)
-            <input id="public-player-country" name="playerCountry" />
+            <input id="public-player-country" name="playerCountry" maxLength={20} />
           </label>
 
           <fieldset id="public-tuning-parts" className="frontend-fieldset">

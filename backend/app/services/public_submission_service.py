@@ -6,6 +6,10 @@ import httpx
 from app.core.config import Settings
 from app.db.session import open_connection
 
+MAX_PUBLIC_DISTANCE = 1_000_000
+MAX_PUBLIC_PLAYER_NAME_LENGTH = 20
+MAX_PUBLIC_COUNTRY_LENGTH = 20
+
 
 @dataclass(frozen=True, slots=True)
 class SubmissionResult:
@@ -52,6 +56,12 @@ class PublicSubmissionService:
 
         if distance <= 0:
             return self._error("Distance must be a positive number.", 400)
+        if distance > MAX_PUBLIC_DISTANCE:
+            return self._error("Distance must be 1000000 or less.", 400)
+        if len(player_name) > MAX_PUBLIC_PLAYER_NAME_LENGTH:
+            return self._error("Player name must be 20 characters or fewer.", 400)
+        if len(player_country) > MAX_PUBLIC_COUNTRY_LENGTH:
+            return self._error("Country must be 20 characters or fewer.", 400)
         if len(tuning_parts) < 3 or len(tuning_parts) > 4:
             return self._error("Please provide 3 or 4 tuning parts for the record.", 400)
 

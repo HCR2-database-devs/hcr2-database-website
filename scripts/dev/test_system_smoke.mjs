@@ -591,6 +591,13 @@ async function checkUiSurface() {
       "document.querySelector('#hcaptcha-widget')?.getAttribute('data-sitekey') === 'dev-hcaptcha-site-key'",
       "Public submit modal did not load the hCaptcha site key",
     );
+    await waitForExpression(
+      page,
+      `document.querySelector('#public-distance-input')?.getAttribute('max') === '1000000'
+        && document.querySelector('#public-player-name')?.getAttribute('maxlength') === '20'
+        && document.querySelector('#public-player-country')?.getAttribute('maxlength') === '20'`,
+      "Public submit form did not expose the latest main field limits",
+    );
     console.log("OK UI public submit modal");
 
     const before = await page.evaluate("document.documentElement.getAttribute('data-theme')");
