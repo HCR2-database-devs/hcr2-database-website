@@ -51,8 +51,25 @@ cd ..
 ```
 
 By default, the application stack uses PostgreSQL settings from `.env` when they are configured.
-Set either `DATABASE_URL` or the `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASS` values
-in `backend/.env` to test against a remote PostgreSQL database.
+If the database is only reachable through SSH, open a local tunnel first:
+
+```powershell
+.\scripts\dev\start-ssh-tunnel.ps1 -SshHost your-ssh-host -SshUser your-ssh-user -RemoteHost 127.0.0.1 -RemotePort 5432 -LocalPort 54329
+```
+
+Then point the backend at the forwarded port in `backend/.env` or in the current shell:
+
+```text
+DB_HOST=127.0.0.1
+DB_PORT=54329
+DB_NAME=your_database_name
+DB_USER=your_database_user
+DB_PASS=your_database_password
+DATABASE_URL=
+```
+
+`DATABASE_URL` has priority over the `DB_*` values, so leave it empty or update it to the local
+forwarded port when using the tunnel.
 
 If no PostgreSQL settings are configured, the script falls back to the local Docker PostgreSQL
 database. You can also force the local Docker database explicitly:
