@@ -3,6 +3,7 @@ from app.core.config import Settings
 
 def test_settings_parse_comma_separated_lists() -> None:
     settings = Settings(
+        _env_file=None,
         ALLOWED_DISCORD_IDS="111,222\n333",
         API_KEYS="alpha,beta",
         CORS_ORIGINS="http://localhost:5173,http://127.0.0.1:5173",
@@ -18,7 +19,7 @@ def test_settings_parse_comma_separated_lists_from_environment(monkeypatch) -> N
     monkeypatch.setenv("API_KEYS", "dev-api-key")
     monkeypatch.setenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
 
-    settings = Settings()
+    settings = Settings(_env_file=None)
 
     assert settings.allowed_discord_ids == ["dev-admin", "qa-admin"]
     assert settings.api_keys == ["dev-api-key"]
@@ -27,6 +28,7 @@ def test_settings_parse_comma_separated_lists_from_environment(monkeypatch) -> N
 
 def test_settings_build_postgres_dsn_from_database_variables() -> None:
     settings = Settings(
+        _env_file=None,
         DB_HOST="db.example.test",
         DB_PORT="5432",
         DB_NAME="hcr2",
@@ -39,6 +41,7 @@ def test_settings_build_postgres_dsn_from_database_variables() -> None:
 
 def test_settings_database_url_takes_precedence() -> None:
     settings = Settings(
+        _env_file=None,
         DATABASE_URL="postgresql://direct.example.test/hcr2",
         DB_HOST="db.example.test",
         DB_PORT="5432",
@@ -52,6 +55,7 @@ def test_settings_database_url_takes_precedence() -> None:
 
 def test_settings_support_pg_environment_aliases() -> None:
     settings = Settings(
+        _env_file=None,
         PGHOST="pg.example.test",
         PGPORT="5433",
         PGDATABASE="hcr2",
@@ -63,5 +67,10 @@ def test_settings_support_pg_environment_aliases() -> None:
 
 
 def test_settings_exposes_schema_aliases() -> None:
-    assert Settings(DB_SCHEMA="rehearsal").postgres_schema == "rehearsal"
-    assert Settings(PGSCHEMA="fallback").postgres_schema == "fallback"
+    assert Settings(_env_file=None, DB_SCHEMA="rehearsal").postgres_schema == "rehearsal"
+    assert Settings(_env_file=None, PGSCHEMA="fallback").postgres_schema == "fallback"
+
+
+def test_settings_exposes_database_connect_timeout() -> None:
+    assert Settings(_env_file=None).db_connect_timeout == 5
+    assert Settings(_env_file=None, DB_CONNECT_TIMEOUT="12").db_connect_timeout == 12

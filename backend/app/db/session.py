@@ -15,6 +15,7 @@ class DatabaseNotConfigured(RuntimeError):
 class DatabaseConfig:
     dsn: str
     schema: str | None = None
+    connect_timeout: int = 5
 
     @property
     def is_configured(self) -> bool:
@@ -26,6 +27,7 @@ def get_database_config(settings: Settings | None = None) -> DatabaseConfig:
     return DatabaseConfig(
         dsn=active_settings.postgres_dsn,
         schema=active_settings.postgres_schema,
+        connect_timeout=active_settings.db_connect_timeout,
     )
 
 
@@ -35,7 +37,11 @@ def open_connection(
     active_config = config or get_database_config()
     if not active_config.is_configured:
         raise DatabaseNotConfigured("Database connection settings are not configured.")
-    connection = psycopg.connect(active_config.dsn, row_factory=dict_row)
+    connection = psycopg.connect(
+        active_config.dsn,
+        row_factory=dict_row,
+        connect_timeout=active_config.connect_timeout,
+    )
     if active_config.schema:
         schema_name = active_config.schema
         valid_schema = schema_name.replace("_", "a").isalnum() and not schema_name[0].isdigit()

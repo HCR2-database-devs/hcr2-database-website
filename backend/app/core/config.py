@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     pg_password: str | None = Field(default=None, validation_alias="PGPASSWORD")
     db_schema: str | None = Field(default=None, validation_alias="DB_SCHEMA")
     pg_schema: str | None = Field(default=None, validation_alias="PGSCHEMA")
+    db_connect_timeout: int = Field(default=5, validation_alias="DB_CONNECT_TIMEOUT")
 
     auth_shared_secret: str | None = Field(default=None, validation_alias="AUTH_SHARED_SECRET")
     allowed_discord_ids: Annotated[list[str], NoDecode] = Field(

@@ -163,6 +163,30 @@ function Wait-HttpOk([string]$Url, [string]$Name) {
     throw "$Name did not become reachable at $Url."
 }
 
+function Get-WebExceptionDetails([System.Management.Automation.ErrorRecord]$ErrorRecord) {
+    if ($null -eq $ErrorRecord.Exception.Response) {
+        return $ErrorRecord.Exception.Message
+    }
+
+    $statusCode = [int]$ErrorRecord.Exception.Response.StatusCode
+    $body = ""
+    try {
+        $stream = $ErrorRecord.Exception.Response.GetResponseStream()
+        if ($null -ne $stream) {
+            $reader = [System.IO.StreamReader]::new($stream)
+            $body = $reader.ReadToEnd()
+            $reader.Dispose()
+        }
+    } catch {
+        $body = ""
+    }
+
+    if ([string]::IsNullOrWhiteSpace($body)) {
+        return "HTTP $statusCode"
+    }
+    return "HTTP ${statusCode}: $body"
+}
+
 function Read-EnvFile([string]$Path) {
     $values = @{}
     if (-not (Test-Path -LiteralPath $Path)) {
@@ -501,7 +525,8 @@ Save-ListeningPid 8000 $fastApiPidFile
 try {
     Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:8000/api/v1/maps" -TimeoutSec 10 | Out-Null
 } catch {
-    throw "FastAPI is reachable but cannot read demo data. Re-run with -RestartFastApi if an old process is using port 8000."
+    $details = Get-WebExceptionDetails $_
+    throw "FastAPI is reachable but cannot read demo data from /api/v1/maps. $details"
 }
 
 if ($null -eq (Get-ListeningProcessId 5173)) {
@@ -528,7 +553,8 @@ Save-ListeningPid 5173 $frontendPidFile
 try {
     Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:5173/api/v1/maps" -TimeoutSec 10 | Out-Null
 } catch {
-    throw "Vite is reachable but the FastAPI proxy cannot load demo data."
+    $details = Get-WebExceptionDetails $_
+    throw "Vite is reachable but the FastAPI proxy cannot load demo data. $details"
 }
 
 Write-Output "Application stack ready:"
