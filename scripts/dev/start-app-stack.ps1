@@ -27,6 +27,18 @@ function Test-TextContains([string]$Text, [string]$Needle) {
     return $Text.IndexOf($Needle, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
 }
 
+function Test-FastApiHealthSignature {
+    try {
+        $health = Invoke-RestMethod -Uri "http://127.0.0.1:8000/health" -TimeoutSec 2
+        return (
+            $health.status -eq "ok" -and
+            $health.service -eq "HCR2 Records API"
+        )
+    } catch {
+        return $false
+    }
+}
+
 function Test-ProjectProcess([int]$ProcessId, [string]$ServiceName) {
     $processInfo = Get-ProcessInfo $ProcessId
     if ($null -eq $processInfo) {
@@ -38,10 +50,17 @@ function Test-ProjectProcess([int]$ProcessId, [string]$ServiceName) {
 
     if ($ServiceName -eq "FastAPI") {
         $expectedPython = Join-Path $backendRoot ".venv\Scripts\python.exe"
-        return (
-            $executablePath.Equals($expectedPython, [System.StringComparison]::OrdinalIgnoreCase) -and
+        $isExpectedPython = $executablePath.Equals($expectedPython, [System.StringComparison]::OrdinalIgnoreCase)
+        $isUvicornApp = (
             (Test-TextContains $commandLine "uvicorn") -and
-            (Test-TextContains $commandLine "app.main:app")
+            (Test-TextContains $commandLine "app.main:app") -and
+            (Test-TextContains $commandLine "--port") -and
+            (Test-TextContains $commandLine "8000")
+        )
+
+        return (
+            $isUvicornApp -and
+            ($isExpectedPython -or (Test-FastApiHealthSignature))
         )
     }
 
@@ -113,6 +132,13 @@ function Stop-ProjectService([string]$ServiceName, [int]$Port, [string]$PidFile)
 
     Remove-Item -LiteralPath $PidFile -ErrorAction SilentlyContinue
     Wait-PortReleased $Port
+}
+
+function Save-ListeningPid([int]$Port, [string]$PidFile) {
+    $listenerPid = Get-ListeningProcessId $Port
+    if ($null -ne $listenerPid) {
+        Set-Content -LiteralPath $PidFile -Value $listenerPid -Encoding ascii
+    }
 }
 
 function Wait-HttpOk([string]$Url, [string]$Name) {
@@ -294,6 +320,7 @@ if ($null -eq (Get-ListeningProcessId 8000)) {
 }
 
 Wait-HttpOk "http://127.0.0.1:8000/health" "FastAPI" | Out-Null
+Save-ListeningPid 8000 $fastApiPidFile
 try {
     Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:8000/api/v1/maps" -TimeoutSec 10 | Out-Null
 } catch {
@@ -320,6 +347,7 @@ if ($null -eq (Get-ListeningProcessId 5173)) {
 }
 
 Wait-HttpOk "http://127.0.0.1:5173/" "Vite" | Out-Null
+Save-ListeningPid 5173 $frontendPidFile
 try {
     Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:5173/api/v1/maps" -TimeoutSec 10 | Out-Null
 } catch {
