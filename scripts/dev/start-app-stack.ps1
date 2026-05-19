@@ -130,6 +130,122 @@ function Wait-HttpOk([string]$Url, [string]$Name) {
     throw "$Name did not become reachable at $Url."
 }
 
+function Join-ProcessArguments([string[]]$ArgumentList) {
+    return ($ArgumentList | ForEach-Object {
+        $argument = [string]$_
+        if ($argument -match '[\s"]') {
+            '"' + ($argument -replace '"', '\"') + '"'
+        } else {
+            $argument
+        }
+    }) -join " "
+}
+
+function Invoke-ProjectCommand(
+    [string]$FilePath,
+    [string[]]$ArgumentList,
+    [string]$WorkingDirectory,
+    [int]$TimeoutSeconds,
+    [string]$Description
+) {
+    Write-Host "$Description..."
+    $process = $null
+    try {
+        $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+        $startInfo.FileName = $FilePath
+        $startInfo.Arguments = Join-ProcessArguments $ArgumentList
+        $startInfo.WorkingDirectory = $WorkingDirectory
+        $startInfo.UseShellExecute = $false
+        $startInfo.CreateNoWindow = $true
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+
+        $process = [System.Diagnostics.Process]::new()
+        $process.StartInfo = $startInfo
+        if (-not $process.Start()) {
+            throw "$Description could not start $FilePath."
+        }
+        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+            $process.Kill()
+            throw "$Description timed out after ${TimeoutSeconds}s."
+        }
+
+        $output = $process.StandardOutput.ReadToEnd().Trim()
+        $errorOutput = $process.StandardError.ReadToEnd().Trim()
+        if ($output) {
+            Write-Host $output
+        }
+        if ($errorOutput) {
+            Write-Host $errorOutput
+        }
+
+        $exitCode = $process.ExitCode
+        if ($exitCode -ne 0) {
+            throw "$Description failed with exit code $exitCode."
+        }
+    } finally {
+        if ($null -ne $process) {
+            $process.Dispose()
+        }
+    }
+}
+
+function Test-BackendDependencies {
+    $python = Join-Path $backendRoot ".venv\Scripts\python.exe"
+    if (-not (Test-Path -LiteralPath $python)) {
+        return $false
+    }
+    Write-Host "Checking backend Python dependencies..."
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        & $python -c "import fastapi, uvicorn, psycopg, pydantic_core._pydantic_core" *> $null
+        $dependencyExitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    if ($dependencyExitCode -eq 0) {
+        return $true
+    }
+    Write-Host "Backend dependency check failed; repairing backend virtualenv."
+    return $false
+}
+
+function Repair-BackendDependencies {
+    $python = Join-Path $backendRoot ".venv\Scripts\python.exe"
+    if (-not (Test-Path -LiteralPath $python)) {
+        throw "Backend virtualenv is missing at $python. Create it first with: cd backend; python -m venv .venv"
+    }
+
+    Invoke-ProjectCommand `
+        $python `
+        @("-m", "pip", "install", "--upgrade", "--force-reinstall", "--no-cache-dir", "pydantic", "pydantic-settings") `
+        $backendRoot `
+        300 `
+        "Repairing backend pydantic packages"
+
+    if (Test-BackendDependencies) {
+        return
+    }
+
+    Invoke-ProjectCommand `
+        $python `
+        @("-m", "pip", "install", "-e", ".[dev]") `
+        $backendRoot `
+        600 `
+        "Ensuring backend editable dependencies"
+}
+
+function Ensure-BackendDependencies {
+    if (Test-BackendDependencies) {
+        return
+    }
+    Repair-BackendDependencies
+    if (-not (Test-BackendDependencies)) {
+        throw "Backend dependencies are still broken after repair."
+    }
+}
+
 function Set-BackendDevEnvironment {
     $env:DB_HOST = "127.0.0.1"
     $env:DB_PORT = "54329"
@@ -157,6 +273,7 @@ if ($RestartFrontend) {
 & (Join-Path $PSScriptRoot "start-dev-stack.ps1")
 
 if ($null -eq (Get-ListeningProcessId 8000)) {
+    Ensure-BackendDependencies
     Set-BackendDevEnvironment
     $stdout = Join-Path $backendRoot "fastapi-dev.log"
     $stderr = Join-Path $backendRoot "fastapi-dev.err.log"

@@ -11,6 +11,17 @@ function Get-DockerTimeoutSeconds {
     return 45
 }
 
+function Join-ProcessArguments([string[]]$ArgumentList) {
+    return ($ArgumentList | ForEach-Object {
+        $argument = [string]$_
+        if ($argument -match '[\s"]') {
+            '"' + ($argument -replace '"', '\"') + '"'
+        } else {
+            $argument
+        }
+    }) -join " "
+}
+
 function Invoke-ExternalWithTimeout(
     [string]$FilePath,
     [string[]]$ArgumentList,
@@ -18,35 +29,48 @@ function Invoke-ExternalWithTimeout(
     [string]$Description
 ) {
     Write-Output "$Description..."
-    $stdout = [System.IO.Path]::GetTempFileName()
-    $stderr = [System.IO.Path]::GetTempFileName()
+    $process = $null
     try {
-        $process = Start-Process `
-            -FilePath $FilePath `
-            -ArgumentList $ArgumentList `
-            -RedirectStandardOutput $stdout `
-            -RedirectStandardError $stderr `
-            -WindowStyle Hidden `
-            -PassThru
+        $command = Get-Command $FilePath -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($null -eq $command) {
+            throw "$FilePath was not found on PATH."
+        }
+
+        $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+        $startInfo.FileName = $command.Source
+        $startInfo.Arguments = Join-ProcessArguments $ArgumentList
+        $startInfo.UseShellExecute = $false
+        $startInfo.CreateNoWindow = $true
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+
+        $process = [System.Diagnostics.Process]::new()
+        $process.StartInfo = $startInfo
+        if (-not $process.Start()) {
+            throw "$Description could not start $($command.Source)."
+        }
 
         if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
-            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            $process.Kill()
             throw "$Description timed out after ${TimeoutSeconds}s. Docker Desktop may be stopped or unresponsive."
         }
 
-        $output = (Get-Content -LiteralPath $stdout -Raw -ErrorAction SilentlyContinue).Trim()
-        $errorOutput = (Get-Content -LiteralPath $stderr -Raw -ErrorAction SilentlyContinue).Trim()
+        $output = $process.StandardOutput.ReadToEnd().Trim()
+        $errorOutput = $process.StandardError.ReadToEnd().Trim()
         if ($output) {
             Write-Output $output
         }
         if ($errorOutput) {
             Write-Output $errorOutput
         }
-        if ($process.ExitCode -ne 0) {
-            throw "$Description failed with exit code $($process.ExitCode). Is Docker Desktop running?"
+        $exitCode = $process.ExitCode
+        if ($exitCode -ne 0) {
+            throw "$Description failed with exit code $exitCode. Is Docker Desktop running?"
         }
     } finally {
-        Remove-Item -LiteralPath $stdout, $stderr -ErrorAction SilentlyContinue
+        if ($null -ne $process) {
+            $process.Dispose()
+        }
     }
 }
 
