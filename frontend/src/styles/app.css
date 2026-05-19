@@ -963,10 +963,7 @@ tbody tr:hover {
   width: min(720px, 100%);
 }
 
-.modal-close {
-  float: right;
-  min-height: 34px;
-}
+/* Removed modal-close button; use action buttons inside .frontend-modal-actions */
 
 .modal-scroll {
   max-height: 60vh;

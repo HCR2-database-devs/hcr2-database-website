@@ -631,9 +631,6 @@ function NoteModal({ note, onClose }: { note: string; onClose: () => void }) {
   return (
     <div id="note-overlay" className="modal-overlay">
       <div className="modal-panel form-container" role="dialog" aria-modal="true" aria-labelledby="note-title">
-        <button className="modal-close" type="button" onClick={onClose} aria-label="Close">
-          Close
-        </button>
         <h2 id="note-title">Record Note</h2>
         <div id="note-content" className="modal-scroll frontend-pre-wrap">
           {note}

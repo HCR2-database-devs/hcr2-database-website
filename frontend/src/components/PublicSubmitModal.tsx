@@ -159,9 +159,6 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
   return (
     <div id="public-submit-overlay" className="modal-overlay">
       <div className="modal-panel form-container" role="dialog" aria-modal="true" aria-labelledby="public-submit-title">
-        <button className="modal-close" type="button" aria-label="Close" onClick={onClose}>
-          Close
-        </button>
         <h2 id="public-submit-title">Submit a Record (for admin review)</h2>
         <form id="public-submit-form" onSubmit={handleSubmit}>
           <input id="form-load-time" type="hidden" value={formLoadTime} readOnly />

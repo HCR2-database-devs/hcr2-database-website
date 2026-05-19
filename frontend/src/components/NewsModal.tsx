@@ -15,9 +15,6 @@ export function NewsModal({ onClose }: NewsModalProps) {
   return (
     <div className="modal-overlay">
       <div className="modal-panel form-container" role="dialog" aria-modal="true" aria-labelledby="news-title">
-        <button className="modal-close" type="button" aria-label="Close" onClick={onClose}>
-          Close
-        </button>
         <h2 id="news-title">Recent News</h2>
         <div id="news-list" className="modal-scroll">
           {news.isLoading && <p>Loading news...</p>}
