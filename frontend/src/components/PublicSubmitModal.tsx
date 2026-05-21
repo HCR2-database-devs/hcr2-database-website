@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { getHcaptchaSitekey, getPublicData } from "../services/publicData";
 import { submitPublicRecord } from "../services/submissions";
 
@@ -35,6 +36,8 @@ function getName(row: Record<string, unknown>, camel: string, lower: string) {
 }
 
 export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
+  useBodyScrollLock();
+
   const [selectedParts, setSelectedParts] = useState<string[]>([]);
   const [message, setMessage] = useState<string>("");
   const [formLoadTime] = useState(() => Date.now());

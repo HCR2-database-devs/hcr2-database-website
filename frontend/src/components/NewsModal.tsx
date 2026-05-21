@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { getNews } from "../services/publicData";
 
 type NewsModalProps = {
@@ -7,6 +8,8 @@ type NewsModalProps = {
 };
 
 export function NewsModal({ onClose }: NewsModalProps) {
+  useBodyScrollLock();
+
   const news = useQuery({
     queryKey: ["news", 10],
     queryFn: () => getNews(10)

@@ -12,6 +12,7 @@ import {
   TuningPartsIcons,
   VehicleWithIcon
 } from "../lib/legacyDisplay";
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { getPublicData } from "../services/publicData";
 import type { DataRow, PublicDataView } from "../types/api";
 
@@ -628,6 +629,8 @@ function PublicTable({
 }
 
 function NoteModal({ note, onClose }: { note: string; onClose: () => void }) {
+  useBodyScrollLock();
+
   return (
     <div id="note-overlay" className="modal-overlay">
       <div className="modal-panel form-container" role="dialog" aria-modal="true" aria-labelledby="note-title">
