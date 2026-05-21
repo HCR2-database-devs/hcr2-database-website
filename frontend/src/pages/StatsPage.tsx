@@ -422,42 +422,40 @@ export function StatsPage() {
           <section className="stats-section">
             <h2>Records by Country</h2>
             <div className="country-records-layout">
-              <div className="pie-container">
-                <div className="country-pie-chart">
-                  <canvas
-                    ref={countryCanvas}
-                    id="country-pie"
-                    width={pieCanvasWidth}
-                    height={pieCanvasHeight}
-                    aria-label="Pie chart showing records by country"
-                    onMouseLeave={() => setHoveredCountry(null)}
-                    onMouseMove={handleCountryPieMove}
-                  />
-                  {countrySlices
-                    .filter((slice) => slice.fraction >= pieLabelThreshold)
-                    .map((slice) => {
-                      const labelX = 50 + Math.cos(slice.midAngle) * 28;
-                      const labelY = 50 + Math.sin(slice.midAngle) * 38;
-                      return (
-                        <div
-                          className="country-slice-label"
-                          key={slice.country}
-                          style={{ left: `${labelX}%`, top: `${labelY}%` }}
-                        >
-                          <CountryFlag country={slice.country} />
-                          <span>{slice.country}</span>
-                        </div>
-                      );
-                    })}
-                  {hoveredCountry && (
-                    <div className="country-pie-tooltip" style={{ left: hoveredCountry.x, top: hoveredCountry.y }}>
-                      <CountryFlag country={hoveredCountry.country} />
-                      <span>
-                        {hoveredCountry.country} ({hoveredCountry.count})
-                      </span>
-                    </div>
-                  )}
-                </div>
+              <div className="country-pie-chart">
+                <canvas
+                  ref={countryCanvas}
+                  id="country-pie"
+                  width={pieCanvasWidth}
+                  height={pieCanvasHeight}
+                  aria-label="Pie chart showing records by country"
+                  onMouseLeave={() => setHoveredCountry(null)}
+                  onMouseMove={handleCountryPieMove}
+                />
+                {countrySlices
+                  .filter((slice) => slice.fraction >= pieLabelThreshold)
+                  .map((slice) => {
+                    const labelX = 50 + Math.cos(slice.midAngle) * 28;
+                    const labelY = 50 + Math.sin(slice.midAngle) * 38;
+                    return (
+                      <div
+                        className="country-slice-label"
+                        key={slice.country}
+                        style={{ left: `${labelX}%`, top: `${labelY}%` }}
+                      >
+                        <CountryFlag country={slice.country} />
+                        <span>{slice.country}</span>
+                      </div>
+                    );
+                  })}
+                {hoveredCountry && (
+                  <div className="country-pie-tooltip" style={{ left: hoveredCountry.x, top: hoveredCountry.y }}>
+                    <CountryFlag country={hoveredCountry.country} />
+                    <span>
+                      {hoveredCountry.country} ({hoveredCountry.count})
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="country-player-ranking">
                 <h3>Top 10 Players by Record Count</h3>
