@@ -159,7 +159,7 @@ export function TuningPartsIcons({ parts }: { parts: unknown }) {
   );
 }
 
-function getCountryCode(country: unknown): string | null {
+export function getCountryCode(country: unknown): string | null {
   const raw = asText(country).trim();
   if (!raw) {
     return null;

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import {
   asText,
   formatDistance,
+  getCountryCode,
   MapWithIcon,
   TuningPartWithIcon,
   TuningPartsIcons,
@@ -19,9 +20,30 @@ type ChartEntry = {
   accent?: string;
 };
 
+type CountrySlice = {
+  country: string;
+  count: number;
+  endAngle: number;
+  fraction: number;
+  index: number;
+  midAngle: number;
+  startAngle: number;
+};
+
+type HoveredCountry = {
+  country: string;
+  count: number;
+  x: number;
+  y: number;
+};
+
 const specialMaps = ["Forest Trials", "Intense City", "Raging Winter"];
 const chartVariables = ["--accent", "--chart-2", "--chart-3", "--chart-4", "--chart-5", "--chart-6"];
 const tuningStatsSlots = Array.from({ length: 10 }, (_, index) => index);
+const pieStartAngle = -0.5 * Math.PI;
+const pieCanvasWidth = 500;
+const pieCanvasHeight = 375;
+const pieLabelThreshold = 0.12;
 
 function distance(row: DataRow) {
   return Number(row.distance ?? 0);
@@ -41,6 +63,17 @@ function cssValue(name: string, fallback: string) {
 
 function chartColor(index: number) {
   return `var(${chartVariables[index % chartVariables.length]})`;
+}
+
+function CountryFlag({ country }: { country: string }) {
+  const code = getCountryCode(country);
+  if (!code) {
+    return null;
+  }
+  if (code === "question") {
+    return <span className="country-flag">?</span>;
+  }
+  return <img className="country-flag" src={`https://flagcdn.com/20x15/${code}.png`} alt={`${country} flag`} />;
 }
 
 function TableFrame({ children }: { children: ReactNode }) {
@@ -90,6 +123,7 @@ function countBy(rows: DataRow[], key: string) {
 
 export function StatsPage() {
   const [vehicleSort, setVehicleSort] = useState("total-distance");
+  const [hoveredCountry, setHoveredCountry] = useState<HoveredCountry | null>(null);
   const countryCanvas = useRef<HTMLCanvasElement | null>(null);
   const records = useQuery({
     queryKey: ["public-data", "records"],
@@ -175,10 +209,31 @@ export function StatsPage() {
     return Object.entries(grouped).sort((a, b) => b[1] - a[1]);
   }, [stats.countryCounts]);
 
+  const countrySlices = useMemo<CountrySlice[]>(() => {
+    const total = countryEntries.reduce((sum, [, count]) => sum + count, 0) || 1;
+    let currentAngle = pieStartAngle;
+    return countryEntries.map(([country, count], index) => {
+      const fraction = count / total;
+      const sliceAngle = fraction * Math.PI * 2;
+      const startAngle = currentAngle;
+      const endAngle = currentAngle + sliceAngle;
+      currentAngle = endAngle;
+      return {
+        country,
+        count,
+        endAngle,
+        fraction,
+        index,
+        midAngle: startAngle + sliceAngle / 2,
+        startAngle
+      };
+    });
+  }, [countryEntries]);
+
   useEffect(() => {
     const canvas = countryCanvas.current;
     const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx || countryEntries.length === 0) {
+    if (!canvas || !ctx || countrySlices.length === 0) {
       return;
     }
     const surface = cssValue("--surface", "#ffffff");
@@ -186,25 +241,56 @@ export function StatsPage() {
     const palette = chartVariables.map((item) => cssValue(item, "#0f766e"));
     ctx.fillStyle = surface;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const total = countryEntries.reduce((sum, [, count]) => sum + count, 0) || 1;
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
     const radius = Math.min(canvas.width, canvas.height) / 2 - 10;
-    let startAngle = -0.5 * Math.PI;
-    countryEntries.forEach(([, count], index) => {
-      const slice = (count / total) * Math.PI * 2;
+    countrySlices.forEach((slice) => {
       ctx.beginPath();
       ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, radius, startAngle, startAngle + slice);
+      ctx.arc(cx, cy, radius, slice.startAngle, slice.endAngle);
       ctx.closePath();
-      ctx.fillStyle = palette[index % palette.length];
+      ctx.fillStyle = palette[slice.index % palette.length];
       ctx.fill();
       ctx.strokeStyle = border;
       ctx.lineWidth = 2;
       ctx.stroke();
-      startAngle += slice;
     });
-  }, [countryEntries]);
+  }, [countrySlices]);
+
+  function countrySliceAtPoint(x: number, y: number) {
+    const cx = pieCanvasWidth / 2;
+    const cy = pieCanvasHeight / 2;
+    const radius = Math.min(pieCanvasWidth, pieCanvasHeight) / 2 - 10;
+    const dx = x - cx;
+    const dy = y - cy;
+    if (Math.sqrt(dx * dx + dy * dy) > radius) {
+      return null;
+    }
+
+    let angle = Math.atan2(dy, dx);
+    if (angle < pieStartAngle) {
+      angle += Math.PI * 2;
+    }
+    return countrySlices.find((slice) => angle >= slice.startAngle && angle <= slice.endAngle) ?? null;
+  }
+
+  function handleCountryPieMove(event: MouseEvent<HTMLCanvasElement>) {
+    const canvas = event.currentTarget;
+    const bounds = canvas.getBoundingClientRect();
+    const x = ((event.clientX - bounds.left) / bounds.width) * pieCanvasWidth;
+    const y = ((event.clientY - bounds.top) / bounds.height) * pieCanvasHeight;
+    const slice = countrySliceAtPoint(x, y);
+    if (!slice || slice.fraction >= pieLabelThreshold) {
+      setHoveredCountry(null);
+      return;
+    }
+    setHoveredCountry({
+      country: slice.country,
+      count: slice.count,
+      x: event.clientX - bounds.left,
+      y: event.clientY - bounds.top
+    });
+  }
 
   const vehicleTableRows = useMemo(() => {
     if (vehicleSort === "longest-distance") {
@@ -322,39 +408,62 @@ export function StatsPage() {
             </TableFrame>
           </section>
 
-          <section className="stats-grid-layout">
-            <div className="stats-section">
-              <h2>Vehicle Adventure Stars</h2>
-              <div className="chart-container">
-                <ChartBars entries={vehicleStarEntries} />
-                <div className="total-stars">
-                  <span>Total Adventure Stars</span>
-                  <strong>{formatDistance(vehicleStarEntries.reduce((sum, entry) => sum + entry.value, 0))}</strong>
-                </div>
-              </div>
-            </div>
-
-            <div className="stats-section">
-              <h2>Top 10 Players by Record Count</h2>
-              <div className="chart-container">
-                <ChartBars entries={playerEntries} />
+          <section className="stats-section">
+            <h2>Vehicle Adventure Stars</h2>
+            <div className="chart-container">
+              <ChartBars entries={vehicleStarEntries} />
+              <div className="total-stars">
+                <span>Total Adventure Stars</span>
+                <strong>{formatDistance(vehicleStarEntries.reduce((sum, entry) => sum + entry.value, 0))}</strong>
               </div>
             </div>
           </section>
 
           <section className="stats-section">
             <h2>Records by Country</h2>
-            <div className="pie-container">
-              <canvas ref={countryCanvas} id="country-pie" width="500" height="375" aria-label="Pie chart showing records by country" />
-              <div className="pie-legend">
-                {countryEntries.map(([country, count], index) => (
-                  <div className="legend-item" key={country}>
-                    <span className="legend-color" style={{ backgroundColor: chartColor(index) }} />
-                    <span className="legend-label">
-                      {country} ({count})
-                    </span>
-                  </div>
-                ))}
+            <div className="country-records-layout">
+              <div className="pie-container">
+                <div className="country-pie-chart">
+                  <canvas
+                    ref={countryCanvas}
+                    id="country-pie"
+                    width={pieCanvasWidth}
+                    height={pieCanvasHeight}
+                    aria-label="Pie chart showing records by country"
+                    onMouseLeave={() => setHoveredCountry(null)}
+                    onMouseMove={handleCountryPieMove}
+                  />
+                  {countrySlices
+                    .filter((slice) => slice.fraction >= pieLabelThreshold)
+                    .map((slice) => {
+                      const labelX = 50 + Math.cos(slice.midAngle) * 28;
+                      const labelY = 50 + Math.sin(slice.midAngle) * 38;
+                      return (
+                        <div
+                          className="country-slice-label"
+                          key={slice.country}
+                          style={{ left: `${labelX}%`, top: `${labelY}%` }}
+                        >
+                          <CountryFlag country={slice.country} />
+                          <span>{slice.country}</span>
+                        </div>
+                      );
+                    })}
+                  {hoveredCountry && (
+                    <div className="country-pie-tooltip" style={{ left: hoveredCountry.x, top: hoveredCountry.y }}>
+                      <CountryFlag country={hoveredCountry.country} />
+                      <span>
+                        {hoveredCountry.country} ({hoveredCountry.count})
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="country-player-ranking">
+                <h3>Top 10 Players by Record Count</h3>
+                <div className="chart-container">
+                  <ChartBars entries={playerEntries} />
+                </div>
               </div>
             </div>
           </section>
