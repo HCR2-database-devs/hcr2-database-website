@@ -179,6 +179,10 @@ export function HomePage() {
           <a rel="noopener noreferrer" href="https://www.youtube.com/@nipatsu" target="_blank">
             Nipatsu HCR2
           </a>
+          <span aria-hidden="true"> / </span>
+          <a rel="noopener noreferrer" href="https://www.youtube.com/@noya" target="_blank">
+            Noya HCR2
+          </a>
         </p>
       </section>
     </main>
