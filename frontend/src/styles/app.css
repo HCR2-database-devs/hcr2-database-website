@@ -797,17 +797,20 @@ h3 {
 
 .table-shell {
   overflow: hidden;
+  max-width: 100%;
+  width: fit-content;
 }
 
 .table-scroll {
+  max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
 table {
   border-collapse: collapse;
-  min-width: 720px;
-  width: 100%;
+  min-width: 0;
+  width: auto;
 }
 
 th,
@@ -842,7 +845,7 @@ tbody tr:hover {
 }
 
 .public-records-table {
-  min-width: 980px;
+  min-width: 0;
 }
 
 .map-cell,
