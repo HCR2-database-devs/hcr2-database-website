@@ -2,7 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { asText, formatDistance, MapWithIcon, TuningPartWithIcon, VehicleWithIcon } from "../lib/legacyDisplay";
+import {
+  asText,
+  formatDistance,
+  MapWithIcon,
+  TuningPartWithIcon,
+  TuningPartsIcons,
+  VehicleWithIcon
+} from "../lib/legacyDisplay";
 import { getPublicData } from "../services/publicData";
 import type { DataRow } from "../types/api";
 
@@ -14,6 +21,7 @@ type ChartEntry = {
 
 const specialMaps = ["Forest Trials", "Intense City", "Raging Winter"];
 const chartVariables = ["--accent", "--chart-2", "--chart-3", "--chart-4", "--chart-5", "--chart-6"];
+const tuningStatsSlots = Array.from({ length: 10 }, (_, index) => index);
 
 function distance(row: DataRow) {
   return Number(row.distance ?? 0);
@@ -238,6 +246,12 @@ export function StatsPage() {
     .slice(0, 10)
     .map(([label, value]) => ({ label, value, accent: "var(--chart-3)" }));
   const mapEntries = Object.entries(stats.mapTotals).sort((a, b) => b[1].distance - a[1].distance);
+  const mostUsedParts = Object.entries(stats.tuningParts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+  const mostUsedSetups = Object.entries(stats.tuningSetups)
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 10);
   const totalDistance = rows.reduce((sum, row) => sum + distance(row), 0);
   const summary = [
     { label: "Total Records", value: rows.length },
@@ -388,25 +402,23 @@ export function StatsPage() {
               <div className="stat-subsection">
                 <h3>Most Used Individual Parts</h3>
                 <TableFrame>
-                  <table>
+                  <table className="stats-usage-table">
                     <tbody>
                       <tr>
                         <th>Rank</th>
                         <th>Part</th>
                         <th>Usage Count</th>
                       </tr>
-                      {Object.entries(stats.tuningParts)
-                        .sort((a, b) => b[1] - a[1])
-                        .slice(0, 10)
-                        .map(([part, count], index) => (
-                          <tr key={part}>
-                            <td>{index + 1}</td>
-                            <td>
-                              <TuningPartWithIcon name={part} />
-                            </td>
-                            <td>{count}</td>
+                      {tuningStatsSlots.map((slot) => {
+                        const item = mostUsedParts[slot];
+                        return (
+                          <tr key={item?.[0] ?? `empty-part-${slot}`} className={!item ? "is-empty-row" : undefined}>
+                            <td>{item ? slot + 1 : ""}</td>
+                            <td>{item ? <TuningPartWithIcon name={item[0]} /> : ""}</td>
+                            <td>{item ? item[1] : ""}</td>
                           </tr>
-                        ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </TableFrame>
@@ -414,26 +426,31 @@ export function StatsPage() {
               <div className="stat-subsection">
                 <h3>Most Used Setups</h3>
                 <TableFrame>
-                  <table>
+                  <table className="stats-usage-table">
                     <tbody>
                       <tr>
                         <th>Rank</th>
                         <th>Setup</th>
                         <th>Usage Count</th>
                       </tr>
-                      {Object.entries(stats.tuningSetups)
-                        .sort((a, b) => b[1].count - a[1].count)
-                        .slice(0, 10)
-                        .map(([setup, item], index) => (
-                          <tr key={setup}>
-                            <td>{index + 1}</td>
+                      {tuningStatsSlots.map((slot) => {
+                        const item = mostUsedSetups[slot];
+                        return (
+                          <tr key={item?.[0] ?? `empty-setup-${slot}`} className={!item ? "is-empty-row" : undefined}>
+                            <td>{item ? slot + 1 : ""}</td>
                             <td>
-                              {setup}
-                              {item.parts ? `: ${item.parts}` : ""}
+                              {item ? (
+                                <span className="setup-icons-only" aria-label={item[1].parts}>
+                                  <TuningPartsIcons parts={item[1].parts} />
+                                </span>
+                              ) : (
+                                ""
+                              )}
                             </td>
-                            <td>{item.count}</td>
+                            <td>{item ? item[1].count : ""}</td>
                           </tr>
-                        ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </TableFrame>

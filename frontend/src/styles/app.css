@@ -848,6 +848,62 @@ tbody tr:hover {
   min-width: 0;
 }
 
+.tuning-stats .stat-subsection {
+  display: grid;
+  gap: 10px;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+}
+
+.tuning-stats .table-shell,
+.tuning-stats .table-scroll {
+  width: 100%;
+}
+
+.stats-usage-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.stats-usage-table th,
+.stats-usage-table td {
+  height: 54px;
+}
+
+.stats-usage-table th:nth-child(2),
+.stats-usage-table td:nth-child(2) {
+  overflow: hidden;
+}
+
+.stats-usage-table th:first-child,
+.stats-usage-table td:first-child {
+  width: 70px;
+}
+
+.stats-usage-table th:last-child,
+.stats-usage-table td:last-child {
+  width: 126px;
+}
+
+.stats-usage-table .is-empty-row td {
+  color: transparent;
+}
+
+.setup-icons-only {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  min-height: 24px;
+}
+
+.stats-usage-table .tuning-part-cell {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .map-cell,
 .vehicle-cell,
 .tuning-part-cell,
