@@ -3,6 +3,11 @@
 }
 
 :root {
+  /* MAINTENANCE MODE - Change to 'normal' to hide maintenance notice */
+  --maintenance-mode: 'maintenance';
+  --maintenance-bg: #dc3545;
+  --maintenance-text: #fff;
+  
   --bg: #f4f4f9;
   --text: #222222;
   --muted: #555555;
@@ -2108,8 +2113,8 @@ tr:hover {
 }
 
 [data-theme="dark"] .device-note {
-  background: rgba(0,0,0,0.3);
-  color: #e0e0e0;
+  background: var(--maintenance-bg);
+  color: var(--maintenance-text);
 }
 
 [data-theme="dark"] a {

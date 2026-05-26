@@ -1,3 +1,9 @@
+/* ========== MAINTENANCE MODE CONFIG ==========
+   Change MAINTENANCE_MODE to false to disable maintenance notice and re-enable submissions
+   Then reload the page. Set back to true to re-enable maintenance mode.
+   ============================================ */
+const MAINTENANCE_MODE = true;
+
 let allData = []; 
 let currentDataType = ''; 
 let allPlayers = []; 
