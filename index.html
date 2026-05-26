@@ -36,7 +36,7 @@
 </head>
 <body>
     <header>
-        <div class="device-note" id="device-note">💻 Works best on laptop / PC for full functionality</div>
+        <div class="device-note" id="device-note">⚠️ Submissions are currently DISABLED - We're preparing the website for an upcoming big game update. Check back soon!</div>
         <div class="header-inner">
             <div class="branding">
                 <img src="img/hcrdatabaselogo.png" alt="Logo" id="logo">
@@ -58,7 +58,7 @@
                     <button onclick="fetchData('tuning_parts')">Get Tuning Parts</button>
                     <button onclick="fetchData('records')">Get Records</button>
                     <button onclick="fetchStats()">Stats</button>
-                    <button onclick="togglePublicSubmitForm()">Submit Record</button>
+                    <button onclick="togglePublicSubmitForm()" disabled style="opacity: 0.5; cursor: not-allowed;" title="Submissions are currently disabled">Submit Record</button>
                     <span id="news-btn-container"><button onclick="toggleNewsModal()">News</button></span>
 
                     <button id="login-btn" class="discord-btn" onclick="location.href='https://auth.hcr2.xyz/login'">
@@ -187,7 +187,8 @@
             <div class="modal-panel form-container" role="dialog" aria-modal="true" aria-labelledby="public-submit-title">
                 <button class="modal-close" onclick="togglePublicSubmitForm()" aria-label="Close">✕</button>
                 <h2 id="public-submit-title">Submit a Record (for admin review)</h2>
-                <form id="public-submit-form" onsubmit="submitPublicRecord(event)">
+                <div style="background: #dc3545; color: white; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-weight: 600; text-align: center;">⚠️ Submissions are currently DISABLED while we prepare for an upcoming big game update.</div>
+                <form id="public-submit-form" onsubmit="submitPublicRecord(event)" style="opacity: 0.5; pointer-events: none;">
                     <input type="hidden" id="form-load-time" value="">
                     <label>Map</label>
                     <select id="public-map-select" required></select>
@@ -214,7 +215,7 @@
                         <textarea id="hp_comments" name="hp_comments" autocomplete="off" tabindex="-1" aria-hidden="true"></textarea>
                     </div>
                     <div class="actions">
-                        <button type="submit">Send Submission</button>
+                        <button type="submit" disabled style="opacity: 0.5; cursor: not-allowed;">Send Submission (Disabled)</button>
                         <button type="button" onclick="togglePublicSubmitForm()">Cancel</button>
                     </div>
                 </form>

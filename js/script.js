@@ -1760,12 +1760,19 @@ async function populatePublicSubmitOptions() {
 
 async function submitPublicRecord(e) {
     e.preventDefault();
+    const msgEl = document.getElementById('public-submit-message');
+    // Submissions are currently disabled for maintenance
+    if (msgEl) { 
+        msgEl.textContent = 'Submissions are currently disabled while we prepare for an upcoming big game update. Please try again soon!'; 
+        msgEl.style.color = 'red'; 
+    }
+    return;
+    
     const mapId = document.getElementById('public-map-select').value;
     const vehicleId = document.getElementById('public-vehicle-select').value;
     const distance = document.getElementById('public-distance-input').value;
     const playerName = document.getElementById('public-player-name').value.trim();
     const playerCountry = document.getElementById('public-player-country').value.trim();
-    const msgEl = document.getElementById('public-submit-message');
 
     if (!mapId || !vehicleId || !distance || !playerName) {
         if (msgEl) { msgEl.textContent = 'Please complete all required fields.'; msgEl.style.color = 'red'; }
