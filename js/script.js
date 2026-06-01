@@ -2,7 +2,7 @@
    Change MAINTENANCE_MODE to false to disable maintenance notice and re-enable submissions
    Then reload the page. Set back to true to re-enable maintenance mode.
    ============================================ */
-const MAINTENANCE_MODE = true;
+const MAINTENANCE_MODE = false;
 
 let allData = []; 
 let currentDataType = ''; 
