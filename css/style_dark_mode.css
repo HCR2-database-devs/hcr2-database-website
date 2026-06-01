@@ -584,6 +584,30 @@ tr:hover {
   margin: 0 0 8px 0;
 }
 
+.tuning-card {
+  background: #1e1e1e;
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+.tuning-card:hover {
+  border-color: #64b5f6;
+  box-shadow: 0 2px 8px rgba(100, 181, 246, 0.2);
+}
+
+#tuning-selection-info {
+  background: #1b5e20;
+  border-left-color: #81c784;
+  color: #a5d6a7;
+}
+
+#public-submit-message {
+  padding: 12px;
+  border-radius: 6px;
+  min-height: 20px;
+  font-weight: 600;
+}
+
 .form-container input[type="checkbox"] {
   cursor: pointer;
   margin-right: 8px;
@@ -597,10 +621,6 @@ tr:hover {
   border-radius: 4px;
   transition: background-color 150ms ease;
   cursor: pointer;
-}
-
-.form-container label:has(input[type="checkbox"]):hover {
-  background-color: rgba(0, 123, 255, 0.15);
 }
 
 @media (min-width: 600px) {

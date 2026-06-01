@@ -26,7 +26,7 @@
         } catch (e) {}
     })();
     </script>
-    <link rel="stylesheet" href="css/style.css?v=13">
+    <link rel="stylesheet" href="css/style.css?v=14">
     <title>HCR2 Database</title>
     <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
@@ -233,14 +233,17 @@
                         <legend style="font-weight: 600; font-size: 13px; color: #666; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Tuning Configuration</legend>
                         
                         <div style="background: #f9f9f9; padding: 12px; border-radius: 6px; border: 1px solid #eee;">
-                            <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 8px;">Tuning Parts <span style="color: #dc3545;">*</span> <span style="color: #999; font-weight: normal;">(choose 3 or 4)</span></label>
-                            <div id="public-tuning-parts" style="text-align:left; max-height:200px; overflow:auto; display: flex; flex-direction: column; gap: 8px;"></div>
+                            <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 10px;">Tuning Parts <span style="color: #dc3545;">*</span> <span style="color: #999; font-weight: normal;">(choose 3 or 4)</span></label>
+                            <div id="public-tuning-parts" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; text-align: center;"></div>
+                        </div>
+                        <div id="tuning-selection-info" style="display: none; background: #e8f5e9; padding: 10px; border-radius: 6px; border-left: 4px solid #4caf50; font-size: 12px; color: #2e7d32;">
+                            <strong id="tuning-count-display">0/3-4</strong> parts selected
                         </div>
 
-                        <div id="echo-affected-container" style="display: none; background: #f0f8ff; padding: 12px; border-radius: 6px; border: 1px solid #b3d9ff;">
+                        <div id="echo-affected-container" style="display: none; background: #f0f8ff; padding: 12px; border-radius: 6px; border: 1px solid #b3d9ff; border-left: 4px solid #2196F3; animation: slideDown 220ms ease;">
                             <label style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px;">🔄 Echo Affected Part <span style="color: #dc3545;">*</span></label>
                             <p style="font-size: 12px; color: #666; margin-bottom: 8px;">Since you selected Echo, choose which part it affects:</p>
-                            <select id="echo-affected-part-select" style="width: 100%; padding: 10px; border: 1px solid #b3d9ff; border-radius: 6px; font-size: 14px; background: white; box-sizing: border-box;">
+                            <select id="echo-affected-part-select" style="width: 100%; padding: 10px; border: 1px solid #b3d9ff; border-radius: 6px; font-size: 14px; background: white; box-sizing: border-box;" onchange="validateForm()">
                                 <option value="">-- Select a part --</option>
                             </select>
                         </div>

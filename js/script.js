@@ -1754,10 +1754,20 @@ async function populatePublicSubmitOptions() {
             const partsContainer = document.getElementById('public-tuning-parts');
             if (partsContainer && Array.isArray(parts)) {
                 partsContainer.innerHTML = parts.map(p => {
-                    const id = esc(p.idTuningPart || p.id || '');
+                    const id = parseInt(p.idTuningPart || p.id || 0);
                     const name = esc(p.nameTuningPart || p.nameTuningPart || p.name || '');
-                    return `<label style="display: flex; align-items: center; padding: 6px; cursor: pointer; border-radius: 4px; transition: background 150ms ease;"><input type="checkbox" name="public-tuning-part" value="${name}" data-part-id="${id}" id="public-tuning-part-${id}" onchange="handleEchoChange()" style="cursor: pointer; margin-right: 8px;"> <span>${name}</span></label>`;
+                    const isEcho = id === ECHO_PART_ID;
+                    const badge = isEcho ? '🔄' : '';
+                    return `<div data-part-id="${id}" style="position: relative;">
+                        <input type="checkbox" name="public-tuning-part" value="${name}" data-part-id="${id}" id="public-tuning-part-${id}" onchange="handleTuningPartChange()" style="display: none;">
+                        <label for="public-tuning-part-${id}" class="tuning-card" style="display: flex; flex-direction: column; align-items: center; padding: 12px; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; transition: all 200ms ease; background: white; min-height: 80px; justify-content: center; text-align: center;">
+                            <span style="font-size: 18px; margin-bottom: 4px;">${badge || '⚙️'}</span>
+                            <span style="font-size: 12px; font-weight: 500; word-break: break-word;">${name}</span>
+                            ${isEcho ? '<span style="font-size: 10px; color: #f57c00; margin-top: 4px; font-weight: 600;">NEEDS AFFECTED PART</span>' : ''}
+                        </label>
+                    </div>`;
                 }).join('');
+                attachTuningCardListeners();
             }
             
             const echoSelect = document.getElementById('echo-affected-part-select');
@@ -1768,7 +1778,7 @@ async function populatePublicSubmitOptions() {
                 });
                 echoSelect.innerHTML = '<option value="">-- Select a part --</option>' + 
                     validParts.map(p => {
-                        const id = esc(p.idTuningPart || p.id || '');
+                        const id = parseInt(p.idTuningPart || p.id || 0);
                         const name = esc(p.nameTuningPart || p.nameTuningPart || p.name || '');
                         return `<option value="${id}">${name}</option>`;
                     }).join('');
@@ -1781,29 +1791,125 @@ async function populatePublicSubmitOptions() {
     }
 }
 
+function attachTuningCardListeners() {
+    const cards = document.querySelectorAll('.tuning-card');
+    cards.forEach(card => {
+        card.addEventListener('click', function(e) {
+            e.preventDefault();
+            const checkbox = this.querySelector('input[type="checkbox"]');
+            if (checkbox) {
+                checkbox.checked = !checkbox.checked;
+                handleTuningPartChange();
+            }
+        });
+    });
+}
+
+function handleTuningPartChange() {
+    const selectedCheckboxes = document.querySelectorAll('#public-tuning-parts input[type="checkbox"]:checked');
+    const count = selectedCheckboxes.length;
+    
+    const infoEl = document.getElementById('tuning-selection-info');
+    const countDisplay = document.getElementById('tuning-count-display');
+    if (infoEl && countDisplay) {
+        countDisplay.textContent = `${count}/3-4`;
+        infoEl.style.display = count > 0 ? 'block' : 'none';
+    }
+    
+    const cards = document.querySelectorAll('.tuning-card');
+    cards.forEach((card, i) => {
+        const input = card.querySelector('input[type="checkbox"]');
+        if (input && input.checked) {
+            card.style.borderColor = '#007bff';
+            card.style.backgroundColor = '#f0f8ff';
+            card.style.boxShadow = '0 0 0 3px rgba(0, 123, 255, 0.2)';
+        } else {
+            card.style.borderColor = '#ddd';
+            card.style.backgroundColor = 'white';
+            card.style.boxShadow = 'none';
+        }
+    });
+    
+    handleEchoChange();
+    validateForm();
+}
+
 function handleEchoChange() {
     const echoCheckbox = document.querySelector(`#public-tuning-part-${ECHO_PART_ID}`);
     const echoContainer = document.getElementById('echo-affected-container');
     const echoSelect = document.getElementById('echo-affected-part-select');
     
-    if (echoCheckbox && echoContainer && echoSelect) {
-        if (echoCheckbox.checked) {
-            echoContainer.style.display = 'block';
-        } else {
-            echoContainer.style.display = 'none';
-            echoSelect.value = '';
-        }
+    if (!echoCheckbox || !echoContainer || !echoSelect) {
+        console.warn('Echo elements not found', { echoCheckbox, echoContainer, echoSelect });
+        return;
     }
+    
+    console.log('Echo checkbox checked:', echoCheckbox.checked, 'ECHO_PART_ID:', ECHO_PART_ID);
+    
+    if (echoCheckbox.checked) {
+        echoContainer.style.display = 'block';
+    } else {
+        echoContainer.style.display = 'none';
+        echoSelect.value = '';
+    }
+}
+
+function validateForm() {
+    const msgEl = document.getElementById('public-submit-message');
+    const selectedCheckboxes = document.querySelectorAll('#public-tuning-parts input[type="checkbox"]:checked');
+    const selectedParts = Array.from(selectedCheckboxes).map(el => el.value);
+    const count = selectedParts.length;
+    
+    const echoCheckbox = document.querySelector(`#public-tuning-part-${ECHO_PART_ID}`);
+    const echoSelected = echoCheckbox && echoCheckbox.checked;
+    const echoAffectedSelect = document.getElementById('echo-affected-part-select');
+    const echoAffectedPartId = echoAffectedSelect ? echoAffectedSelect.value : '';
+    
+    if (msgEl) {
+        msgEl.textContent = '';
+        msgEl.style.display = 'none';
+    }
+    
+    if (count < 3 || count > 4) {
+        if (msgEl && count > 0) {
+            msgEl.textContent = `⚠️ Please select 3 or 4 tuning parts (currently ${count})`;
+            msgEl.style.color = '#f57c00';
+            msgEl.style.display = 'block';
+        }
+        return false;
+    }
+    
+    if (echoSelected && !echoAffectedPartId) {
+        if (msgEl) {
+            msgEl.textContent = '🔄 Echo requires selecting an affected part from the dropdown below';
+            msgEl.style.color = '#f57c00';
+            msgEl.style.display = 'block';
+        }
+        return false;
+    }
+    
+    if (!echoSelected && echoAffectedPartId) {
+        if (msgEl) {
+            msgEl.textContent = '⚠️ Clear the affected part or select Echo';
+            msgEl.style.color = '#f57c00';
+            msgEl.style.display = 'block';
+        }
+        return false;
+    }
+    
+    return true;
 }
 
 async function submitPublicRecord(e) {
     e.preventDefault();
     const msgEl = document.getElementById('public-submit-message');
     
+    console.log('submitPublicRecord called, MAINTENANCE_MODE:', MAINTENANCE_MODE);
+    
     if (MAINTENANCE_MODE) {
         if (msgEl) { 
             msgEl.textContent = 'Submissions are currently disabled while we prepare for an upcoming big game update. Please try again soon!'; 
-            msgEl.style.color = 'red'; 
+            msgEl.style.color = '#dc3545'; 
             msgEl.style.display = 'block';
         }
         return;
@@ -1816,18 +1922,18 @@ async function submitPublicRecord(e) {
     const playerCountry = document.getElementById('public-player-country').value.trim();
 
     if (!mapId || !vehicleId || !distance || !playerName) {
-        if (msgEl) { msgEl.textContent = 'Please complete all required fields.'; msgEl.style.color = 'red'; msgEl.style.display = 'block'; }
+        if (msgEl) { msgEl.textContent = '❌ Please complete all required fields (Map, Vehicle, Distance, Player Name).'; msgEl.style.color = '#dc3545'; msgEl.style.display = 'block'; }
         return;
     }
     if (isNaN(Number(distance)) || Number(distance) <= 0) {
-        if (msgEl) { msgEl.textContent = 'Distance must be a positive number.'; msgEl.style.color = 'red'; msgEl.style.display = 'block'; }
+        if (msgEl) { msgEl.textContent = '❌ Distance must be a positive number.'; msgEl.style.color = '#dc3545'; msgEl.style.display = 'block'; }
         return;
     }
     
     const selectedPartEls = document.querySelectorAll('#public-tuning-parts input[type="checkbox"]:checked');
     const selectedParts = Array.from(selectedPartEls).map(el => el.value);
     if (selectedParts.length < 3 || selectedParts.length > 4) {
-        if (msgEl) { msgEl.textContent = 'Please choose 3 or 4 tuning parts for the record.'; msgEl.style.color = 'red'; msgEl.style.display = 'block'; }
+        if (msgEl) { msgEl.textContent = `❌ Please select 3 or 4 tuning parts (you selected ${selectedParts.length}).`; msgEl.style.color = '#dc3545'; msgEl.style.display = 'block'; }
         return;
     }
     
@@ -1837,14 +1943,16 @@ async function submitPublicRecord(e) {
     const echoAffectedPartId = echoAffectedSelect ? echoAffectedSelect.value : '';
     
     if (echoSelected && !echoAffectedPartId) {
-        if (msgEl) { msgEl.textContent = '🔄 Echo requires selecting an affected part. Please select a part from the "Echo Affected Part" dropdown.'; msgEl.style.color = 'red'; msgEl.style.display = 'block'; }
+        if (msgEl) { msgEl.textContent = '🔄 Echo requires selecting an affected part. Please select one from the dropdown below.'; msgEl.style.color = '#dc3545'; msgEl.style.display = 'block'; }
         return;
     }
     
     if (!echoSelected && echoAffectedPartId) {
-        if (msgEl) { msgEl.textContent = '⚠️ You cannot select an affected part without Echo. Please select Echo or clear the affected part.'; msgEl.style.color = 'red'; msgEl.style.display = 'block'; }
+        if (msgEl) { msgEl.textContent = '⚠️ You cannot select an affected part without Echo. Please select Echo or clear the affected part.'; msgEl.style.color = '#dc3545'; msgEl.style.display = 'block'; }
         return;
     }
+    
+    console.log('All validations passed, submitting...');
 
     try {
         const hcaptchaResponse = document.getElementById('h-captcha-response').value || '';
@@ -1886,21 +1994,28 @@ async function submitPublicRecord(e) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(submitData)
         });
+        
+        console.log('Response status:', res.status);
         const data = await res.json();
+        console.log('Response data:', data);
+        
         if (!res.ok) {
-            if (msgEl) { msgEl.textContent = data.error || 'Submission failed'; msgEl.style.color = 'red'; msgEl.style.display = 'block'; }
+            if (msgEl) { msgEl.textContent = '❌ ' + (data.error || 'Submission failed'); msgEl.style.color = '#dc3545'; msgEl.style.display = 'block'; }
+            console.error('Submission error:', data.error);
             return;
         }
         if (data.success) {
-            if (msgEl) { msgEl.textContent = data.message || 'Submitted successfully!'; msgEl.style.color = 'green'; msgEl.style.display = 'block'; }
-            document.getElementById('public-submit-form').reset();
-            handleEchoChange();
+            if (msgEl) { msgEl.textContent = '✅ ' + (data.message || 'Submitted successfully! Thanks for your submission.'); msgEl.style.color = '#28a745'; msgEl.style.display = 'block'; msgEl.style.fontWeight = 'bold'; }
+            setTimeout(() => {
+                document.getElementById('public-submit-form').reset();
+                handleTuningPartChange();
+            }, 1000);
         } else {
-            if (msgEl) { msgEl.textContent = data.error || 'Submission failed'; msgEl.style.color = 'red'; msgEl.style.display = 'block'; }
+            if (msgEl) { msgEl.textContent = '❌ ' + (data.error || 'Submission failed'); msgEl.style.color = '#dc3545'; msgEl.style.display = 'block'; }
         }
     } catch (err) {
         console.error('Public submit failed', err);
-        if (msgEl) { msgEl.textContent = 'Submission failed (network error).'; msgEl.style.color = 'red'; msgEl.style.display = 'block'; }
+        if (msgEl) { msgEl.textContent = '❌ Network error: ' + err.message; msgEl.style.color = '#dc3545'; msgEl.style.display = 'block'; }
     }
 }
 
