@@ -1733,6 +1733,33 @@ async function loadNews() {
     }
 }
 
+function getIconPath(name) {
+    const iconMap = {
+        'Wings': 'wings.svg',
+        'Magnet': 'magnet.svg',
+        'Landing Boost': 'landing_boost.svg',
+        'Overcharged Turbo': 'overcharged_turbo.svg',
+        'Nitro': 'nitro.svg',
+        'Start Boost': 'start_boost.svg',
+        'Jump Shocks': 'jump_shocks.svg',
+        'Coin Boost': 'coin_boost.svg',
+        'Wheelie Boost': 'wheelie_boost.svg',
+        'Fuel Boost': 'fuel_boost.svg',
+        'Flip Boost': 'flip_boost.svg',
+        'Fume Boost': 'fume_boost.svg',
+        'Rollcage': 'rollcage.svg',
+        'Spoiler': 'spoiler.svg',
+        'Thrusters': 'thrusters.svg',
+        'Heavyweight': 'heavyweight.svg',
+        'Winter Tires': 'winter_tires.svg',
+        'Air Control': 'air_control.svg',
+        'Afterburner': 'afterburner.svg',
+        'Amplifier': 'amplifier.svg',
+        'Echo': 'echo.svg'
+    };
+    return iconMap[name] || null;
+}
+
 async function populatePublicSubmitOptions() {
     try {
         const mapsRes = await fetch('php/load_data.php?type=maps&t=' + Date.now());
@@ -1757,17 +1784,17 @@ async function populatePublicSubmitOptions() {
                     const id = parseInt(p.idTuningPart || p.id || 0);
                     const name = esc(p.nameTuningPart || p.nameTuningPart || p.name || '');
                     const isEcho = id === ECHO_PART_ID;
-                    const badge = isEcho ? '🔄' : '';
+                    const iconFile = getIconPath(name);
+                    const iconHtml = iconFile ? `<img src="img/tuning_parts_icons/${iconFile}" alt="${name}" style="width: 40px; height: 40px; margin-bottom: 4px; object-fit: contain;">` : '<span style="font-size: 18px; margin-bottom: 4px;">⚙️</span>';
                     return `<div data-part-id="${id}" style="position: relative;">
                         <input type="checkbox" name="public-tuning-part" value="${name}" data-part-id="${id}" id="public-tuning-part-${id}" onchange="handleTuningPartChange()" style="display: none;">
                         <label for="public-tuning-part-${id}" class="tuning-card" style="display: flex; flex-direction: column; align-items: center; padding: 12px; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; transition: all 200ms ease; background: white; min-height: 80px; justify-content: center; text-align: center;">
-                            <span style="font-size: 18px; margin-bottom: 4px;">${badge || '⚙️'}</span>
+                            ${iconHtml}
                             <span style="font-size: 12px; font-weight: 500; word-break: break-word;">${name}</span>
                             ${isEcho ? '<span style="font-size: 10px; color: #f57c00; margin-top: 4px; font-weight: 600;">NEEDS AFFECTED PART</span>' : ''}
                         </label>
                     </div>`;
                 }).join('');
-                attachTuningCardListeners();
             }
             
             const echoSelect = document.getElementById('echo-affected-part-select');
@@ -1791,19 +1818,7 @@ async function populatePublicSubmitOptions() {
     }
 }
 
-function attachTuningCardListeners() {
-    const cards = document.querySelectorAll('.tuning-card');
-    cards.forEach(card => {
-        card.addEventListener('click', function(e) {
-            e.preventDefault();
-            const checkbox = this.querySelector('input[type="checkbox"]');
-            if (checkbox) {
-                checkbox.checked = !checkbox.checked;
-                handleTuningPartChange();
-            }
-        });
-    });
-}
+
 
 function handleTuningPartChange() {
     const selectedCheckboxes = document.querySelectorAll('#public-tuning-parts input[type="checkbox"]:checked');
