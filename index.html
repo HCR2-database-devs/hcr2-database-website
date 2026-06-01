@@ -26,7 +26,7 @@
         } catch (e) {}
     })();
     </script>
-    <link rel="stylesheet" href="css/style.css?v=11">
+    <link rel="stylesheet" href="css/style.css?v=12">
     <title>HCR2 Database</title>
     <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
@@ -36,7 +36,7 @@
 </head>
 <body>
     <header>
-        <div class="device-note" id="device-note">⚠️ Submissions are currently DISABLED - We're preparing the website for an upcoming big game update. Check back soon!</div>
+        <div class="device-note" id="device-note" style="display:none;">⚠️ Submissions are currently DISABLED - We're preparing the website for an upcoming big game update. Check back soon!</div>
         <div class="header-inner">
             <div class="branding">
                 <img src="img/hcrdatabaselogo.png" alt="Logo" id="logo">
@@ -58,7 +58,7 @@
                     <button onclick="fetchData('tuning_parts')">Get Tuning Parts</button>
                     <button onclick="fetchData('records')">Get Records</button>
                     <button onclick="fetchStats()">Stats</button>
-                    <button onclick="togglePublicSubmitForm()" disabled style="opacity: 0.5; cursor: not-allowed;" title="Submissions are currently disabled">Submit Record</button>
+                    <button id="submit-record-btn" onclick="togglePublicSubmitForm()">Submit Record</button>
                     <span id="news-btn-container"><button onclick="toggleNewsModal()">News</button></span>
 
                     <button id="login-btn" class="discord-btn" onclick="location.href='https://auth.hcr2.xyz/login'">
@@ -187,8 +187,8 @@
             <div class="modal-panel form-container" role="dialog" aria-modal="true" aria-labelledby="public-submit-title">
                 <button class="modal-close" onclick="togglePublicSubmitForm()" aria-label="Close">✕</button>
                 <h2 id="public-submit-title">Submit a Record (for admin review)</h2>
-                <div style="background: #dc3545; color: white; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-weight: 600; text-align: center;">⚠️ Submissions are currently DISABLED while we prepare for an upcoming big game update.</div>
-                <form id="public-submit-form" onsubmit="submitPublicRecord(event)" style="opacity: 0.5; pointer-events: none;">
+                <div id="maintenance-warning" style="background: #dc3545; color: white; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-weight: 600; text-align: center; display:none;">⚠️ Submissions are currently DISABLED while we prepare for an upcoming big game update.</div>
+                <form id="public-submit-form" onsubmit="submitPublicRecord(event)">
                     <input type="hidden" id="form-load-time" value="">
                     <label>Map</label>
                     <select id="public-map-select" required></select>
@@ -215,7 +215,7 @@
                         <textarea id="hp_comments" name="hp_comments" autocomplete="off" tabindex="-1" aria-hidden="true"></textarea>
                     </div>
                     <div class="actions">
-                        <button type="submit" disabled style="opacity: 0.5; cursor: not-allowed;">Send Submission (Disabled)</button>
+                        <button type="submit" id="submit-btn">Send Submission</button>
                         <button type="button" onclick="togglePublicSubmitForm()">Cancel</button>
                     </div>
                 </form>

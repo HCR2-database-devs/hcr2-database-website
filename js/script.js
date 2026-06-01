@@ -1,8 +1,8 @@
-/* ========== MAINTENANCE MODE CONFIG ==========
-   Change MAINTENANCE_MODE to false to disable maintenance notice and re-enable submissions
-   Then reload the page. Set back to true to re-enable maintenance mode.
-   ============================================ */
-const MAINTENANCE_MODE = false;
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMaintenanceMode);
+} else {
+    initMaintenanceMode();
+}
 
 let allData = []; 
 let currentDataType = ''; 
@@ -1767,12 +1767,15 @@ async function populatePublicSubmitOptions() {
 async function submitPublicRecord(e) {
     e.preventDefault();
     const msgEl = document.getElementById('public-submit-message');
-    // Submissions are currently disabled for maintenance
-    if (msgEl) { 
-        msgEl.textContent = 'Submissions are currently disabled while we prepare for an upcoming big game update. Please try again soon!'; 
-        msgEl.style.color = 'red'; 
+    
+    // Check if maintenance mode is enabled
+    if (MAINTENANCE_MODE) {
+        if (msgEl) { 
+            msgEl.textContent = 'Submissions are currently disabled while we prepare for an upcoming big game update. Please try again soon!'; 
+            msgEl.style.color = 'red'; 
+        }
+        return;
     }
-    return;
     
     const mapId = document.getElementById('public-map-select').value;
     const vehicleId = document.getElementById('public-vehicle-select').value;

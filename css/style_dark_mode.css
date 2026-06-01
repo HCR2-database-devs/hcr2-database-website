@@ -3,7 +3,6 @@
 }
 
 :root {
-  /* MAINTENANCE MODE - Change to 'normal' to hide maintenance notice */
   --maintenance-mode: 'normal';
   --maintenance-bg: #dc3545;
   --maintenance-text: #fff;
