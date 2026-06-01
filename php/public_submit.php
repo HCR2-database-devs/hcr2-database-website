@@ -94,6 +94,7 @@ $honeypot_phone = isset($data['hp_phone']) ? trim($data['hp_phone']) : '';
 $honeypot_comments = isset($data['hp_comments']) ? trim($data['hp_comments']) : '';
 $form_load_time = isset($data['form_load_time']) ? (int)$data['form_load_time'] : 0;
 $submission_time = isset($data['submission_time']) ? (int)$data['submission_time'] : 0;
+$echoAffectedPartId = isset($data['echo_affected_part_id']) ? (int)$data['echo_affected_part_id'] : null;
 $tuningParts = isset($data['tuningParts']) ? $data['tuningParts'] : [];
 if (!is_array($tuningParts)) {
     if (is_string($tuningParts)) {
@@ -145,6 +146,27 @@ if (count($tuningParts) < 3 || count($tuningParts) > 4) {
     echo json_encode(['error' => 'Please provide 3 or 4 tuning parts for the record.']);
     exit;
 }
+
+$echoExcludedParts = [26, 2, 14, 13, 7, 18, 16, 17, 25];
+$hasEcho = in_array('Echo', $tuningParts, true);
+
+if ($hasEcho && !$echoAffectedPartId) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Echo requires selecting an affected part. Please select a part from the "Echo Affected Part" dropdown.']);
+    exit;
+}
+
+if (!$hasEcho && $echoAffectedPartId) {
+    http_response_code(400);
+    echo json_encode(['error' => 'You cannot select an affected part without Echo.']);
+    exit;
+}
+
+if ($hasEcho && $echoAffectedPartId && in_array($echoAffectedPartId, $echoExcludedParts, true)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'The selected affected part cannot be affected by Echo.']);
+    exit;
+}
 try {
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
     if ($ip && !api_dry_run_enabled()) {
@@ -159,16 +181,36 @@ try {
         }
     }
     $db->beginTransaction();
-    $stmt = $db->prepare("INSERT INTO {$pendingTable} (id_map, id_vehicle, distance, player_name, player_country, tuning_parts, submitter_ip, status) VALUES (:idMap, :idVehicle, :distance, :playerName, :playerCountry, :tuningParts, :ip, 'pending')");
-    $stmt->execute([
+    
+    $columnExists = true;
+    try {
+        $stmt = $db->prepare("INSERT INTO {$pendingTable} (id_map, id_vehicle, distance, player_name, player_country, tuning_parts, echo_affected_part_id, submitter_ip, status) VALUES (:idMap, :idVehicle, :distance, :playerName, :playerCountry, :tuningParts, :echoAffectedPartId, :ip, 'pending')");
+        $stmt->execute([
             ':idMap' => $mapId,
             ':idVehicle' => $vehicleId,
             ':distance' => $distance,
             ':playerName' => $playerName,
             ':playerCountry' => $playerCountry,
             ':tuningParts' => implode(', ', $tuningParts),
+            ':echoAffectedPartId' => $echoAffectedPartId,
             ':ip' => $_SERVER['REMOTE_ADDR'] ?? ''
         ]);
+    } catch (PDOException $e) {
+        if (strpos($e->getMessage(), 'echo_affected_part_id') !== false || strpos($e->getMessage(), 'column') !== false) {
+            $stmt = $db->prepare("INSERT INTO {$pendingTable} (id_map, id_vehicle, distance, player_name, player_country, tuning_parts, submitter_ip, status) VALUES (:idMap, :idVehicle, :distance, :playerName, :playerCountry, :tuningParts, :ip, 'pending')");
+            $stmt->execute([
+                ':idMap' => $mapId,
+                ':idVehicle' => $vehicleId,
+                ':distance' => $distance,
+                ':playerName' => $playerName,
+                ':playerCountry' => $playerCountry,
+                ':tuningParts' => implode(', ', $tuningParts),
+                ':ip' => $_SERVER['REMOTE_ADDR'] ?? ''
+            ]);
+        } else {
+            throw $e;
+        }
+    }
 
     $dryRun = finish_dry_run_transaction($db);
     echo json_encode(['success' => true, 'dryRun' => $dryRun, 'message' => 'Submission received and is pending review by admins.']);

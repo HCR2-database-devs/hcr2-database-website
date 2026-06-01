@@ -26,11 +26,14 @@ if ($method === 'GET') {
                 p.status,
                 p.submitted_at,
                 p.tuning_parts AS "tuningParts",
+                p.echo_affected_part_id AS "echoAffectedPartId",
                 m.name_map AS "mapName",
-                v.name_vehicle AS "vehicleName"
+                v.name_vehicle AS "vehicleName",
+                tp.name_tuning_part AS "echoAffectedPartName"
             FROM pending_submission p
             LEFT JOIN map m ON p.id_map = m.id_map
             LEFT JOIN vehicle v ON p.id_vehicle = v.id_vehicle
+            LEFT JOIN tuning_part tp ON p.echo_affected_part_id = tp.id_tuning_part
             WHERE p.status = \'pending\'
             ORDER BY p.submitted_at DESC, p.id DESC
         ';
@@ -64,7 +67,8 @@ try {
                 submitter_ip AS "submitterIp",
                 status,
                 submitted_at,
-                tuning_parts AS "tuningParts"
+                tuning_parts AS "tuningParts",
+                echo_affected_part_id AS "echoAffectedPartId"
             FROM pending_submission
             WHERE id = :id
             LIMIT 1

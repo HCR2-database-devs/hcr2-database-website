@@ -537,6 +537,72 @@ tr:hover {
   color: #8a1e1e; 
 }
 
+.form-container fieldset {
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.form-container fieldset legend {
+  font-weight: 600;
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  width: 100%;
+}
+
+#echo-affected-container {
+  background: #1a3a52;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #2a5580;
+  animation: slideDown 220ms ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#echo-affected-container label {
+  margin-bottom: 8px;
+  color: #e0e0e0;
+}
+
+#echo-affected-container p {
+  font-size: 12px;
+  color: #aaa;
+  margin: 0 0 8px 0;
+}
+
+.form-container input[type="checkbox"] {
+  cursor: pointer;
+  margin-right: 8px;
+}
+
+.form-container label:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  font-weight: normal;
+  padding: 6px;
+  border-radius: 4px;
+  transition: background-color 150ms ease;
+  cursor: pointer;
+}
+
+.form-container label:has(input[type="checkbox"]):hover {
+  background-color: rgba(0, 123, 255, 0.15);
+}
+
 @media (min-width: 600px) {
   .form-container form {
     display: grid;

@@ -1,3 +1,6 @@
+const ECHO_PART_ID = 26;
+const ECHO_EXCLUDED_PARTS = new Set([26, 2, 14, 13, 7, 18, 16, 17, 25]);
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initMaintenanceMode);
 } else {
@@ -1753,8 +1756,22 @@ async function populatePublicSubmitOptions() {
                 partsContainer.innerHTML = parts.map(p => {
                     const id = esc(p.idTuningPart || p.id || '');
                     const name = esc(p.nameTuningPart || p.nameTuningPart || p.name || '');
-                    return `<label><input type="checkbox" name="public-tuning-part" value="${name}" id="public-tuning-part-${id}"> ${name}</label>`;
+                    return `<label style="display: flex; align-items: center; padding: 6px; cursor: pointer; border-radius: 4px; transition: background 150ms ease;"><input type="checkbox" name="public-tuning-part" value="${name}" data-part-id="${id}" id="public-tuning-part-${id}" onchange="handleEchoChange()" style="cursor: pointer; margin-right: 8px;"> <span>${name}</span></label>`;
                 }).join('');
+            }
+            
+            const echoSelect = document.getElementById('echo-affected-part-select');
+            if (echoSelect && Array.isArray(parts)) {
+                const validParts = parts.filter(p => {
+                    const id = parseInt(p.idTuningPart || p.id || 0);
+                    return !ECHO_EXCLUDED_PARTS.has(id);
+                });
+                echoSelect.innerHTML = '<option value="">-- Select a part --</option>' + 
+                    validParts.map(p => {
+                        const id = esc(p.idTuningPart || p.id || '');
+                        const name = esc(p.nameTuningPart || p.nameTuningPart || p.name || '');
+                        return `<option value="${id}">${name}</option>`;
+                    }).join('');
             }
         } catch (err) {
             console.error('Failed to load tuning parts for public submit', err);
@@ -1764,15 +1781,30 @@ async function populatePublicSubmitOptions() {
     }
 }
 
+function handleEchoChange() {
+    const echoCheckbox = document.querySelector(`#public-tuning-part-${ECHO_PART_ID}`);
+    const echoContainer = document.getElementById('echo-affected-container');
+    const echoSelect = document.getElementById('echo-affected-part-select');
+    
+    if (echoCheckbox && echoContainer && echoSelect) {
+        if (echoCheckbox.checked) {
+            echoContainer.style.display = 'block';
+        } else {
+            echoContainer.style.display = 'none';
+            echoSelect.value = '';
+        }
+    }
+}
+
 async function submitPublicRecord(e) {
     e.preventDefault();
     const msgEl = document.getElementById('public-submit-message');
     
-    // Check if maintenance mode is enabled
     if (MAINTENANCE_MODE) {
         if (msgEl) { 
             msgEl.textContent = 'Submissions are currently disabled while we prepare for an upcoming big game update. Please try again soon!'; 
             msgEl.style.color = 'red'; 
+            msgEl.style.display = 'block';
         }
         return;
     }
@@ -1784,24 +1816,40 @@ async function submitPublicRecord(e) {
     const playerCountry = document.getElementById('public-player-country').value.trim();
 
     if (!mapId || !vehicleId || !distance || !playerName) {
-        if (msgEl) { msgEl.textContent = 'Please complete all required fields.'; msgEl.style.color = 'red'; }
+        if (msgEl) { msgEl.textContent = 'Please complete all required fields.'; msgEl.style.color = 'red'; msgEl.style.display = 'block'; }
         return;
     }
     if (isNaN(Number(distance)) || Number(distance) <= 0) {
-        if (msgEl) { msgEl.textContent = 'Distance must be a positive number.'; msgEl.style.color = 'red'; }
+        if (msgEl) { msgEl.textContent = 'Distance must be a positive number.'; msgEl.style.color = 'red'; msgEl.style.display = 'block'; }
         return;
     }
+    
     const selectedPartEls = document.querySelectorAll('#public-tuning-parts input[type="checkbox"]:checked');
     const selectedParts = Array.from(selectedPartEls).map(el => el.value);
     if (selectedParts.length < 3 || selectedParts.length > 4) {
-        if (msgEl) { msgEl.textContent = 'Please choose 3 or 4 tuning parts for the record.'; msgEl.style.color = 'red'; }
+        if (msgEl) { msgEl.textContent = 'Please choose 3 or 4 tuning parts for the record.'; msgEl.style.color = 'red'; msgEl.style.display = 'block'; }
+        return;
+    }
+    
+    const echoCheckbox = document.querySelector(`#public-tuning-part-${ECHO_PART_ID}`);
+    const echoSelected = echoCheckbox && echoCheckbox.checked;
+    const echoAffectedSelect = document.getElementById('echo-affected-part-select');
+    const echoAffectedPartId = echoAffectedSelect ? echoAffectedSelect.value : '';
+    
+    if (echoSelected && !echoAffectedPartId) {
+        if (msgEl) { msgEl.textContent = '🔄 Echo requires selecting an affected part. Please select a part from the "Echo Affected Part" dropdown.'; msgEl.style.color = 'red'; msgEl.style.display = 'block'; }
+        return;
+    }
+    
+    if (!echoSelected && echoAffectedPartId) {
+        if (msgEl) { msgEl.textContent = '⚠️ You cannot select an affected part without Echo. Please select Echo or clear the affected part.'; msgEl.style.color = 'red'; msgEl.style.display = 'block'; }
         return;
     }
 
     try {
         const hcaptchaResponse = document.getElementById('h-captcha-response').value || '';
         if (!hcaptchaResponse) {
-            if (msgEl) { msgEl.textContent = 'Please complete the hCaptcha verification.'; msgEl.style.color = 'red'; }
+            if (msgEl) { msgEl.textContent = 'Please complete the hCaptcha verification.'; msgEl.style.color = 'red'; msgEl.style.display = 'block'; }
             return;
         }
         
@@ -1813,35 +1861,46 @@ async function submitPublicRecord(e) {
         const formLoadTime = parseInt(document.getElementById('form-load-time').value) || 0;
         const submissionTime = Date.now();
         
+        const submitData = {
+            mapId, 
+            vehicleId, 
+            distance: Number(distance), 
+            playerName, 
+            playerCountry,
+            tuningParts: selectedParts,
+            h_captcha_response: hcaptchaResponse,
+            hp_email: hp_email,
+            hp_website: hp_website,
+            hp_phone: hp_phone,
+            hp_comments: hp_comments,
+            form_load_time: formLoadTime,
+            submission_time: submissionTime,
+        };
+        
+        if (echoSelected && echoAffectedPartId) {
+            submitData.echo_affected_part_id = parseInt(echoAffectedPartId);
+        }
+        
         const res = await fetch('php/public_submit.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                mapId, vehicleId, distance: Number(distance), playerName, playerCountry,
-            tuningParts: selectedParts,
-                h_captcha_response: hcaptchaResponse,
-                hp_email: hp_email,
-                hp_website: hp_website,
-                hp_phone: hp_phone,
-                hp_comments: hp_comments,
-                form_load_time: formLoadTime,
-                submission_time: submissionTime,
-            })
+            body: JSON.stringify(submitData)
         });
         const data = await res.json();
         if (!res.ok) {
-            if (msgEl) { msgEl.textContent = data.error || 'Submission failed'; msgEl.style.color = 'red'; }
+            if (msgEl) { msgEl.textContent = data.error || 'Submission failed'; msgEl.style.color = 'red'; msgEl.style.display = 'block'; }
             return;
         }
         if (data.success) {
-            if (msgEl) { msgEl.textContent = data.message || 'Submitted'; msgEl.style.color = 'green'; }
+            if (msgEl) { msgEl.textContent = data.message || 'Submitted successfully!'; msgEl.style.color = 'green'; msgEl.style.display = 'block'; }
             document.getElementById('public-submit-form').reset();
+            handleEchoChange();
         } else {
-            if (msgEl) { msgEl.textContent = data.error || 'Submission failed'; msgEl.style.color = 'red'; }
+            if (msgEl) { msgEl.textContent = data.error || 'Submission failed'; msgEl.style.color = 'red'; msgEl.style.display = 'block'; }
         }
     } catch (err) {
         console.error('Public submit failed', err);
-        if (msgEl) { msgEl.textContent = 'Submission failed (network error).'; msgEl.style.color = 'red'; }
+        if (msgEl) { msgEl.textContent = 'Submission failed (network error).'; msgEl.style.color = 'red'; msgEl.style.display = 'block'; }
     }
 }
 
