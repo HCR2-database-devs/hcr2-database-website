@@ -135,13 +135,16 @@ if (isset($_GET['type'])) {
                             v.name_vehicle AS vehicle_name,
                             p.name_player AS player_name,
                             COALESCE(p.country, '') AS player_country,
-                            string_agg(tp.name_tuning_part, ', ' ORDER BY tp.name_tuning_part) AS tuning_parts
+                            string_agg(tp.name_tuning_part, ', ' ORDER BY tp.name_tuning_part) AS tuning_parts,
+                            COALESCE(ep.name_tuning_part, '') AS echo_affected_part_name
                         FROM world_record wr
                         JOIN map m ON wr.id_map = m.id_map
                         JOIN vehicle v ON wr.id_vehicle = v.id_vehicle
                         LEFT JOIN player p ON wr.id_player = p.id_player
+                        LEFT JOIN tuning_setup ts ON wr.id_tuning_setup = ts.id_tuning_setup
                         LEFT JOIN tuning_setup_part tsp ON {$setupJoin}
                         LEFT JOIN tuning_part tp ON tsp.id_tuning_part = tp.id_tuning_part
+                        LEFT JOIN tuning_part ep ON ts.echo_affected_part_id = ep.id_tuning_part
                         WHERE wr.current = 1
                         GROUP BY
                             wr.id_record,
@@ -156,7 +159,9 @@ if (isset($_GET['type'])) {
                             m.name_map,
                             v.name_vehicle,
                             p.name_player,
-                            p.country
+                            p.country,
+                            ts.echo_affected_part_id,
+                            ep.name_tuning_part
                         ORDER BY wr.id_map DESC";
                 $stmt = $db->prepare($sql);
                 $start_time = microtime(true);
