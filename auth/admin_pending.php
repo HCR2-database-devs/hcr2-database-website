@@ -130,10 +130,19 @@ try {
                     }
 
                     if (count($partIds) === count($partNames)) {
-                        $echoAffectedPartId = !empty($sub['echoAffectedPartId']) ? (int)$sub['echoAffectedPartId'] : null;
-                        $setupStmt = $pdo->prepare('INSERT INTO tuning_setup (echo_affected_part_id) VALUES (:echoAffectedPartId) RETURNING id_tuning_setup');
-                        $setupStmt->execute([':echoAffectedPartId' => $echoAffectedPartId]);
+                        $setupStmt = $pdo->prepare('INSERT INTO tuning_setup DEFAULT VALUES RETURNING id_tuning_setup');
+                        $setupStmt->execute();
                         $newSetupId = (int)$setupStmt->fetchColumn();
+
+                        $echoAffectedPartId = !empty($sub['echoAffectedPartId']) ? (int)$sub['echoAffectedPartId'] : null;
+                        if ($echoAffectedPartId) {
+                            try {
+                                $echoStmt = $pdo->prepare('UPDATE tuning_setup SET echo_affected_part_id = :id WHERE id_tuning_setup = :setupId');
+                                $echoStmt->execute([':id' => $echoAffectedPartId, ':setupId' => $newSetupId]);
+                            } catch (PDOException $e) {
+                                // Column may not exist yet; ignore
+                            }
+                        }
 
                         $partStmt = $pdo->prepare('INSERT INTO tuning_setup_part (id_tuning_setup, id_tuning_part) VALUES (:setupId, :partId)');
                         foreach ($partIds as $partId) {
