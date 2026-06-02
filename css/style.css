@@ -730,6 +730,13 @@ tr:hover {
   transform: scale(0.98);
 }
 
+.tuning-card.selected {
+  border-color: #0047ab;
+  border-width: 3px;
+  background: linear-gradient(135deg, #e3f2fd 0%, #f0f8ff 100%);
+  box-shadow: 0 0 12px rgba(0, 123, 255, 0.4), inset 0 0 8px rgba(0, 123, 255, 0.15);
+}
+
 #tuning-selection-info {
   background: #e8f5e9;
   padding: 10px;
