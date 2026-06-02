@@ -1796,20 +1796,6 @@ async function populatePublicSubmitOptions() {
                     </div>`;
                 }).join('');
             }
-            
-            const echoSelect = document.getElementById('echo-affected-part-select');
-            if (echoSelect && Array.isArray(parts)) {
-                const validParts = parts.filter(p => {
-                    const id = parseInt(p.idTuningPart || p.id || 0);
-                    return !ECHO_EXCLUDED_PARTS.has(id);
-                });
-                echoSelect.innerHTML = '<option value="">-- Select a part --</option>' + 
-                    validParts.map(p => {
-                        const id = parseInt(p.idTuningPart || p.id || 0);
-                        const name = esc(p.nameTuningPart || p.nameTuningPart || p.name || '');
-                        return `<option value="${id}">${name}</option>`;
-                    }).join('');
-            }
         } catch (err) {
             console.error('Failed to load tuning parts for public submit', err);
         }
@@ -1824,21 +1810,11 @@ function handleTuningPartChange() {
     const selectedCheckboxes = document.querySelectorAll('#public-tuning-parts input[type="checkbox"]:checked');
     const count = selectedCheckboxes.length;
     
-    const echoCheckbox = document.querySelector(`#public-tuning-part-${ECHO_PART_ID}`);
-    const echoSelected = echoCheckbox && echoCheckbox.checked;
-    const echoAffectedSelect = document.getElementById('echo-affected-part-select');
-    const echoAffectedPartId = echoAffectedSelect ? echoAffectedSelect.value : '';
-    
-    let totalCount = count;
-    if (echoSelected && echoAffectedPartId) {
-        totalCount += 1;
-    }
-    
     const infoEl = document.getElementById('tuning-selection-info');
     const countDisplay = document.getElementById('tuning-count-display');
     if (infoEl && countDisplay) {
-        countDisplay.textContent = `${totalCount}/3-4`;
-        infoEl.style.display = totalCount > 0 ? 'block' : 'none';
+        countDisplay.textContent = `${count}/3-4`;
+        infoEl.style.display = count > 0 ? 'block' : 'none';
     }
     
     const cards = document.querySelectorAll('.tuning-card');
@@ -1869,6 +1845,20 @@ function handleEchoChange() {
     
     if (echoCheckbox.checked) {
         echoContainer.style.display = 'block';
+        
+        const selectedCheckboxes = document.querySelectorAll('#public-tuning-parts input[type="checkbox"]:checked');
+        const selectedParts = Array.from(selectedCheckboxes)
+            .filter(cb => {
+                const partId = parseInt(cb.getAttribute('data-part-id') || 0);
+                return partId !== ECHO_PART_ID && !ECHO_EXCLUDED_PARTS.has(partId);
+            })
+            .map(cb => ({
+                id: cb.getAttribute('data-part-id'),
+                name: cb.value
+            }));
+        
+        echoSelect.innerHTML = '<option value="">-- Select a part --</option>' + 
+            selectedParts.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
     } else {
         echoContainer.style.display = 'none';
         echoSelect.value = '';
@@ -1878,27 +1868,21 @@ function handleEchoChange() {
 function validateForm() {
     const msgEl = document.getElementById('public-submit-message');
     const selectedCheckboxes = document.querySelectorAll('#public-tuning-parts input[type="checkbox"]:checked');
-    const selectedParts = Array.from(selectedCheckboxes).map(el => el.value);
-    const count = selectedParts.length;
+    const count = selectedCheckboxes.length;
     
     const echoCheckbox = document.querySelector(`#public-tuning-part-${ECHO_PART_ID}`);
     const echoSelected = echoCheckbox && echoCheckbox.checked;
     const echoAffectedSelect = document.getElementById('echo-affected-part-select');
     const echoAffectedPartId = echoAffectedSelect ? echoAffectedSelect.value : '';
     
-    let totalCount = count;
-    if (echoSelected && echoAffectedPartId) {
-        totalCount += 1;
-    }
-    
     if (msgEl) {
         msgEl.textContent = '';
         msgEl.style.display = 'none';
     }
     
-    if (totalCount < 3 || totalCount > 4) {
-        if (msgEl && totalCount > 0) {
-            msgEl.textContent = `⚠️ Please select 3 or 4 tuning parts total (currently ${totalCount})`;
+    if (count < 3 || count > 4) {
+        if (msgEl && count > 0) {
+            msgEl.textContent = `⚠️ Please select 3 or 4 tuning parts (currently ${count})`;
             msgEl.style.color = '#f57c00';
             msgEl.style.display = 'block';
         }
@@ -1907,7 +1891,7 @@ function validateForm() {
     
     if (echoSelected && !echoAffectedPartId) {
         if (msgEl) {
-            msgEl.textContent = '🔄 Echo requires selecting an affected part from the dropdown below';
+            msgEl.textContent = '🔄 Echo requires selecting which of your selected parts it affects';
             msgEl.style.color = '#f57c00';
             msgEl.style.display = 'block';
         }
