@@ -272,6 +272,13 @@ if (!in_array((string)$user['sub'], $ALLOWED_DISCORD_IDS, true)) {
             <form id="add-tuning-setup-form" onsubmit="addTuningSetup(event)">
             <label>Select Tuning Parts (3-4)</label>
             <div id="tuning-parts-checkboxes"></div>
+            <div id="admin-echo-affected-container" style="display:none; margin-top: 12px; padding: 12px; background: #f0f8ff; border-radius: 6px; border: 1px solid #b3d9ff;">
+                <label style="font-size: 13px; font-weight: 500;">🔄 Echo Affected Part</label>
+                <p style="font-size: 12px; color: #666; margin: 4px 0 8px;">Which selected part does Echo affect?</p>
+                <select id="admin-echo-affected-select" style="width: 100%; padding: 8px; border: 1px solid #b3d9ff; border-radius: 6px;">
+                    <option value="">-- Select a part --</option>
+                </select>
+            </div>
             <button type="submit">Add Tuning Setup</button>
         </form>
         <p id="add-tuning-setup-message"></p>
@@ -467,12 +474,40 @@ function populateFormOptions() {
         document.getElementById('tuning-setup-filter').value = '';
     });
     fetchJSON('/php/load_data.php?type=tuning_parts').then(data => {
+        const allParts = data || [];
         const container = document.getElementById('tuning-parts-checkboxes');
         container.innerHTML = '';
-        (data || []).forEach(p => {
+        allParts.forEach(p => {
             const label = document.createElement('label');
             label.innerHTML = `<input type="checkbox" value="${p.idTuningPart}"> <span>${esc(p.nameTuningPart)}</span>`;
             container.appendChild(label);
+        });
+        const adminEchoId = 26;
+        const adminExcludedParts = new Set([26, 2, 14, 13, 7, 18, 16, 17, 25]);
+        const echoContainer = document.getElementById('admin-echo-affected-container');
+        const echoSelect = document.getElementById('admin-echo-affected-select');
+        container.addEventListener('change', function(e) {
+            if (e.target.matches('input[type="checkbox"]')) {
+                const echoCheckbox = container.querySelector(`input[value="${adminEchoId}"]`);
+                if (echoCheckbox && echoCheckbox.checked) {
+                    echoContainer.style.display = 'block';
+                    const checkedBoxes = container.querySelectorAll('input[type="checkbox"]:checked');
+                    const eligible = Array.from(checkedBoxes)
+                        .filter(cb => {
+                            const id = parseInt(cb.value);
+                            return id !== adminEchoId && !adminExcludedParts.has(id);
+                        })
+                        .map(cb => {
+                            const partData = allParts.find(p => p.idTuningPart == cb.value);
+                            return { id: cb.value, name: partData ? partData.nameTuningPart : cb.value };
+                        });
+                    echoSelect.innerHTML = '<option value="">-- Select a part --</option>' +
+                        eligible.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+                } else {
+                    echoContainer.style.display = 'none';
+                    echoSelect.value = '';
+                }
+            }
         });
     });
     populateDeleteOptions();
@@ -971,11 +1006,13 @@ function addTuningSetup(e) {
         showAddTuningSetupMessage('Please select 2 to 4 tuning parts.', true);
         return;
     }
+    const echoSelect = document.getElementById('admin-echo-affected-select');
+    const echoAffectedPartId = echoSelect && echoSelect.value ? parseInt(echoSelect.value) : null;
     fetch('/php/add_tuning_setup.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ partIds })
+        body: JSON.stringify({ partIds, echoAffectedPartId })
     }).then(async resp => {
         const data = await resp.json().catch(()=>({ error: 'Invalid server response' }));
         if (!resp.ok) {
@@ -985,6 +1022,8 @@ function addTuningSetup(e) {
         if (data.success) {
             showAddTuningSetupMessage('Tuning setup added successfully!', false);
             checkboxes.forEach(cb => cb.checked = false);
+            document.getElementById('admin-echo-affected-select').value = '';
+            document.getElementById('admin-echo-affected-container').style.display = 'none';
             populateFormOptions();
         } else {
             showAddTuningSetupMessage(data.error || 'Unknown error', true);

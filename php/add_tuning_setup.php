@@ -20,6 +20,8 @@ if (!is_array($partIds) || count($partIds) < 3 || count($partIds) > 4) {
     exit;
 }
 
+$echoAffectedPartId = isset($data['echoAffectedPartId']) && $data['echoAffectedPartId'] ? (int)$data['echoAffectedPartId'] : null;
+
 sort($partIds);
 
 try {
@@ -55,6 +57,14 @@ try {
     $stmt = $db->prepare('INSERT INTO tuning_setup DEFAULT VALUES RETURNING id_tuning_setup');
     $stmt->execute();
     $setupId = (int)$stmt->fetchColumn();
+
+    if ($echoAffectedPartId) {
+        try {
+            $echoStmt = $db->prepare('UPDATE tuning_setup SET echo_affected_part_id = ? WHERE id_tuning_setup = ?');
+            $echoStmt->execute([$echoAffectedPartId, $setupId]);
+        } catch (PDOException $e) {
+        }
+    }
 
     $stmt = $db->prepare('INSERT INTO tuning_setup_part (id_tuning_setup, id_tuning_part) VALUES (?, ?)');
     foreach ($partIds as $partId) {
