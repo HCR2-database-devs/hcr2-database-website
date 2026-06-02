@@ -241,14 +241,17 @@ function getCountryCode(country) {
     return null;
 }
 
-function renderTuningParts(partsString) {
+function renderTuningParts(partsString, echoAffectedPartName) {
     if (!partsString || typeof partsString !== 'string' || partsString.trim() === '') return '';
     const parts = partsString.split(',').map(p => p.trim()).filter(p => p);
     return parts.map(part => {
+        const isEchoAffected = echoAffectedPartName && part === echoAffectedPartName;
         const iconName = part.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_-]/g, '');
         const svgSrc = `/img/tuning_parts_icons/${iconName}.svg`;
         const pngSrc = `/img/tuning_parts_icons/${iconName}.png`;
-               return `<img class="tuning-part-icon" src="${svgSrc}" alt="${esc(part)} icon" title="${esc(part)}" onerror="this.onerror=null; this.src='${pngSrc}'; if(!this.complete) this.style.display='none';">`;
+        const cls = isEchoAffected ? 'tuning-part-icon echo-affected' : 'tuning-part-icon';
+        const title = isEchoAffected ? `${esc(part)} (Echo affected)` : esc(part);
+        return `<img class="${cls}" src="${svgSrc}" alt="${esc(part)} icon" title="${title}" onerror="this.onerror=null; this.src='${pngSrc}'; if(!this.complete) this.style.display='none';">`;
     }).join(' ');
 }
 
@@ -1095,7 +1098,7 @@ if (dataType === 'maps') {
             <td data-label="Notes">${notesHTML}</td>
             <td data-label="Map">${renderMapWithIcon(item.map_name)}</td>
             <td data-label="Vehicle">${renderVehicleWithIcon(item.vehicle_name)}</td>
-            <td data-label="Tuning Parts">${renderTuningParts(item.tuning_parts)}</td>
+            <td data-label="Tuning Parts">${renderTuningParts(item.tuning_parts, item.echo_affected_part_name)}</td>
             <td data-label="Player">${esc(item.player_name)}</td>
             <td data-label="Country">${renderCountryWithFlag(item.player_country)}</td>
             <td data-label="Share"><button class="share-btn" onclick="copyShareLink('record', '${rid}', '${esc(item.map_name)}')">🔗 Copy Link</button></td>

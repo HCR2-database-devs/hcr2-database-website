@@ -130,8 +130,9 @@ try {
                     }
 
                     if (count($partIds) === count($partNames)) {
-                        $setupStmt = $pdo->prepare('INSERT INTO tuning_setup DEFAULT VALUES RETURNING id_tuning_setup');
-                        $setupStmt->execute();
+                        $echoAffectedPartId = !empty($sub['echoAffectedPartId']) ? (int)$sub['echoAffectedPartId'] : null;
+                        $setupStmt = $pdo->prepare('INSERT INTO tuning_setup (echo_affected_part_id) VALUES (:echoAffectedPartId) RETURNING id_tuning_setup');
+                        $setupStmt->execute([':echoAffectedPartId' => $echoAffectedPartId]);
                         $newSetupId = (int)$setupStmt->fetchColumn();
 
                         $partStmt = $pdo->prepare('INSERT INTO tuning_setup_part (id_tuning_setup, id_tuning_part) VALUES (:setupId, :partId)');
