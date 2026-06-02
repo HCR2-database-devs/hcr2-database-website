@@ -1,11 +1,7 @@
 const ECHO_PART_ID = 26;
 const ECHO_EXCLUDED_PARTS = new Set([26, 2, 14, 13, 7, 18, 16, 17, 25]);
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initMaintenanceMode);
-} else {
-    initMaintenanceMode();
-}
+const MAINTENANCE_MODE = false;
 
 let allData = []; 
 let currentDataType = ''; 
