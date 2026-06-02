@@ -97,12 +97,12 @@ try {
 
             $findSql = "
                 SELECT tsp.id_tuning_setup
-                FROM tuning_setup_parts tsp
+                FROM tuning_setup_part tsp
                 WHERE tsp.id_tuning_part IN ($placeholders)
                 GROUP BY tsp.id_tuning_setup
                 HAVING COUNT(DISTINCT tsp.id_tuning_part) = ?
                 AND (
-                    SELECT COUNT(*) FROM tuning_setup_parts tsp2
+                    SELECT COUNT(*) FROM tuning_setup_part tsp2
                     WHERE tsp2.id_tuning_setup = tsp.id_tuning_setup
                 ) = ?
                 LIMIT 1
@@ -118,7 +118,7 @@ try {
                 $newSetup->execute();
                 $tuningSetupId = (int)$newSetup->fetchColumn();
 
-                $insertPart = $db->prepare('INSERT INTO tuning_setup_parts (id_tuning_setup, id_tuning_part) VALUES (:setupId, :partId)');
+                $insertPart = $db->prepare('INSERT INTO tuning_setup_part (id_tuning_setup, id_tuning_part) VALUES (:setupId, :partId)');
                 foreach ($partIds as $partId) {
                     $insertPart->execute([':setupId' => $tuningSetupId, ':partId' => $partId]);
                 }
