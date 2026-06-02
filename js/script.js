@@ -1843,6 +1843,8 @@ function handleEchoChange() {
     
     console.log('Echo checkbox checked:', echoCheckbox.checked, 'ECHO_PART_ID:', ECHO_PART_ID);
     
+    const previousValue = echoSelect.value;
+    
     if (echoCheckbox.checked) {
         echoContainer.style.display = 'block';
         
@@ -1859,6 +1861,10 @@ function handleEchoChange() {
         
         echoSelect.innerHTML = '<option value="">-- Select a part --</option>' + 
             selectedParts.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+        
+        if (previousValue && Array.from(echoSelect.options).some(o => o.value === previousValue)) {
+            echoSelect.value = previousValue;
+        }
     } else {
         echoContainer.style.display = 'none';
         echoSelect.value = '';
