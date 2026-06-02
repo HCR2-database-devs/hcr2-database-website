@@ -97,9 +97,15 @@ if (!in_array((string)$user['sub'], $ALLOWED_DISCORD_IDS, true)) {
             <select id="vehicle-select" required></select>
             <label>Distance</label>
             <input type="number" id="distance-input" required>
-            <label>Tuning Setup (optional)</label>
-            <input type="text" id="tuning-setup-filter" placeholder="Filter by part name or use part: prefix (e.g., 'magnet' or 'part:magnet')..." oninput="filterTuningSetups()" style="margin-bottom: 4px;">
-            <select id="tuning-setup-select"></select>
+            <label>Tuning Parts (optional — 3-4)</label>
+            <div id="record-tune-checkboxes" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px;"></div>
+            <div id="record-echo-affected-container" style="display:none; margin-top: 10px; padding: 10px; background: #f0f8ff; border-radius: 6px; border: 1px solid #b3d9ff;">
+                <label style="font-size: 13px; font-weight: 500;">🔄 Echo Affected Part</label>
+                <p style="font-size: 12px; color: #666; margin: 4px 0 8px;">Which selected part does Echo affect?</p>
+                <select id="record-echo-affected-select" style="width: 100%; padding: 8px; border: 1px solid #b3d9ff; border-radius: 6px;">
+                    <option value="">-- Select a part --</option>
+                </select>
+            </div>
             <label>Existing Player</label>
             <input type="text" id="player-filter" placeholder="Filter players..." oninput="filterPlayers()">
             <select id="player-select" onchange="handlePlayerSelection()"><option value="">Select existing player</option></select>
@@ -463,52 +469,49 @@ function populateFormOptions() {
         sel.innerHTML = '<option value="">Select existing player</option>';
         allPlayers.forEach(p => sel.appendChild(new Option(p.namePlayer, p.idPlayer)));
     });
-    fetchJSON('/php/load_data.php?type=tuning_setups').then(data => {
-        allTuningSetups = data || [];
-        const sel = document.getElementById('tuning-setup-select');
-        sel.innerHTML = '<option value="">No tuning setup</option>';
-        (allTuningSetups || []).forEach(s => {
-            const parts = s.parts ? s.parts.map(p => p.nameTuningPart).join(', ') : '';
-            sel.appendChild(new Option(`Setup ${s.idTuningSetup}: ${parts}`, s.idTuningSetup));
-        });
-        document.getElementById('tuning-setup-filter').value = '';
-    });
     fetchJSON('/php/load_data.php?type=tuning_parts').then(data => {
         const allParts = data || [];
-        const container = document.getElementById('tuning-parts-checkboxes');
-        container.innerHTML = '';
-        allParts.forEach(p => {
-            const label = document.createElement('label');
-            label.innerHTML = `<input type="checkbox" value="${p.idTuningPart}"> <span>${esc(p.nameTuningPart)}</span>`;
-            container.appendChild(label);
-        });
         const adminEchoId = 26;
         const adminExcludedParts = new Set([26, 2, 14, 13, 7, 18, 16, 17, 25]);
-        const echoContainer = document.getElementById('admin-echo-affected-container');
-        const echoSelect = document.getElementById('admin-echo-affected-select');
-        container.addEventListener('change', function(e) {
-            if (e.target.matches('input[type="checkbox"]')) {
-                const echoCheckbox = container.querySelector(`input[value="${adminEchoId}"]`);
-                if (echoCheckbox && echoCheckbox.checked) {
-                    echoContainer.style.display = 'block';
-                    const checkedBoxes = container.querySelectorAll('input[type="checkbox"]:checked');
-                    const eligible = Array.from(checkedBoxes)
-                        .filter(cb => {
-                            const id = parseInt(cb.value);
-                            return id !== adminEchoId && !adminExcludedParts.has(id);
-                        })
-                        .map(cb => {
-                            const partData = allParts.find(p => p.idTuningPart == cb.value);
-                            return { id: cb.value, name: partData ? partData.nameTuningPart : cb.value };
-                        });
-                    echoSelect.innerHTML = '<option value="">-- Select a part --</option>' +
-                        eligible.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
-                } else {
-                    echoContainer.style.display = 'none';
-                    echoSelect.value = '';
+
+        function populateCheckboxes(containerId, echoContainerId, echoSelectId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = '';
+            allParts.forEach(p => {
+                const label = document.createElement('label');
+                label.innerHTML = `<input type="checkbox" value="${p.idTuningPart}"> <span>${esc(p.nameTuningPart)}</span>`;
+                container.appendChild(label);
+            });
+            const echoContainer = document.getElementById(echoContainerId);
+            const echoSelect = document.getElementById(echoSelectId);
+            container.addEventListener('change', function(e) {
+                if (e.target.matches('input[type="checkbox"]')) {
+                    const echoCheckbox = container.querySelector(`input[value="${adminEchoId}"]`);
+                    if (echoCheckbox && echoCheckbox.checked) {
+                        echoContainer.style.display = 'block';
+                        const checkedBoxes = container.querySelectorAll('input[type="checkbox"]:checked');
+                        const eligible = Array.from(checkedBoxes)
+                            .filter(cb => {
+                                const id = parseInt(cb.value);
+                                return id !== adminEchoId && !adminExcludedParts.has(id);
+                            })
+                            .map(cb => {
+                                const partData = allParts.find(p => p.idTuningPart == cb.value);
+                                return { id: cb.value, name: partData ? partData.nameTuningPart : cb.value };
+                            });
+                        echoSelect.innerHTML = '<option value="">-- Select a part --</option>' +
+                            eligible.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+                    } else {
+                        echoContainer.style.display = 'none';
+                        echoSelect.value = '';
+                    }
                 }
-            }
-        });
+            });
+        }
+
+        populateCheckboxes('tuning-parts-checkboxes', 'admin-echo-affected-container', 'admin-echo-affected-select');
+        populateCheckboxes('record-tune-checkboxes', 'record-echo-affected-container', 'record-echo-affected-select');
     });
     populateDeleteOptions();
     populateAssignSetupOptions();
@@ -581,28 +584,6 @@ function filterQuestionableRecords() {
     });
 }
 
-function filterTuningSetups() {
-    const q = document.getElementById('tuning-setup-filter').value.toLowerCase().trim();
-    const sel = document.getElementById('tuning-setup-select');
-    sel.innerHTML = '<option value="">No tuning setup</option>';
-    
-    (allTuningSetups || []).filter(s => {
-        if (!q) return true;
-        const parts = s.parts ? s.parts.map(p => p.nameTuningPart).join(', ').toLowerCase() : '';
-        const setupInfo = `setup ${s.idTuningSetup} ${parts}`.toLowerCase();
-        
-        // Support "part:turbo" syntax
-        if (q.startsWith('part:')) {
-            const partQuery = q.substring(5);
-            return parts.includes(partQuery);
-        }
-        return setupInfo.includes(q);
-    }).forEach(s => {
-        const parts = s.parts ? s.parts.map(p => p.nameTuningPart).join(', ') : '';
-        sel.appendChild(new Option(`Setup ${s.idTuningSetup}: ${parts}`, s.idTuningSetup));
-    });
-}
-
 function filterAssignTuningSetups() {
     const q = document.getElementById('assign-tuning-setup-filter').value.toLowerCase().trim();
     const sel = document.getElementById('assign-tuning-setup-select');
@@ -651,7 +632,10 @@ function submitRecord(e) {
     const mapId = document.getElementById('map-select').value;
     const vehicleId = document.getElementById('vehicle-select').value;
     const distance = document.getElementById('distance-input').value;
-    const tuningSetupId = document.getElementById('tuning-setup-select').value;
+    const partCheckboxes = document.querySelectorAll('#record-tune-checkboxes input[type="checkbox"]:checked');
+    const parts = Array.from(partCheckboxes).map(cb => parseInt(cb.value));
+    const echoSelect = document.getElementById('record-echo-affected-select');
+    const echoAffectedPartId = echoSelect && echoSelect.value ? parseInt(echoSelect.value) : null;
     const playerId = document.getElementById('player-select').value;
     const newPlayerName = document.getElementById('new-player-input').value;
     const country = document.getElementById('country-input').value;
@@ -670,7 +654,7 @@ function submitRecord(e) {
     }
 
     const hasPlayerId = (playerId !== null && playerId !== undefined && playerId !== '');
-    const formData = hasPlayerId ? { mapId, vehicleId, distance, tuningSetupId: tuningSetupId || null, playerId, playerName: selectedPlayerName, questionable, questionableReason: questionableReason || null } : { mapId, vehicleId, distance, tuningSetupId: tuningSetupId || null, playerId: null, newPlayerName, country, questionable, questionableReason: questionableReason || null };
+    const formData = hasPlayerId ? { mapId, vehicleId, distance, parts: parts.length ? parts : null, echoAffectedPartId, playerId, playerName: selectedPlayerName, questionable, questionableReason: questionableReason || null } : { mapId, vehicleId, distance, parts: parts.length ? parts : null, echoAffectedPartId, playerId: null, newPlayerName, country, questionable, questionableReason: questionableReason || null };
 
     fetch('/php/submit_record.php', {
         method: 'POST',
@@ -695,6 +679,9 @@ function submitRecord(e) {
             const msg = `✅ Record submitted! | ${data.playerName || 'Unknown'} | ${data.mapName || 'Unknown'} | ${data.vehicleName || 'Unknown'} | ${data.distance || '?'}m`;
             showFormMessage(msg, false);
             document.getElementById('record-form').reset();
+            document.querySelectorAll('#record-tune-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.getElementById('record-echo-affected-select').value = '';
+            document.getElementById('record-echo-affected-container').style.display = 'none';
             populateFormOptions();
             populateDeleteOptions();
             setTimeout(() => document.getElementById('form-message').textContent = '', 5000);

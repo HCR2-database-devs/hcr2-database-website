@@ -23,6 +23,7 @@ $country = $data['country'] ?? null;
 $playerName = $data['playerName'] ?? null;
 $tuningSetupId = null;
 $partIds = $data['parts'] ?? null;
+$echoAffectedPartId = isset($data['echoAffectedPartId']) && $data['echoAffectedPartId'] ? (int)$data['echoAffectedPartId'] : null;
 $questionable = isset($data['questionable']) ? (int)$data['questionable'] : 0;
 $note = $data['note'] ?? $data['questionableReason'] ?? null;
 
@@ -122,6 +123,15 @@ try {
                 foreach ($partIds as $partId) {
                     $insertPart->execute([':setupId' => $tuningSetupId, ':partId' => $partId]);
                 }
+
+                if ($echoAffectedPartId) {
+                    try {
+                        $echoStmt = $db->prepare('UPDATE tuning_setup SET echo_affected_part_id = :id WHERE id_tuning_setup = :setupId');
+                        $echoStmt->execute([':id' => $echoAffectedPartId, ':setupId' => $tuningSetupId]);
+                    } catch (PDOException $e) {
+                        // Column may not exist yet; ignore
+                    }
+                }
             }
         }
     }
@@ -174,5 +184,3 @@ try {
     generic_database_error('submit_record failed: ' . $e->getMessage());
 }
 ?>
-submit_record (1).php
-8 KB
