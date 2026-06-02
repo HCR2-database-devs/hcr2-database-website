@@ -1824,24 +1824,30 @@ function handleTuningPartChange() {
     const selectedCheckboxes = document.querySelectorAll('#public-tuning-parts input[type="checkbox"]:checked');
     const count = selectedCheckboxes.length;
     
+    const echoCheckbox = document.querySelector(`#public-tuning-part-${ECHO_PART_ID}`);
+    const echoSelected = echoCheckbox && echoCheckbox.checked;
+    const echoAffectedSelect = document.getElementById('echo-affected-part-select');
+    const echoAffectedPartId = echoAffectedSelect ? echoAffectedSelect.value : '';
+    
+    let totalCount = count;
+    if (echoSelected && echoAffectedPartId) {
+        totalCount += 1;
+    }
+    
     const infoEl = document.getElementById('tuning-selection-info');
     const countDisplay = document.getElementById('tuning-count-display');
     if (infoEl && countDisplay) {
-        countDisplay.textContent = `${count}/3-4`;
-        infoEl.style.display = count > 0 ? 'block' : 'none';
+        countDisplay.textContent = `${totalCount}/3-4`;
+        infoEl.style.display = totalCount > 0 ? 'block' : 'none';
     }
     
     const cards = document.querySelectorAll('.tuning-card');
-    cards.forEach((card, i) => {
-        const input = card.querySelector('input[type="checkbox"]');
+    cards.forEach((card) => {
+        const input = card.parentElement.querySelector('input[type="checkbox"]');
         if (input && input.checked) {
-            card.style.borderColor = '#007bff';
-            card.style.backgroundColor = '#f0f8ff';
-            card.style.boxShadow = '0 0 0 3px rgba(0, 123, 255, 0.2)';
+            card.classList.add('selected');
         } else {
-            card.style.borderColor = '#ddd';
-            card.style.backgroundColor = 'white';
-            card.style.boxShadow = 'none';
+            card.classList.remove('selected');
         }
     });
     
@@ -1880,14 +1886,19 @@ function validateForm() {
     const echoAffectedSelect = document.getElementById('echo-affected-part-select');
     const echoAffectedPartId = echoAffectedSelect ? echoAffectedSelect.value : '';
     
+    let totalCount = count;
+    if (echoSelected && echoAffectedPartId) {
+        totalCount += 1;
+    }
+    
     if (msgEl) {
         msgEl.textContent = '';
         msgEl.style.display = 'none';
     }
     
-    if (count < 3 || count > 4) {
-        if (msgEl && count > 0) {
-            msgEl.textContent = `⚠️ Please select 3 or 4 tuning parts (currently ${count})`;
+    if (totalCount < 3 || totalCount > 4) {
+        if (msgEl && totalCount > 0) {
+            msgEl.textContent = `⚠️ Please select 3 or 4 tuning parts total (currently ${totalCount})`;
             msgEl.style.color = '#f57c00';
             msgEl.style.display = 'block';
         }

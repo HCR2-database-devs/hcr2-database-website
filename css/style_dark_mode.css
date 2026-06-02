@@ -595,6 +595,13 @@ tr:hover {
   box-shadow: 0 2px 8px rgba(100, 181, 246, 0.2);
 }
 
+.tuning-card.selected {
+  border-color: #42a5f5;
+  border-width: 3px;
+  background: linear-gradient(135deg, #1a237e 0%, #0d1b5e 100%);
+  box-shadow: 0 0 12px rgba(100, 181, 246, 0.5), inset 0 0 8px rgba(100, 181, 246, 0.2);
+}
+
 #tuning-selection-info {
   background: #1b5e20;
   border-left-color: #81c784;
@@ -1105,7 +1112,6 @@ tr:hover {
 }
 
 .country-flag {
-  vertical-align: middle;
   display: block;
 }
 
