@@ -180,7 +180,7 @@ export function HomePage() {
             Nipatsu HCR2
           </a>
           <span aria-hidden="true"> / </span>
-          <a rel="noopener noreferrer" href="https://www.youtube.com/@noya" target="_blank">
+          <a rel="noopener noreferrer" href="https://www.youtube.com/@noah2coco" target="_blank">
             Noya HCR2
           </a>
         </p>

@@ -1156,6 +1156,7 @@ tbody tr:hover {
 .stats-section {
   display: grid;
   gap: 16px;
+  align-content: start;
   margin-bottom: 18px;
   padding: 22px;
 }
