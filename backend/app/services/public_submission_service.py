@@ -10,6 +10,9 @@ MAX_PUBLIC_DISTANCE = 1_000_000
 MAX_PUBLIC_PLAYER_NAME_LENGTH = 20
 MAX_PUBLIC_COUNTRY_LENGTH = 20
 
+# Tuning part IDs that cannot be the echo-affected part
+ECHO_EXCLUDED_PART_IDS: frozenset[int] = frozenset({26, 2, 14, 13, 7, 18, 16, 17, 25})
+
 
 @dataclass(frozen=True, slots=True)
 class SubmissionResult:
@@ -31,6 +34,7 @@ class PublicSubmissionService:
         player_name = str(data.get("playerName") or "").strip()
         player_country = str(data.get("playerCountry") or "").strip()
         tuning_parts = self._normalize_tuning_parts(data.get("tuningParts"))
+        echo_affected_part_id = self._optional_int(data.get("echo_affected_part_id"))
 
         if not map_id or not vehicle_id or not distance or not player_name:
             return self._error(
@@ -65,6 +69,17 @@ class PublicSubmissionService:
         if len(tuning_parts) < 3 or len(tuning_parts) > 4:
             return self._error("Please provide 3 or 4 tuning parts for the record.", 400)
 
+        has_echo = "Echo" in tuning_parts
+        if has_echo and not echo_affected_part_id:
+            return self._error(
+                'Echo requires selecting an affected part. Please select a part from the "Echo Affected Part" dropdown.',
+                400,
+            )
+        if not has_echo and echo_affected_part_id:
+            return self._error("You cannot select an affected part without Echo.", 400)
+        if has_echo and echo_affected_part_id and echo_affected_part_id in ECHO_EXCLUDED_PART_IDS:
+            return self._error("The selected affected part cannot be affected by Echo.", 400)
+
         with open_connection() as connection:
             with connection.cursor() as cursor:
                 if submitter_ip:
@@ -85,10 +100,11 @@ class PublicSubmissionService:
                     """
                     INSERT INTO pending_submission
                         (id_map, id_vehicle, distance, player_name, player_country,
-                         tuning_parts, submitter_ip, status)
+                         tuning_parts, echo_affected_part_id, submitter_ip, status)
                     VALUES
                         (%(map_id)s, %(vehicle_id)s, %(distance)s, %(player_name)s,
-                         %(player_country)s, %(tuning_parts)s, %(submitter_ip)s, 'pending')
+                         %(player_country)s, %(tuning_parts)s, %(echo_affected_part_id)s,
+                         %(submitter_ip)s, 'pending')
                     """,
                     {
                         "map_id": map_id,
@@ -97,6 +113,7 @@ class PublicSubmissionService:
                         "player_name": player_name,
                         "player_country": player_country,
                         "tuning_parts": ", ".join(tuning_parts),
+                        "echo_affected_part_id": echo_affected_part_id,
                         "submitter_ip": submitter_ip,
                     },
                 )

@@ -127,14 +127,17 @@ class AdminService:
                         p.player_name AS "playerName",
                         p.player_country AS "playerCountry",
                         p.tuning_parts AS "tuningParts",
+                        p.echo_affected_part_id AS "echoAffectedPartId",
                         p.submitter_ip AS "submitterIp",
                         p.status,
                         p.submitted_at,
                         m.name_map AS "mapName",
-                        v.name_vehicle AS "vehicleName"
+                        v.name_vehicle AS "vehicleName",
+                        tp.name_tuning_part AS "echoAffectedPartName"
                     FROM pending_submission p
                     LEFT JOIN map m ON p.id_map = m.id_map
                     LEFT JOIN vehicle v ON p.id_vehicle = v.id_vehicle
+                    LEFT JOIN tuning_part tp ON p.echo_affected_part_id = tp.id_tuning_part
                     WHERE p.status = 'pending'
                     ORDER BY p.submitted_at DESC, p.id DESC
                     """
@@ -423,6 +426,12 @@ class AdminService:
                     part_ids = self._part_ids_from_names(cursor, tuning_parts)
                     if 3 <= len(part_ids) <= 4:
                         setup_id = self._create_setup(cursor, part_ids)
+                        echo_part_id = submission.get("echo_affected_part_id")
+                        if echo_part_id:
+                            cursor.execute(
+                                "UPDATE tuning_setup SET echo_affected_part_id = %s WHERE id_tuning_setup = %s",
+                                (int(echo_part_id), setup_id),
+                            )
                         cursor.execute(
                             "UPDATE world_record SET id_tuning_setup = %s WHERE id_record = %s",
                             (setup_id, record_id),

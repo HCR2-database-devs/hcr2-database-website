@@ -27,6 +27,9 @@ declare global {
   }
 }
 
+// Tuning part IDs that cannot be the echo-affected part (mirrors backend ECHO_EXCLUDED_PART_IDS)
+const ECHO_EXCLUDED_PART_IDS = new Set([26, 2, 14, 13, 7, 18, 16, 17, 25]);
+
 function getId(row: Record<string, unknown>, camel: string, lower: string) {
   return String(row[camel] ?? row[lower] ?? "");
 }
@@ -39,6 +42,7 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
   useBodyScrollLock();
 
   const [selectedParts, setSelectedParts] = useState<string[]>([]);
+  const [echoAffectedPartId, setEchoAffectedPartId] = useState<number | null>(null);
   const [message, setMessage] = useState<string>("");
   const [formLoadTime] = useState(() => Date.now());
   const widgetRef = useRef<HTMLDivElement | null>(null);
@@ -71,6 +75,13 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
         name: getName(part, "nameTuningPart", "nametuningpart")
       })),
     [tuningParts.data]
+  );
+
+  const hasEcho = selectedParts.includes("Echo");
+
+  const echoEligibleParts = useMemo(
+    () => partOptions.filter((p) => !ECHO_EXCLUDED_PART_IDS.has(Number(p.id))),
+    [partOptions]
   );
 
   useEffect(() => {
@@ -137,6 +148,15 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
       setMessage("Please choose 3 or 4 tuning parts for the record.");
       return;
     }
+    const echoSelected = selectedParts.includes("Echo");
+    if (echoSelected && !echoAffectedPartId) {
+      setMessage('Echo requires selecting an affected part from the "Echo Affected Part" dropdown.');
+      return;
+    }
+    if (!echoSelected && echoAffectedPartId) {
+      setMessage("You cannot select an affected part without Echo.");
+      return;
+    }
     if (!hcaptchaResponse) {
       setMessage("Please complete the hCaptcha verification.");
       return;
@@ -149,6 +169,7 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
       playerName,
       playerCountry: String(formData.get("playerCountry") ?? ""),
       tuningParts: selectedParts,
+      echo_affected_part_id: echoSelected ? echoAffectedPartId : null,
       h_captcha_response: hcaptchaResponse,
       hp_email: String(formData.get("hp_email") ?? ""),
       hp_website: String(formData.get("hp_website") ?? ""),
@@ -216,12 +237,36 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
                     setSelectedParts((current) =>
                       event.target.checked ? [...current, part.name] : current.filter((item) => item !== part.name)
                     );
+                    if (part.name === "Echo" && !event.target.checked) {
+                      setEchoAffectedPartId(null);
+                    }
                   }}
                 />
                 {part.name}
               </label>
             ))}
           </fieldset>
+
+          {hasEcho && (
+            <label>
+              Echo Affected Part
+              <select
+                id="echo-affected-part-select"
+                value={echoAffectedPartId ?? ""}
+                onChange={(event) =>
+                  setEchoAffectedPartId(event.target.value ? Number(event.target.value) : null)
+                }
+                required
+              >
+                <option value="">Select affected part</option>
+                {echoEligibleParts.map((part) => (
+                  <option key={part.id} value={part.id}>
+                    {part.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           <div className="hp-field" aria-hidden="true">
             <label>

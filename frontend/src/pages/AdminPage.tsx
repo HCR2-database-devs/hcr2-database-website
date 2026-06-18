@@ -774,6 +774,7 @@ export function AdminPage() {
                   <th>Player</th>
                   <th>Country</th>
                   <th>Tuning Parts</th>
+                  <th>Echo Part</th>
                   <th>IP</th>
                   <th>When</th>
                   <th>Actions</th>
@@ -789,6 +790,7 @@ export function AdminPage() {
                     <td>{submission.playerName}</td>
                     <td>{submission.playerCountry}</td>
                     <td>{submission.tuningParts}</td>
+                    <td>{(submission as Record<string, unknown>).echoAffectedPartName as string ?? ""}</td>
                     <td>{submission.submitterIp ?? ""}</td>
                     <td>{submission.submitted_at}</td>
                     <td className="admin-table-actions">

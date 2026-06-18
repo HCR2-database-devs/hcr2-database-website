@@ -30,9 +30,17 @@ ALTER SEQUENCE tuning_part_id_seq OWNED BY tuning_part.id_tuning_part;
 
 CREATE SEQUENCE tuning_setup_id_seq;
 CREATE TABLE tuning_setup (
-    id_tuning_setup integer PRIMARY KEY DEFAULT nextval('tuning_setup_id_seq')
+    id_tuning_setup integer PRIMARY KEY DEFAULT nextval('tuning_setup_id_seq'),
+    echo_affected_part_id integer
 );
 ALTER SEQUENCE tuning_setup_id_seq OWNED BY tuning_setup.id_tuning_setup;
+
+ALTER TABLE tuning_setup
+    ADD CONSTRAINT tuning_setup_echo_part_fk
+        FOREIGN KEY (echo_affected_part_id)
+        REFERENCES tuning_part (id_tuning_part)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL;
 
 CREATE TABLE tuning_setup_part (
     id_tuning_setup integer NOT NULL,
@@ -104,6 +112,7 @@ CREATE TABLE pending_submission (
     status text NOT NULL DEFAULT 'pending',
     submitted_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     tuning_parts text,
+    echo_affected_part_id integer,
     CONSTRAINT pending_submission_status_check
         CHECK (status IN ('pending', 'approved', 'rejected')),
     CONSTRAINT pending_submission_map_fk
@@ -115,7 +124,12 @@ CREATE TABLE pending_submission (
         FOREIGN KEY (id_vehicle)
         REFERENCES vehicle (id_vehicle)
         ON UPDATE CASCADE
-        ON DELETE RESTRICT
+        ON DELETE RESTRICT,
+    CONSTRAINT pending_submission_echo_part_fk
+        FOREIGN KEY (echo_affected_part_id)
+        REFERENCES tuning_part (id_tuning_part)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
 );
 ALTER SEQUENCE pending_submission_id_seq OWNED BY pending_submission.id;
 

@@ -7,6 +7,7 @@ export type PublicRecordSubmission = {
   playerName: string;
   playerCountry: string;
   tuningParts: string[];
+  echo_affected_part_id: number | null;
   h_captcha_response: string;
   hp_email: string;
   hp_website: string;
