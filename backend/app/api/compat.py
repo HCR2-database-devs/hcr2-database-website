@@ -489,3 +489,8 @@ def compatibility_auth_logout(
     response.delete_cookie("PHPSESSID", path="/", domain=".hcr2.xyz", secure=True, httponly=True)
     response.delete_cookie("WC_TOKEN", path="/", domain=".hcr2.xyz", secure=True, httponly=True)
     return response
+
+
+@router.get("/php/admin.php")
+def compatibility_admin_php_redirect() -> RedirectResponse:
+    return RedirectResponse(url="/admin", status_code=302)
