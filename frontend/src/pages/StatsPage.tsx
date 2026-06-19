@@ -45,6 +45,9 @@ const pieStartAngle = -0.5 * Math.PI;
 const pieCanvasWidth = 500;
 const pieCanvasHeight = 375;
 const pieLabelThreshold = 0.12;
+const pieCx = pieCanvasWidth / 2;
+const pieCy = pieCanvasHeight / 2;
+const pieRadius = Math.min(pieCanvasWidth, pieCanvasHeight) / 2 - 10;
 
 function distance(row: DataRow) {
   return Number(row.distance ?? 0);
@@ -124,7 +127,9 @@ function countBy(rows: DataRow[], key: string) {
 
 export function StatsPage() {
   const [vehicleSort, setVehicleSort] = useState("total-distance");
+  const [mapSort, setMapSort] = useState("total-distance");
   const [hoveredCountry, setHoveredCountry] = useState<HoveredCountry | null>(null);
+  const [showAllLabels, setShowAllLabels] = useState(false);
   const countryCanvas = useRef<HTMLCanvasElement | null>(null);
   const records = useQuery({
     queryKey: ["public-data", "records"],
@@ -294,45 +299,53 @@ export function StatsPage() {
   }
 
   const vehicleTableRows = useMemo(() => {
-    if (vehicleSort === "longest-distance") {
-      return Object.entries(stats.vehicleLongest)
-        .sort((a, b) => b[1].distance - a[1].distance)
-        .map(([vehicle, item]) => ({ vehicle, value: item.distance, map: item.map }));
-    }
-    if (vehicleSort === "avg-placement") {
-      return Object.entries(stats.placements)
-        .map(([vehicle, values]) => ({
-          vehicle,
-          value: values.reduce((sum, item) => sum + item, 0) / Math.max(values.length, 1)
-        }))
-        .sort((a, b) => a.value - b.value);
-    }
-    if (vehicleSort === "highest-placement") {
-      return Object.entries(stats.placements)
-        .map(([vehicle, values]) => ({ vehicle, value: Math.min(...values) }))
-        .sort((a, b) => a.value - b.value);
-    }
-    if (vehicleSort === "lowest-placement") {
-      return Object.entries(stats.placements)
-        .map(([vehicle, values]) => ({ vehicle, value: Math.max(...values) }))
-        .sort((a, b) => b.value - a.value);
-    }
-    return Object.entries(stats.vehicleTotals)
-      .sort((a, b) => b[1] - a[1])
-      .map(([vehicle, value]) => ({ vehicle, value }));
-  }, [stats.placements, stats.vehicleLongest, stats.vehicleTotals, vehicleSort]);
+    const allVehicles = new Set([
+      ...Object.keys(stats.vehicleTotals),
+      ...Object.keys(stats.vehicleLongest),
+      ...Object.keys(stats.vehicleStars),
+      ...Object.keys(stats.placements)
+    ]);
+    const rows = Array.from(allVehicles).map((vehicle) => {
+      const placementValues = stats.placements[vehicle] ?? [];
+      return {
+        vehicle,
+        totalDistance: stats.vehicleTotals[vehicle] ?? 0,
+        longestDistance: stats.vehicleLongest[vehicle]?.distance ?? 0,
+        longestMap: stats.vehicleLongest[vehicle]?.map ?? "",
+        stars: stats.vehicleStars[vehicle] ?? 0,
+        avgPlacement: placementValues.length > 0
+          ? placementValues.reduce((sum, v) => sum + v, 0) / placementValues.length
+          : null,
+        bestPlacement: placementValues.length > 0 ? Math.min(...placementValues) : null,
+        worstPlacement: placementValues.length > 0 ? Math.max(...placementValues) : null
+      };
+    });
+    if (vehicleSort === "longest-distance") return rows.sort((a, b) => b.longestDistance - a.longestDistance);
+    if (vehicleSort === "adventure-stars") return rows.sort((a, b) => b.stars - a.stars);
+    if (vehicleSort === "avg-placement") return rows.sort((a, b) => (a.avgPlacement ?? Infinity) - (b.avgPlacement ?? Infinity));
+    if (vehicleSort === "highest-placement") return rows.sort((a, b) => (a.bestPlacement ?? Infinity) - (b.bestPlacement ?? Infinity));
+    if (vehicleSort === "lowest-placement") return rows.sort((a, b) => (b.worstPlacement ?? 0) - (a.worstPlacement ?? 0));
+    return rows.sort((a, b) => b.totalDistance - a.totalDistance);
+  }, [stats.placements, stats.vehicleLongest, stats.vehicleStars, stats.vehicleTotals, vehicleSort]);
 
-  const vehicleStarEntries = Object.entries(stats.vehicleStars)
-    .sort((a, b) => b[1] - a[1])
-    .map(([label, value]) => ({ label, value, accent: "var(--accent)" }));
-  const mapStarEntries = Object.entries(stats.mapStars)
-    .sort((a, b) => b[1] - a[1])
-    .map(([label, value]) => ({ label, value, accent: "var(--chart-2)" }));
+  const mapTableRows = useMemo(() => {
+    const rows = Object.entries(stats.mapTotals).map(([map, item]) => ({
+      map,
+      count: item.count,
+      distance: item.distance,
+      avgDistance: item.distance / Math.max(item.count, 1),
+      stars: stats.mapStars[map] ?? 0
+    }));
+    if (mapSort === "total-records") return rows.sort((a, b) => b.count - a.count);
+    if (mapSort === "avg-distance") return rows.sort((a, b) => b.avgDistance - a.avgDistance);
+    if (mapSort === "adventure-stars") return rows.sort((a, b) => b.stars - a.stars);
+    return rows.sort((a, b) => b.distance - a.distance);
+  }, [stats.mapTotals, stats.mapStars, mapSort]);
+
   const playerEntries = Object.entries(stats.playerCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
     .map(([label, value]) => ({ label, value, accent: "var(--chart-3)" }));
-  const mapEntries = Object.entries(stats.mapTotals).sort((a, b) => b[1].distance - a[1].distance);
   const mostUsedParts = Object.entries(stats.tuningParts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10);
@@ -376,32 +389,37 @@ export function StatsPage() {
               <select id="vehicle-sort-select" value={vehicleSort} onChange={(event) => setVehicleSort(event.target.value)}>
                 <option value="total-distance">Total Distance</option>
                 <option value="longest-distance">Longest Distance</option>
+                <option value="adventure-stars">Adventure Stars</option>
                 <option value="avg-placement">Average Placement</option>
                 <option value="highest-placement">Highest Placement</option>
                 <option value="lowest-placement">Lowest Placement</option>
               </select>
             </div>
             <TableFrame>
-              <table id="vehicle-stats-table">
+              <table id="vehicle-stats-table" style={{ width: "100%" }}>
                 <tbody>
                   <tr>
                     <th>Rank</th>
-                    <th>Vehicle Name</th>
-                    <th>{vehicleSort === "longest-distance" ? "Longest Distance" : vehicleSort.includes("placement") ? "Placement" : "Total Distance"}</th>
-                    {vehicleSort === "longest-distance" && <th>Map</th>}
+                    <th>Vehicle</th>
+                    <th>Total Distance</th>
+                    <th>Longest Distance</th>
+                    <th>Best Map</th>
+                    <th>Adventure Stars</th>
+                    <th>Avg Placement</th>
+                    <th>Best Placement</th>
+                    <th>Worst Placement</th>
                   </tr>
                   {vehicleTableRows.map((row, index) => (
                     <tr key={row.vehicle}>
                       <td>{index + 1}</td>
-                      <td>
-                        <VehicleWithIcon name={row.vehicle} />
-                      </td>
-                      <td>{vehicleSort.includes("placement") ? row.value.toFixed(2) : formatDistance(row.value)}</td>
-                      {"map" in row && (
-                        <td>
-                          <MapWithIcon name={row.map} />
-                        </td>
-                      )}
+                      <td><VehicleWithIcon name={row.vehicle} /></td>
+                      <td>{formatDistance(row.totalDistance)}</td>
+                      <td>{formatDistance(row.longestDistance)}</td>
+                      <td>{row.longestMap ? <MapWithIcon name={row.longestMap} /> : "-"}</td>
+                      <td>{formatDistance(row.stars)}</td>
+                      <td>{row.avgPlacement !== null ? row.avgPlacement.toFixed(2) : "-"}</td>
+                      <td>{row.bestPlacement !== null ? row.bestPlacement : "-"}</td>
+                      <td>{row.worstPlacement !== null ? row.worstPlacement : "-"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -410,20 +428,18 @@ export function StatsPage() {
           </section>
 
           <section className="stats-section">
-            <h2>Vehicle Adventure Stars</h2>
-            <div className="chart-container">
-              <ChartBars entries={vehicleStarEntries} />
-              <div className="total-stars">
-                <span>Total Adventure Stars</span>
-                <strong>{formatDistance(vehicleStarEntries.reduce((sum, entry) => sum + entry.value, 0))}</strong>
-              </div>
+            <div className="section-toolbar">
+              <h2>Records by Country</h2>
+              <button
+                type="button"
+                className="filter-btn"
+                onClick={() => setShowAllLabels((v) => !v)}
+              >
+                {showAllLabels ? "Fewer labels" : "See all labels"}
+              </button>
             </div>
-          </section>
-
-          <section className="stats-section">
-            <h2>Records by Country</h2>
             <div className="country-records-layout">
-              <div className="country-pie-chart">
+              <div className={`country-pie-chart${showAllLabels ? " country-pie-chart--expanded" : ""}`}>
                 <canvas
                   ref={countryCanvas}
                   id="country-pie"
@@ -431,25 +447,85 @@ export function StatsPage() {
                   height={pieCanvasHeight}
                   aria-label="Pie chart showing records by country"
                   onMouseLeave={() => setHoveredCountry(null)}
-                  onMouseMove={handleCountryPieMove}
+                  onMouseMove={showAllLabels ? undefined : handleCountryPieMove}
                 />
+
+                {/* SVG overlay: connector lines for external labels */}
+                {showAllLabels && (
+                  <svg
+                    className="country-pie-connectors"
+                    viewBox={`0 0 ${pieCanvasWidth} ${pieCanvasHeight}`}
+                    aria-hidden="true"
+                  >
+                    {countrySlices
+                      .filter((s) => s.fraction < pieLabelThreshold)
+                      .map((s) => {
+                        const ex = pieCx + Math.cos(s.midAngle) * pieRadius;
+                        const ey = pieCy + Math.sin(s.midAngle) * pieRadius;
+                        const bx = pieCx + Math.cos(s.midAngle) * (pieRadius + 22);
+                        const by = pieCy + Math.sin(s.midAngle) * (pieRadius + 22);
+                        const onRight = Math.cos(s.midAngle) >= 0;
+                        const lx = bx + (onRight ? 30 : -30);
+                        return (
+                          <g key={s.country}>
+                            <polyline
+                              points={`${ex},${ey} ${bx},${by} ${lx},${by}`}
+                              fill="none"
+                              stroke="var(--muted)"
+                              strokeWidth="1"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <circle cx={ex} cy={ey} r={2.5} fill={chartColor(s.index)} />
+                          </g>
+                        );
+                      })}
+                  </svg>
+                )}
+
+                {/* Internal labels — large slices only */}
                 {countrySlices
-                  .filter((slice) => slice.fraction >= pieLabelThreshold)
-                  .map((slice) => {
-                    const labelX = 50 + Math.cos(slice.midAngle) * 28;
-                    const labelY = 50 + Math.sin(slice.midAngle) * 38;
+                  .filter((s) => s.fraction >= pieLabelThreshold)
+                  .map((s) => {
+                    const labelX = 50 + Math.cos(s.midAngle) * 28;
+                    const labelY = 50 + Math.sin(s.midAngle) * 38;
                     return (
                       <div
                         className="country-slice-label"
-                        key={slice.country}
+                        key={s.country}
                         style={{ left: `${labelX}%`, top: `${labelY}%` }}
                       >
-                        <CountryFlag country={slice.country} />
-                        <span>{slice.country}</span>
+                        <CountryFlag country={s.country} />
+                        <span>{s.country}</span>
                       </div>
                     );
                   })}
-                {hoveredCountry && (
+
+                {/* External labels — small slices, "see all" mode */}
+                {showAllLabels &&
+                  countrySlices
+                    .filter((s) => s.fraction < pieLabelThreshold)
+                    .map((s) => {
+                      const bx = pieCx + Math.cos(s.midAngle) * (pieRadius + 22);
+                      const by = pieCy + Math.sin(s.midAngle) * (pieRadius + 22);
+                      const onRight = Math.cos(s.midAngle) >= 0;
+                      const lx = bx + (onRight ? 30 : -30);
+                      const labelLeft = (lx / pieCanvasWidth) * 100;
+                      const labelTop = (by / pieCanvasHeight) * 100;
+                      return (
+                        <div
+                          key={s.country}
+                          className={`country-slice-label country-slice-label--external${onRight ? "" : " country-slice-label--left"}`}
+                          style={{ left: `${labelLeft}%`, top: `${labelTop}%` }}
+                        >
+                          <CountryFlag country={s.country} />
+                          <span>{s.country}</span>
+                        </div>
+                      );
+                    })}
+
+                {/* Hover tooltip — normal mode only */}
+                {!showAllLabels && hoveredCountry && (
                   <div className="country-pie-tooltip" style={{ left: hoveredCountry.x, top: hoveredCountry.y }}>
                     <CountryFlag country={hoveredCountry.country} />
                     <span>
@@ -468,40 +544,39 @@ export function StatsPage() {
           </section>
 
           <section className="stats-section">
-            <h2>Map Statistics</h2>
+            <div className="section-toolbar">
+              <h2>Map Statistics</h2>
+              <select value={mapSort} onChange={(event) => setMapSort(event.target.value)}>
+                <option value="total-distance">Total Distance</option>
+                <option value="total-records">Total Records</option>
+                <option value="avg-distance">Average Distance</option>
+                <option value="adventure-stars">Adventure Stars</option>
+              </select>
+            </div>
             <TableFrame>
-              <table>
+              <table style={{ width: "100%" }}>
                 <tbody>
                   <tr>
                     <th>Map Name</th>
                     <th>Total Records</th>
                     <th>Total Distance</th>
                     <th>Average Distance</th>
+                    <th>Adventure Stars</th>
                   </tr>
-                  {mapEntries.map(([map, item]) => (
-                    <tr key={map}>
+                  {mapTableRows.map((row) => (
+                    <tr key={row.map}>
                       <td>
-                        <MapWithIcon name={map} />
+                        <MapWithIcon name={row.map} />
                       </td>
-                      <td>{item.count}</td>
-                      <td>{formatDistance(item.distance)}</td>
-                      <td>{formatDistance(item.distance / item.count, 2)}</td>
+                      <td>{row.count}</td>
+                      <td>{formatDistance(row.distance)}</td>
+                      <td>{formatDistance(row.avgDistance, 2)}</td>
+                      <td>{formatDistance(row.stars)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </TableFrame>
-          </section>
-
-          <section className="stats-section">
-            <h2>Map Adventure Stars</h2>
-            <div className="chart-container">
-              <ChartBars entries={mapStarEntries} />
-              <div className="total-stars">
-                <span>Total Adventure Stars</span>
-                <strong>{formatDistance(mapStarEntries.reduce((sum, entry) => sum + entry.value, 0))}</strong>
-              </div>
-            </div>
           </section>
 
           <section className="stats-section">

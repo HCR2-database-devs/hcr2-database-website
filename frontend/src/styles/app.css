@@ -1298,6 +1298,20 @@ tbody tr:hover {
   width: 100%;
 }
 
+.country-pie-chart--expanded {
+  overflow: visible;
+}
+
+.country-pie-connectors {
+  height: 100%;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
 #country-pie {
   display: block;
   height: auto;
@@ -1327,6 +1341,15 @@ tbody tr:hover {
   padding: 7px 9px;
   position: absolute;
   transform: translate(-50%, -50%);
+}
+
+.country-slice-label--external {
+  max-width: 160px;
+  transform: translate(4px, -50%);
+}
+
+.country-slice-label--left {
+  transform: translate(calc(-100% - 4px), -50%);
 }
 
 .country-slice-label span:last-child {
