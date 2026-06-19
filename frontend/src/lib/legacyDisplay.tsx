@@ -86,7 +86,8 @@ function fallbackToPng(event: SyntheticEvent<HTMLImageElement>, folder: string, 
     image.src = pngSource;
     return;
   }
-  image.style.display = "none";
+  image.onerror = null;
+  image.src = "/img/questionmark.png";
 }
 
 export function MapWithIcon({ name }: { name: unknown }) {
