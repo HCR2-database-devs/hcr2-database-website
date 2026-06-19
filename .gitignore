@@ -208,3 +208,6 @@ backups/*.db
 backups/*.sql
 dumps/
 exports/
+
+# Local scripts with credentials (never commit)
+ssh_investigate.py
