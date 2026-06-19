@@ -807,6 +807,34 @@ h3 {
   -webkit-overflow-scrolling: touch;
 }
 
+.table-scroll--virtual {
+  overflow-y: auto;
+  width: 100%;
+  max-width: 100%;
+}
+
+.table-scroll--virtual thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+}
+
+.table-count-info {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+  padding: 6px 10px 2px;
+  margin: 0;
+}
+
+.loading-state--inline {
+  text-align: center;
+  padding: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 table {
   border-collapse: collapse;
   min-width: 0;

@@ -71,3 +71,34 @@ export type BackupItem = {
   size: number;
   mtime: string;
 };
+
+export type RecordFilters = {
+  search: string;
+  maps: string[];
+  vehicles: string[];
+  tuningParts: string[];
+  distanceOp: "" | "gte" | "lte";
+  distance: string;
+  questionableOnly: boolean;
+  verifiedOnly: boolean;
+  sort: string;
+};
+
+export const emptyRecordFilters: RecordFilters = {
+  search: "",
+  maps: [],
+  vehicles: [],
+  tuningParts: [],
+  distanceOp: "",
+  distance: "",
+  questionableOnly: false,
+  verifiedOnly: false,
+  sort: "default"
+};
+
+export type PaginatedRecordsResponse = {
+  records: DataRow[];
+  total: number;
+  limit: number;
+  offset: number;
+};

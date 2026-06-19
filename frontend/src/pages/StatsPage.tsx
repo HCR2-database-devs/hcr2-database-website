@@ -11,7 +11,8 @@ import {
   TuningPartsIcons,
   VehicleWithIcon
 } from "../lib/legacyDisplay";
-import { getPublicData } from "../services/publicData";
+import { exportRecords } from "../services/publicData";
+import { emptyRecordFilters } from "../types/api";
 import type { DataRow } from "../types/api";
 
 type ChartEntry = {
@@ -127,7 +128,7 @@ export function StatsPage() {
   const countryCanvas = useRef<HTMLCanvasElement | null>(null);
   const records = useQuery({
     queryKey: ["public-data", "records"],
-    queryFn: () => getPublicData("records")
+    queryFn: () => exportRecords(emptyRecordFilters).then((r) => r.records)
   });
 
   const rows = records.data ?? [];
