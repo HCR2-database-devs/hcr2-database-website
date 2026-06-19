@@ -62,8 +62,11 @@ export function addTuningPart(name: string, icon?: File | null) {
   return formRequest<SuccessResponse>("/api/v1/admin/tuning-parts/form", withOptionalIcon("partName", name, icon));
 }
 
-export function addTuningSetup(partIds: number[]) {
-  return jsonRequest<SuccessResponse>("/api/v1/admin/tuning-setups", "POST", { partIds });
+export function addTuningSetup(partIds: number[], echoAffectedPartId?: number | null) {
+  return jsonRequest<SuccessResponse>("/api/v1/admin/tuning-setups", "POST", {
+    partIds,
+    echoAffectedPartId: echoAffectedPartId ?? null,
+  });
 }
 
 export function getPendingSubmissions() {

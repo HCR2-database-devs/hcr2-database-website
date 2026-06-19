@@ -64,6 +64,10 @@ class AddTuningPartRequest(AdminPayload):
 
 class AddTuningSetupRequest(AdminPayload):
     part_ids: list[int] = Field(validation_alias=AliasChoices("partIds", "part_ids"))
+    echo_affected_part_id: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices("echoAffectedPartId", "echo_affected_part_id"),
+    )
 
 
 class PendingActionRequest(AdminPayload):

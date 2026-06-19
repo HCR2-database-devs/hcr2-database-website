@@ -389,6 +389,11 @@ class AdminService:
                 if existing is not None:
                     raise AdminConflictError("A setup with these parts already exists.")
                 setup_id = self._create_setup(cursor, part_ids)
+                if payload.echo_affected_part_id is not None:
+                    cursor.execute(
+                        "UPDATE tuning_setup SET echo_affected_part_id = %s WHERE id_tuning_setup = %s",
+                        (payload.echo_affected_part_id, setup_id),
+                    )
         return {"success": True, "idTuningSetup": setup_id}
 
     def approve_submission(self, submission_id: int) -> dict[str, bool]:
