@@ -2,6 +2,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useAuthStatus } from "../hooks/useAuthStatus";
+import { MapWithIcon, TuningPartWithIcon, VehicleWithIcon } from "../lib/legacyDisplay";
 import {
   addMap,
   addTuningPart,
@@ -52,6 +53,9 @@ const emptyRecordForm: RecordFormState = {
   questionable: false,
   note: ""
 };
+
+const ECHO_PART_ID = 26;
+const ECHO_EXCLUDED_PART_IDS = new Set([26, 2, 14, 13, 7, 18, 16, 17, 25]);
 
 function text(row: DataRow, ...keys: string[]) {
   for (const key of keys) {
@@ -118,6 +122,7 @@ export function AdminPage() {
   const [vehicleName, setVehicleName] = useState("");
   const [partName, setPartName] = useState("");
   const [selectedPartIds, setSelectedPartIds] = useState<number[]>([]);
+  const [setupEchoAffectedPartId, setSetupEchoAffectedPartId] = useState<number | null>(null);
   const [newsTitle, setNewsTitle] = useState("");
   const [newsContent, setNewsContent] = useState("");
   const [editingNewsId, setEditingNewsId] = useState<number | null>(null);
@@ -311,8 +316,9 @@ export function AdminPage() {
   async function handleAddSetup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await runAction(async () => {
-      await addTuningSetup(selectedPartIds);
+      await addTuningSetup(selectedPartIds, setupEchoAffectedPartId);
       setSelectedPartIds([]);
+      setSetupEchoAffectedPartId(null);
     }, "Tuning setup added.");
   }
 
@@ -362,9 +368,13 @@ export function AdminPage() {
   }
 
   function togglePart(partId: number) {
-    setSelectedPartIds((current) =>
-      current.includes(partId) ? current.filter((id) => id !== partId) : [...current, partId]
-    );
+    setSelectedPartIds((current) => {
+      const next = current.includes(partId) ? current.filter((id) => id !== partId) : [...current, partId];
+      if (partId === ECHO_PART_ID && !next.includes(ECHO_PART_ID)) {
+        setSetupEchoAffectedPartId(null);
+      }
+      return next;
+    });
   }
 
   async function handleCreateBackup() {
@@ -748,11 +758,35 @@ export function AdminPage() {
                     checked={selectedPartIds.includes(partId)}
                     onChange={() => togglePart(partId)}
                   />
-                  {text(row, "nameTuningPart", "nametuningpart")}
+                  <TuningPartWithIcon name={text(row, "nameTuningPart", "nametuningpart")} />
                 </label>
               );
             })}
           </div>
+          {selectedPartIds.includes(ECHO_PART_ID) && (
+            <div style={{ marginTop: 12 }}>
+              <label>Echo Affected Part</label>
+              <select
+                value={setupEchoAffectedPartId ?? ""}
+                onChange={(e) => setSetupEchoAffectedPartId(e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">-- Select a part --</option>
+                {(partsQuery.data ?? [])
+                  .filter((row) => {
+                    const id = numberValue(row, "idTuningPart", "idtuningpart");
+                    return selectedPartIds.includes(id) && !ECHO_EXCLUDED_PART_IDS.has(id);
+                  })
+                  .map((row) => {
+                    const id = numberValue(row, "idTuningPart", "idtuningpart");
+                    return (
+                      <option key={id} value={id}>
+                        {text(row, "nameTuningPart", "nametuningpart")}
+                      </option>
+                    );
+                  })}
+              </select>
+            </div>
+          )}
           <button type="submit">Add Tuning Setup</button>
         </form>
         <p id="add-tuning-setup-message" />

@@ -942,6 +942,13 @@ tbody tr:hover {
   min-width: 0;
 }
 
+.setup-parts-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+}
+
 .map-icon,
 .vehicle-icon {
   flex: 0 0 auto;

@@ -611,7 +611,7 @@ function StaticTable({
             {rows.map((item) => (
               <tr key={numeric(item, "idMap", "idmap")}>
                 <td>{numeric(item, "idMap", "idmap")}</td>
-                <td>{asText(item.nameMap ?? item.namemap)}</td>
+                <td><MapWithIcon name={item.nameMap ?? item.namemap} /></td>
               </tr>
             ))}
           </tbody>
@@ -632,7 +632,7 @@ function StaticTable({
             {rows.map((item) => (
               <tr key={numeric(item, "idVehicle", "idvehicle")}>
                 <td>{numeric(item, "idVehicle", "idvehicle")}</td>
-                <td>{asText(item.nameVehicle ?? item.namevehicle)}</td>
+                <td><VehicleWithIcon name={item.nameVehicle ?? item.namevehicle} /></td>
               </tr>
             ))}
           </tbody>
@@ -675,12 +675,25 @@ function StaticTable({
             <th>Setup ID</th>
             <th>Tuning Parts</th>
           </tr>
-          {rows.map((item) => (
-            <tr key={numeric(item, "idTuningSetup", "idtuningsetup")}>
-              <td>{numeric(item, "idTuningSetup", "idtuningsetup")}</td>
-              <td>{setupPartsLabel(item.parts)}</td>
-            </tr>
-          ))}
+          {rows.map((item) => {
+            const partNames: string[] = Array.isArray(item.parts)
+              ? (item.parts as unknown[]).map((p) =>
+                  typeof p === "object" && p !== null && "nameTuningPart" in p
+                    ? asText((p as { nameTuningPart: unknown }).nameTuningPart)
+                    : asText(p)
+                ).filter(Boolean)
+              : asText(item.parts).split(",").map((s) => s.trim()).filter(Boolean);
+            return (
+              <tr key={numeric(item, "idTuningSetup", "idtuningsetup")}>
+                <td>{numeric(item, "idTuningSetup", "idtuningsetup")}</td>
+                <td className="setup-parts-cell">
+                  {partNames.length > 0
+                    ? partNames.map((name) => <TuningPartWithIcon key={name} name={name} />)
+                    : <span className="muted">—</span>}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </TableFrame>
