@@ -61,8 +61,37 @@ def list_tuning_setups(service: PublicDataServiceDep) -> Any:
 
 
 @router.get("/records", response_model=None)
-def list_records(service: PublicDataServiceDep) -> Any:
-    return _load_or_database_error(service, "records")
+def list_records(
+    service: PublicDataServiceDep,
+    q: Annotated[str | None, Query()] = None,
+    maps: Annotated[list[str] | None, Query(alias="map")] = None,
+    vehicles: Annotated[list[str] | None, Query(alias="vehicle")] = None,
+    tuning_parts: Annotated[list[str] | None, Query(alias="tuning_part")] = None,
+    sort: Annotated[str | None, Query()] = None,
+    questionable: Annotated[str | None, Query()] = None,
+    min_distance: Annotated[str | None, Query()] = None,
+    max_distance: Annotated[str | None, Query()] = None,
+    limit: Annotated[str | None, Query()] = None,
+    offset: Annotated[str | None, Query()] = None,
+    export: Annotated[str | None, Query()] = None,
+) -> Any:
+    filters = {
+        "q": q,
+        "maps": maps or [],
+        "vehicles": vehicles or [],
+        "tuning_parts": tuning_parts or [],
+        "sort": sort,
+        "questionable": questionable,
+        "min_distance": min_distance,
+        "max_distance": max_distance,
+        "limit": limit,
+        "offset": offset,
+        "export": export,
+    }
+    try:
+        return service.list_records_paginated(filters)
+    except DATABASE_ERROR_TYPES as exc:
+        return database_error_response(exc)  # type: ignore[return-value]
 
 
 @router.get("/records/search", response_model=None)

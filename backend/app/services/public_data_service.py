@@ -36,6 +36,9 @@ class PublicDataService:
             case _:
                 raise InvalidLoadDataType("Invalid data type")
 
+    def list_records_paginated(self, filters: dict[str, Any]) -> dict[str, Any]:
+        return self.repository.list_records_paginated(filters)
+
     def search_records(self, filters: dict[str, Any]) -> dict[str, Any]:
         rows = self.repository.search_records(filters)
         return {"records": rows, "count": len(rows)}
