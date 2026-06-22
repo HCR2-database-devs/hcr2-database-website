@@ -50,6 +50,7 @@ Local URLs:
 
 - [SETUP.md](SETUP.md) explains installation and environment setup.
 - [DEV.md](DEV.md) lists useful development commands.
+- [DEPLOY.md](DEPLOY.md) covers production deployment (Linux, Nginx, systemd) and reloading after a change.
 - [ADMIN.md](ADMIN.md) explains admin access and workflows.
 - [docs/README.md](docs/README.md) records the current stack, supported workflows and validation baseline.
 - [docs/main-refactor-alignment-report.md](docs/main-refactor-alignment-report.md) records the `main` alignment decisions.
