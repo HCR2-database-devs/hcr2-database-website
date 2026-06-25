@@ -444,7 +444,8 @@ export function getCountryCode(country: unknown): string | null {
     return null;
   }
   if (raw.length === 2 && /^[A-Za-z]{2}$/.test(raw)) {
-    return raw.toLowerCase();
+    const lower = raw.toLowerCase();
+    return countryCodes[lower] ?? lower;
   }
   const normalized = raw.toLowerCase();
   if (countryCodes[normalized]) {
