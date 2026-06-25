@@ -77,7 +77,7 @@ function CountryFlag({ country }: { country: string }) {
   if (code === "question") {
     return <span className="country-flag">?</span>;
   }
-  return <img className="country-flag" src={`https://flagcdn.com/20x15/${code}.svg`} alt={`${country} flag`} />;
+  return <img className="country-flag" src={`https://flagcdn.com/${code}.svg`} alt={`${country} flag`} />;
 }
 
 function TableFrame({ children }: { children: ReactNode }) {

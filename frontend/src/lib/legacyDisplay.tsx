@@ -184,7 +184,7 @@ export function CountryWithFlag({ country }: { country: unknown }) {
   return (
     <span className="country-cell">
       {code && code !== "question" && (
-        <img className="country-flag" src={`https://flagcdn.com/20x15/${code}.svg`} alt={`${text} flag`} />
+        <img className="country-flag" src={`https://flagcdn.com/${code}.svg`} alt={`${text} flag`} />
       )}
       {code === "question" && <span className="country-flag">?</span>}
       <span>{text}</span>
