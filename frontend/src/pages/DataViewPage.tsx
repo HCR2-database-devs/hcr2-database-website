@@ -503,10 +503,7 @@ function VirtualRecordsTable({
   if (isMobile) {
     return (
       <div className="table-shell">
-        <div
-          className="table-scroll table-scroll--virtual"
-          style={{ maxHeight: VIRTUAL_TABLE_HEIGHT }}
-        >
+        <div className="table-scroll table-scroll--virtual">
           <table className="public-records-table">
             <thead>
               <tr>
