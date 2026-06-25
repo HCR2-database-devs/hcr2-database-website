@@ -396,6 +396,58 @@ const PLAYERS_COL_COUNT = 4;
 const RECORD_ROW_HEIGHT = 50;
 const PLAYER_ROW_HEIGHT = 48;
 const VIRTUAL_TABLE_HEIGHT = "72vh";
+const MOBILE_BREAKPOINT = "(max-width: 720px)";
+
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const handler = (e: MediaQueryListEvent) => setMatches(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, [query]);
+  return matches;
+}
+
+function recordRow(item: DataRow, index: number, onNote: (note: string) => void) {
+  const recordId = asText(item.idRecord ?? item.record_id ?? item.idrecord);
+  const note = asText(item.questionable_reason ?? item.questionableReason);
+  const mapName = asText(item.map_name);
+  const shareUrl = `${window.location.origin}/records?recordId=${encodeURIComponent(recordId)}&map=${encodeURIComponent(mapName)}`;
+  return (
+    <tr key={recordId || index} data-record-id={recordId}>
+      <td data-label="Distance">{formatDistance(item.distance)}</td>
+      <td data-label="Status">
+        <StatusBadge questionable={item.questionable} note={note} />
+      </td>
+      <td data-label="Notes">
+        {note && (
+          <button className="note-btn" type="button" onClick={() => onNote(note)}>
+            Note
+          </button>
+        )}
+      </td>
+      <td data-label="Map">
+        <MapWithIcon name={item.map_name} />
+      </td>
+      <td data-label="Vehicle">
+        <VehicleWithIcon name={item.vehicle_name} />
+      </td>
+      <td data-label="Tuning Parts">
+        <TuningPartsIcons parts={item.tuning_parts} />
+      </td>
+      <td data-label="Player">{asText(item.player_name)}</td>
+      <td data-label="Country">
+        <CountryWithFlag country={item.player_country} />
+      </td>
+      <td data-label="Share">
+        <button className="share-btn" type="button" onClick={() => navigator.clipboard?.writeText(shareUrl)}>
+          Copy
+        </button>
+      </td>
+    </tr>
+  );
+}
 
 function VirtualRecordsTable({
   rows,
@@ -403,7 +455,8 @@ function VirtualRecordsTable({
   hasNextPage,
   isFetchingNextPage,
   onLoadMore,
-  onNote
+  onNote,
+  isMobile
 }: {
   rows: DataRow[];
   total: number;
@@ -411,11 +464,13 @@ function VirtualRecordsTable({
   isFetchingNextPage: boolean;
   onLoadMore: () => void;
   onNote: (note: string) => void;
+  isMobile: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const rowVirtualizer = useVirtualizer({
-    count: rows.length,
+    count: isMobile ? 0 : rows.length,
     getScrollElement: () => containerRef.current,
     estimateSize: () => RECORD_ROW_HEIGHT,
     overscan: 10
@@ -424,12 +479,61 @@ function VirtualRecordsTable({
   const virtualItems = rowVirtualizer.getVirtualItems();
 
   useEffect(() => {
+    if (isMobile) {
+      if (!sentinelRef.current || !hasNextPage || isFetchingNextPage) return;
+      const sentinel = sentinelRef.current;
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+            onLoadMore();
+          }
+        },
+        { rootMargin: "400px" }
+      );
+      observer.observe(sentinel);
+      return () => observer.disconnect();
+    }
     if (!virtualItems.length) return;
     const lastItem = virtualItems[virtualItems.length - 1];
     if (lastItem.index >= rows.length - 15 && hasNextPage && !isFetchingNextPage) {
       onLoadMore();
     }
-  }, [virtualItems, rows.length, hasNextPage, isFetchingNextPage, onLoadMore]);
+  }, [isMobile, virtualItems, rows.length, hasNextPage, isFetchingNextPage, onLoadMore]);
+
+  if (isMobile) {
+    return (
+      <div className="table-shell">
+        <div
+          className="table-scroll table-scroll--virtual"
+          style={{ maxHeight: VIRTUAL_TABLE_HEIGHT }}
+        >
+          <table className="public-records-table">
+            <thead>
+              <tr>
+                <th>Distance</th>
+                <th>Status</th>
+                <th>Notes</th>
+                <th>Map Name</th>
+                <th>Vehicle Name</th>
+                <th>Tuning Parts</th>
+                <th>Player Name</th>
+                <th>Player Country</th>
+                <th>Share</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((item, index) => recordRow(item, index, onNote))}
+            </tbody>
+          </table>
+          <div ref={sentinelRef} />
+          {isFetchingNextPage && <p className="loading-state loading-state--inline">Loading more records…</p>}
+        </div>
+        <p className="table-count-info">
+          {rows.length} / {total} records loaded
+        </p>
+      </div>
+    );
+  }
 
   const paddingTop = virtualItems[0]?.start ?? 0;
   const paddingBottom =
@@ -462,46 +566,7 @@ function VirtualRecordsTable({
                 <td colSpan={RECORDS_COL_COUNT} style={{ height: paddingTop, padding: 0, border: "none" }} />
               </tr>
             )}
-            {virtualItems.map((vRow) => {
-              const item = rows[vRow.index];
-              const recordId = asText(item.idRecord ?? item.record_id ?? item.idrecord);
-              const note = asText(item.questionable_reason ?? item.questionableReason);
-              const mapName = asText(item.map_name);
-              const shareUrl = `${window.location.origin}/records?recordId=${encodeURIComponent(recordId)}&map=${encodeURIComponent(mapName)}`;
-              return (
-                <tr key={vRow.key} data-record-id={recordId}>
-                  <td data-label="Distance">{formatDistance(item.distance)}</td>
-                  <td data-label="Status">
-                    <StatusBadge questionable={item.questionable} note={note} />
-                  </td>
-                  <td data-label="Notes">
-                    {note && (
-                      <button className="note-btn" type="button" onClick={() => onNote(note)}>
-                        Note
-                      </button>
-                    )}
-                  </td>
-                  <td data-label="Map">
-                    <MapWithIcon name={item.map_name} />
-                  </td>
-                  <td data-label="Vehicle">
-                    <VehicleWithIcon name={item.vehicle_name} />
-                  </td>
-                  <td data-label="Tuning Parts">
-                    <TuningPartsIcons parts={item.tuning_parts} />
-                  </td>
-                  <td data-label="Player">{asText(item.player_name)}</td>
-                  <td data-label="Country">
-                    <CountryWithFlag country={item.player_country} />
-                  </td>
-                  <td data-label="Share">
-                    <button className="share-btn" type="button" onClick={() => navigator.clipboard?.writeText(shareUrl)}>
-                      Copy
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+            {virtualItems.map((vRow) => recordRow(rows[vRow.index], vRow.index, onNote))}
             {paddingBottom > 0 && (
               <tr>
                 <td colSpan={RECORDS_COL_COUNT} style={{ height: paddingBottom, padding: 0, border: "none" }} />
@@ -723,6 +788,7 @@ function NoteModal({ note, onClose }: { note: string; onClose: () => void }) {
 export function DataViewPage({ view }: DataViewPageProps) {
   const [note, setNote] = useState("");
   const [isExporting, setIsExporting] = useState(false);
+  const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
 
   // ── Records view state ──────────────────────────────────────────────────────
   const [recordFilters, setRecordFilters] = useState<RecordFilters>(emptyRecordFilters);
@@ -858,6 +924,7 @@ export function DataViewPage({ view }: DataViewPageProps) {
                 isFetchingNextPage={recordsQuery.isFetchingNextPage}
                 onLoadMore={() => recordsQuery.fetchNextPage()}
                 onNote={setNote}
+                isMobile={isMobile}
               />
             )}
           </>

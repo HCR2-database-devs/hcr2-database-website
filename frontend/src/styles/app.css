@@ -1731,7 +1731,13 @@ tbody tr:hover {
   .multi-dropdown,
   .filter-label {
     max-width: none;
+    min-height: 36px;
+    padding: 6px 10px;
     width: 100%;
+  }
+
+  .filter-btn {
+    min-height: 36px;
   }
 
   .dropdown-panel {
