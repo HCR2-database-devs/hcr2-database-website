@@ -1736,8 +1736,38 @@ tbody tr:hover {
     width: 100%;
   }
 
+  .filter-container {
+    padding: 10px;
+    gap: 8px;
+    margin: 6px 0 16px;
+  }
+
+  .filter-row {
+    gap: 6px;
+  }
+
+  .filter-search {
+    min-height: 28px;
+    padding: 2px 8px;
+    font-size: 14px;
+  }
+
   .filter-btn {
-    min-height: 36px;
+    min-height: 32px;
+    padding: 2px 8px;
+    font-size: 12px;
+  }
+
+  .filter-label {
+    min-height: 30px;
+    font-size: 13px;
+  }
+
+  .filter-input,
+  .filter-select {
+    min-height: 28px;
+    padding: 2px 8px;
+    font-size: 13px;
   }
 
   .table-shell {
@@ -1775,21 +1805,44 @@ tbody tr:hover {
   }
 
   .public-records-table td {
-    align-items: flex-start;
+    align-items: center;
     border-bottom: 0;
     display: grid;
-    gap: 12px;
-    grid-template-columns: minmax(110px, 38%) minmax(0, 1fr);
-    padding: 8px 14px;
+    gap: 8px;
+    grid-template-columns: minmax(90px, 26%) minmax(0, 1fr);
+    padding: 6px 12px;
   }
 
   .public-records-table td::before {
     color: var(--muted);
     content: attr(data-label);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 780;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+  }
+
+  .public-records-table td {
+    font-size: 15px;
+  }
+
+  .public-records-table td .map-cell,
+  .public-records-table td .vehicle-cell,
+  .public-records-table td .tuning-part-cell,
+  .public-records-table td .country-cell {
+    font-size: 15px;
+  }
+
+  .status-pill {
+    font-size: 13px;
+    min-height: 28px;
+  }
+
+  .note-btn,
+  .share-btn {
+    font-size: 13px;
+    min-height: 28px;
+    padding: 0 8px;
   }
 }
 
@@ -1839,5 +1892,41 @@ tbody tr:hover {
 
   .public-records-table td {
     grid-template-columns: 1fr;
+    padding: 5px 12px;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 375px) {
+  .public-records-table tr {
+    padding: 8px 0;
+  }
+
+  .public-records-table td {
+    padding: 5px 10px;
+    gap: 6px;
+    grid-template-columns: minmax(70px, 22%) minmax(0, 1fr);
+    font-size: 14px;
+  }
+
+  .public-records-table td::before {
+    font-size: 11px;
+  }
+
+  .public-records-table td .map-cell,
+  .public-records-table td .vehicle-cell,
+  .public-records-table td .tuning-part-cell,
+  .public-records-table td .country-cell {
+    font-size: 14px;
+  }
+
+  .filter-container {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .filter-search {
+    min-height: 26px;
+    font-size: 13px;
   }
 }
