@@ -966,6 +966,20 @@ tbody tr:hover {
   width: 22px;
 }
 
+.tuning-parts-row {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tuning-parts-row img {
+  flex-shrink: 0;
+}
+
 .country-flag {
   border-radius: 2px;
   display: inline-block;
@@ -1717,11 +1731,19 @@ tbody tr:hover {
   }
 
   .filter-container,
-  .filter-row,
-  .filter-group,
-  .filter-distance {
+  .filter-row {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .filter-container {
+    padding: 8px;
+    gap: 6px;
+    margin: 4px 0 12px;
+  }
+
+  .filter-row {
+    gap: 4px;
   }
 
   .filter-search,
@@ -1731,43 +1753,73 @@ tbody tr:hover {
   .multi-dropdown,
   .filter-label {
     max-width: none;
-    min-height: 32px;
-    padding: 2px 10px;
     width: 100%;
   }
 
-  .filter-container {
-    padding: 10px;
-    gap: 8px;
-    margin: 6px 0 16px;
-  }
-
-  .filter-row {
-    gap: 6px;
-  }
-
   .filter-search {
-    min-height: 28px;
-    padding: 2px 8px;
-    font-size: 14px;
+    min-height: 24px;
+    padding: 1px 6px;
+    font-size: 13px;
   }
 
   .filter-btn {
-    min-height: 32px;
-    padding: 2px 8px;
-    font-size: 12px;
+    min-height: 28px;
+    padding: 1px 6px;
+    font-size: 11px;
   }
 
   .filter-label {
-    min-height: 30px;
-    font-size: 13px;
+    align-items: center;
+    display: inline-flex;
+    flex-direction: row;
+    flex: 1 1 auto;
+    gap: 4px;
+    min-height: 22px;
+    padding: 1px 6px;
+    font-size: 12px;
   }
 
   .filter-input,
   .filter-select {
-    min-height: 28px;
-    padding: 2px 8px;
-    font-size: 13px;
+    min-height: 24px;
+    padding: 1px 6px;
+    font-size: 12px;
+  }
+
+  .filter-group {
+    align-items: stretch;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .multi-dropdown {
+    flex: 1 1 30%;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .multi-dropdown .filter-btn {
+    width: 100%;
+  }
+
+  .filter-distance {
+    align-items: stretch;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+
+  .filter-distance .filter-select {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .filter-distance .filter-input {
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .table-shell {
@@ -1844,6 +1896,10 @@ tbody tr:hover {
     min-height: 28px;
     padding: 0 8px;
   }
+
+  .tuning-parts-row {
+    gap: 2px;
+  }
 }
 
 @media (max-width: 520px) {
@@ -1899,12 +1955,12 @@ tbody tr:hover {
 
 @media (max-width: 375px) {
   .public-records-table tr {
-    padding: 8px 0;
+    padding: 6px 0;
   }
 
   .public-records-table td {
-    padding: 5px 10px;
-    gap: 6px;
+    padding: 4px 8px;
+    gap: 4px;
     grid-template-columns: minmax(70px, 22%) minmax(0, 1fr);
     font-size: 14px;
   }
@@ -1921,12 +1977,19 @@ tbody tr:hover {
   }
 
   .filter-container {
-    padding: 8px;
-    gap: 6px;
+    padding: 6px;
+    gap: 4px;
   }
 
   .filter-search {
-    min-height: 26px;
-    font-size: 13px;
+    min-height: 22px;
+    padding: 0 4px;
+    font-size: 12px;
+  }
+
+  .filter-btn {
+    min-height: 24px;
+    padding: 0 4px;
+    font-size: 10px;
   }
 }

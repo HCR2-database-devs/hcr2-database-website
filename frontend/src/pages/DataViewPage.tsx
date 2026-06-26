@@ -434,7 +434,9 @@ function recordRow(item: DataRow, index: number, onNote: (note: string) => void)
         <VehicleWithIcon name={item.vehicle_name} />
       </td>
       <td data-label="Tuning Parts">
-        <TuningPartsIcons parts={item.tuning_parts} />
+        <span className="tuning-parts-row">
+          <TuningPartsIcons parts={item.tuning_parts} />
+        </span>
       </td>
       <td data-label="Player">{asText(item.player_name)}</td>
       <td data-label="Country">
