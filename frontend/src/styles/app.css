@@ -1805,11 +1805,11 @@ tbody tr:hover {
   }
 
   .public-records-table td {
-    align-items: center;
+    align-items: start;
     border-bottom: 0;
     display: grid;
     gap: 8px;
-    grid-template-columns: minmax(90px, 26%) minmax(0, 1fr);
+    grid-template-columns: minmax(100px, 30%) minmax(0, 1fr);
     padding: 6px 12px;
   }
 
