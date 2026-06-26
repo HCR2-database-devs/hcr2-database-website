@@ -333,6 +333,19 @@ export function asText(value: unknown): string {
   return value === null || value === undefined ? "" : String(value);
 }
 
+export function formatDate(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
 export function formatDistance(value: unknown, decimals: number | null = null): string {
   if (value === null || value === undefined || value === "") {
     return "";

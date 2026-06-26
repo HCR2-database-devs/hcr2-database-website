@@ -1,6 +1,6 @@
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.api.dependencies import (
@@ -32,6 +32,7 @@ from app.services.admin_service import (
     AdminService,
     AdminServiceError,
     AdminUnsupportedMediaError,
+    maintenance_flag_path,
 )
 from app.services.auth_service import AuthService
 from app.services.news_service import NewsService
@@ -41,6 +42,12 @@ from app.services.public_data_service import (
     PublicDataService,
 )
 from app.services.public_submission_service import PublicSubmissionService
+
+
+def _check_maintenance() -> None:
+    if maintenance_flag_path().exists():
+        raise HTTPException(status_code=503, detail="Service is under maintenance")
+
 
 router = APIRouter()
 
@@ -77,7 +84,7 @@ async def _request_data(request: Request) -> dict[str, Any]:
     return dict(form)
 
 
-@router.get("/php/load_data.php", response_model=None)
+@router.get("/php/load_data.php", response_model=None, dependencies=[Depends(_check_maintenance)])
 def compatibility_load_data(
     service: PublicDataServiceDep,
     data_type: Annotated[str | None, Query(alias="type")] = None,
@@ -92,7 +99,7 @@ def compatibility_load_data(
         return database_error_response(exc)
 
 
-@router.get("/php/api_records.php", response_model=None)
+@router.get("/php/api_records.php", response_model=None, dependencies=[Depends(_check_maintenance)])
 def compatibility_api_records(
     request: Request,
     service: PublicDataServiceDep,
@@ -107,7 +114,7 @@ def compatibility_api_records(
         return database_error_response(exc)
 
 
-@router.get("/php/get_news.php", response_model=None)
+@router.get("/php/get_news.php", response_model=None, dependencies=[Depends(_check_maintenance)])
 def compatibility_get_news(
     service: NewsServiceDep,
     limit: Annotated[str | None, Query()] = None,
@@ -118,7 +125,7 @@ def compatibility_get_news(
         return database_error_response(exc)
 
 
-@router.get("/php/get_hcaptcha_sitekey.php", response_model=None)
+@router.get("/php/get_hcaptcha_sitekey.php", response_model=None, dependencies=[Depends(_check_maintenance)])
 def compatibility_get_hcaptcha_sitekey(settings: SettingsDep) -> Any:
     if not settings.hcaptcha_site_key:
         return error_response("hCaptcha is not configured", status_code=500)
@@ -135,7 +142,7 @@ def compatibility_maintenance_status(
     return admin_service.maintenance_status(bool(status.get("allowed")))
 
 
-@router.post("/php/public_submit.php", response_model=None)
+@router.post("/php/public_submit.php", response_model=None, dependencies=[Depends(_check_maintenance)])
 async def compatibility_public_submit(
     request: Request,
     service: PublicSubmissionServiceDep,

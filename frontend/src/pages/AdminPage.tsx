@@ -2,7 +2,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useAuthStatus } from "../hooks/useAuthStatus";
-import { MapWithIcon, TuningPartWithIcon, VehicleWithIcon } from "../lib/legacyDisplay";
+import { formatDate, MapWithIcon, TuningPartWithIcon, VehicleWithIcon } from "../lib/legacyDisplay";
 import {
   addMap,
   addTuningPart,
@@ -901,7 +901,7 @@ export function AdminPage() {
           {newsQuery.data?.news.map((item) => (
             <div className="news-item" key={item.id}>
               <h3>{item.title}</h3>
-              <div className="frontend-muted">{item.created_at} - {item.author ?? ""}</div>
+              <div className="frontend-muted">{formatDate(item.created_at)} - {item.author ?? ""}</div>
               <div className="frontend-pre-wrap">{item.content}</div>
               <div className="admin-actions admin-actions--compact">
                 <button type="button" onClick={() => startEditingNews(item)} className="button-ghost">

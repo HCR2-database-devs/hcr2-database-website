@@ -1,6 +1,6 @@
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from app.api.dependencies import (
@@ -10,11 +10,18 @@ from app.api.dependencies import (
 )
 from app.api.responses import DATABASE_ERROR_TYPES, database_error_response, error_response
 from app.core.config import Settings, get_settings
+from app.services.admin_service import maintenance_flag_path
 from app.services.news_service import NewsService
 from app.services.public_data_service import PublicDataService
 from app.services.public_submission_service import PublicSubmissionService
 
-router = APIRouter(tags=["public"])
+
+def _check_maintenance() -> None:
+    if maintenance_flag_path().exists():
+        raise HTTPException(status_code=503, detail="Service is under maintenance")
+
+
+router = APIRouter(tags=["public"], dependencies=[Depends(_check_maintenance)])
 
 PublicDataServiceDep = Annotated[PublicDataService, Depends(get_public_data_service)]
 NewsServiceDep = Annotated[NewsService, Depends(get_news_service)]
