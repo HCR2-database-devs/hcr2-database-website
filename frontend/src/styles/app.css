@@ -621,7 +621,7 @@ h3 {
 }
 
 .filter-container {
-  align-items: center;
+  align-items: flex-start;
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -1743,6 +1743,7 @@ tbody tr:hover {
   }
 
   .filter-row {
+    flex: 0 0 auto;
     gap: 4px;
   }
 
@@ -1827,8 +1828,13 @@ tbody tr:hover {
   }
 
   .dropdown-panel {
-    min-width: 100%;
-    position: static;
+    min-width: 0;
+    position: absolute;
+    width: min(90vw, 420px);
+    max-width: 90vw;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 30;
   }
 
   .public-records-table {
@@ -1899,6 +1905,19 @@ tbody tr:hover {
 
   .tuning-parts-row {
     gap: 2px;
+  }
+
+  .dropdown-content label {
+    white-space: nowrap;
+  }
+
+  .dropdown-content label .map-cell,
+  .dropdown-content label .vehicle-cell,
+  .dropdown-content label .tuning-part-cell,
+  .dropdown-content label .country-cell {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
   }
 }
 
