@@ -1826,6 +1826,7 @@ tbody tr:hover {
     max-height: 60vh;
     margin-top: 0;
     overflow: auto;
+    transform: none;
   }
 
   .filter-distance {
