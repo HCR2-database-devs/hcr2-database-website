@@ -489,7 +489,7 @@ function VirtualRecordsTable({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const highlightTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const rowVirtualizer = useVirtualizer({
     count: isMobile ? 0 : rows.length,
