@@ -1815,6 +1815,13 @@ tbody tr:hover {
     width: 100%;
   }
 
+  .multi-dropdown .dropdown-panel {
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: auto;
+    width: min(90vw, 400px);
+  }
+
   .filter-distance {
     align-items: stretch;
     display: flex;
