@@ -338,14 +338,16 @@ function PlayerFilters({
 
   return (
     <div id="filter-container" className="filter-container filter-container--compact">
-      <input
-        type="text"
-        id="player-search"
-        className="filter-search"
-        placeholder="Search by player name"
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-      />
+      <div className="filter-row filter-row--search">
+        <input
+          type="text"
+          id="player-search"
+          className="filter-search"
+          placeholder="Search by player name"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+      </div>
       <MultiDropdown
         id="country"
         buttonLabel="Countries"

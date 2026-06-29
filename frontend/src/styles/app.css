@@ -1747,6 +1747,10 @@ tbody tr:hover {
     gap: 4px;
   }
 
+  .filter-row--search:empty {
+    display: none;
+  }
+
   .filter-search,
   .filter-input,
   .filter-select,
