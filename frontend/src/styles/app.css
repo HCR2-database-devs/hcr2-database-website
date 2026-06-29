@@ -1815,15 +1815,22 @@ tbody tr:hover {
     width: 100%;
   }
 
+  .multi-dropdown {
+    position: static;
+  }
+
   .multi-dropdown .dropdown-panel {
     position: fixed;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    min-width: auto;
-    width: min(90vw, 400px);
-    max-height: 80vh;
+    left: 10px;
+    right: 10px;
+    top: auto;
+    bottom: 10px;
+    width: auto;
+    min-width: 0;
+    max-height: 60vh;
     margin-top: 0;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
   }
 
   .filter-distance {
