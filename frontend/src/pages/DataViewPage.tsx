@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { useSearchParams } from "react-router-dom";
 
 import {
   asText,
@@ -411,6 +412,22 @@ function useMediaQuery(query: string): boolean {
   return matches;
 }
 
+function ShareButton({ shareUrl }: { shareUrl: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard?.writeText(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [shareUrl]);
+
+  return (
+    <button className="share-btn" type="button" onClick={handleCopy}>
+      {copied ? "Copied!" : "Copy"}
+    </button>
+  );
+}
+
 function recordRow(item: DataRow, index: number, onNote: (note: string) => void) {
   const recordId = asText(item.idRecord ?? item.record_id ?? item.idrecord);
   const note = asText(item.questionable_reason ?? item.questionableReason);
@@ -445,9 +462,7 @@ function recordRow(item: DataRow, index: number, onNote: (note: string) => void)
         <CountryWithFlag country={item.player_country} />
       </td>
       <td data-label="Share">
-        <button className="share-btn" type="button" onClick={() => navigator.clipboard?.writeText(shareUrl)}>
-          Copy
-        </button>
+        <ShareButton shareUrl={shareUrl} />
       </td>
     </tr>
   );
@@ -460,7 +475,8 @@ function VirtualRecordsTable({
   isFetchingNextPage,
   onLoadMore,
   onNote,
-  isMobile
+  isMobile,
+  scrollToRecordId
 }: {
   rows: DataRow[];
   total: number;
@@ -469,9 +485,11 @@ function VirtualRecordsTable({
   onLoadMore: () => void;
   onNote: (note: string) => void;
   isMobile: boolean;
+  scrollToRecordId?: string | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const rowVirtualizer = useVirtualizer({
     count: isMobile ? 0 : rows.length,
@@ -481,6 +499,35 @@ function VirtualRecordsTable({
   });
 
   const virtualItems = rowVirtualizer.getVirtualItems();
+
+  useEffect(() => {
+    if (!scrollToRecordId) return;
+
+    const targetIndex = rows.findIndex((item) => {
+      const id = asText(item.idRecord ?? item.record_id ?? item.idrecord);
+      return id === scrollToRecordId;
+    });
+    if (targetIndex === -1) return;
+
+    if (isMobile) {
+      const row = document.querySelector(`[data-record-id="${CSS.escape(scrollToRecordId)}"]`);
+      if (row) {
+        row.scrollIntoView({ behavior: "smooth", block: "center" });
+        row.classList.add("highlighted-record");
+      }
+    } else {
+      rowVirtualizer.scrollToIndex(targetIndex, { align: "center" });
+      const row = document.querySelector(`[data-record-id="${CSS.escape(scrollToRecordId)}"]`);
+      if (row) {
+        row.classList.add("highlighted-record");
+      }
+    }
+
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = setTimeout(() => {
+      document.querySelectorAll(".highlighted-record").forEach((el) => el.classList.remove("highlighted-record"));
+    }, 3000);
+  }, [scrollToRecordId, rows, isMobile, rowVirtualizer]);
 
   useEffect(() => {
     if (isMobile) {
@@ -790,6 +837,10 @@ export function DataViewPage({ view }: DataViewPageProps) {
   const [note, setNote] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
+  const [searchParams] = useSearchParams();
+  const [scrollTargetRecordId, setScrollTargetRecordId] = useState<string | null>(() =>
+    searchParams.get("recordId") ?? null
+  );
 
   // ── Records view state ──────────────────────────────────────────────────────
   const [recordFilters, setRecordFilters] = useState<RecordFilters>(emptyRecordFilters);
@@ -926,6 +977,7 @@ export function DataViewPage({ view }: DataViewPageProps) {
                 onLoadMore={() => recordsQuery.fetchNextPage()}
                 onNote={setNote}
                 isMobile={isMobile}
+                scrollToRecordId={scrollTargetRecordId}
               />
             )}
           </>

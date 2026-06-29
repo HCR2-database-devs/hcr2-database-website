@@ -336,6 +336,15 @@ a:hover {
   box-shadow: var(--shadow-inset), 0 5px 0 rgba(3, 7, 24, 0.76), 0 0 18px rgba(62, 232, 255, 0.22);
 }
 
+@keyframes highlight-record {
+  from { background: rgba(62, 232, 255, 0.2); }
+  to   { background: transparent; }
+}
+
+.highlighted-record {
+  animation: highlight-record 3s ease-out;
+}
+
 .nav-link.is-active,
 .nav-action--primary,
 .button--primary,
