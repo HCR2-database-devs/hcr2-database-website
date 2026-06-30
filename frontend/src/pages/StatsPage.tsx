@@ -216,14 +216,14 @@ export function StatsPage() {
 
   const longestActive = useMemo(() => {
     let best: DataRow | null = null;
-    rows.forEach((row) => {
+    for (const row of rows) {
       if (
         row.current === true &&
         (!best || Number(row.idRecord) < Number(best.idRecord))
       ) {
         best = row;
       }
-    });
+    }
     return best;
   }, [rows]);
 
