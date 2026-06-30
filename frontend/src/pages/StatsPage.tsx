@@ -199,6 +199,53 @@ export function StatsPage() {
     };
   }, [rows]);
 
+  const mythicCoverage = useMemo(() => {
+    const allPairs = new Set<string>();
+    const mythicPairs = new Set<string>();
+    rows.forEach((row) => {
+      const map = asText(row.map_name) || "Unknown";
+      const vehicle = asText(row.vehicle_name) || "Unknown";
+      const key = `${map}|${vehicle}`;
+      allPairs.add(key);
+      if (row.isMythic === true) {
+        mythicPairs.add(key);
+      }
+    });
+    return allPairs.size > 0 ? ((mythicPairs.size / allPairs.size) * 100).toFixed(1) : "0.0";
+  }, [rows]);
+
+  const longestActive = useMemo(() => {
+    let best: DataRow | null = null;
+    rows.forEach((row) => {
+      if (
+        row.current === true &&
+        (!best || Number(row.idRecord) < Number(best.idRecord))
+      ) {
+        best = row;
+      }
+    });
+    return best;
+  }, [rows]);
+
+  const playerStreaks = useMemo(() => {
+    const perPlayer: Record<string, Record<string, number>> = {};
+    rows.forEach((row) => {
+      if (row.current === true) {
+        const player = asText(row.player_name) || "Unknown";
+        const map = asText(row.map_name) || "Unknown";
+        perPlayer[player] = perPlayer[player] ?? {};
+        perPlayer[player][map] = (perPlayer[player][map] ?? 0) + 1;
+      }
+    });
+    return Object.entries(perPlayer)
+      .map(([player, maps]) => {
+        const bestMap = Object.entries(maps).sort((a, b) => b[1] - a[1])[0];
+        return { player, map: bestMap[0], count: bestMap[1] };
+      })
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [rows]);
+
   const countryEntries = useMemo(() => {
     let otherCount = 0;
     const grouped: Record<string, number> = {};
@@ -359,7 +406,8 @@ export function StatsPage() {
     { label: "Average Distance", value: formatDistance(totalDistance / Math.max(rows.length, 1), 2) },
     { label: "Unique Players", value: new Set(rows.map((row) => asText(row.player_name))).size },
     { label: "Unique Vehicles", value: new Set(rows.map((row) => asText(row.vehicle_name))).size },
-    { label: "Unique Maps", value: new Set(rows.map((row) => asText(row.map_name))).size }
+    { label: "Unique Maps", value: new Set(rows.map((row) => asText(row.map_name))).size },
+    { label: "Mythic Coverage", value: `${mythicCoverage}%` }
   ];
 
   return (
@@ -382,6 +430,23 @@ export function StatsPage() {
               </div>
             ))}
           </section>
+
+          {longestActive && (
+            <section className="stats-section" style={{ marginTop: "1.5rem" }}>
+              <h2>Longest Active Record</h2>
+              <p style={{ fontSize: "1.1em", textAlign: "center", padding: "0.75rem" }}>
+                <MapWithIcon name={asText(longestActive.map_name)} />
+                {" on "}
+                <VehicleWithIcon name={asText(longestActive.vehicle_name)} />
+                {" by "}
+                <strong>{asText(longestActive.player_name)}</strong>
+                {" — "}
+                <span style={{ fontSize: "1.3em", fontWeight: 800 }}>
+                  {formatDistance(distance(longestActive))}
+                </span>
+              </p>
+            </section>
+          )}
 
           <section className="stats-section">
             <div className="section-toolbar">
@@ -640,6 +705,33 @@ export function StatsPage() {
               </div>
             </div>
           </section>
+
+          {playerStreaks.length > 0 && (
+            <section className="stats-section">
+              <h2>Player Streaks</h2>
+              <p className="eyebrow">Most records on a single map</p>
+              <TableFrame>
+                <table className="stats-usage-table">
+                  <tbody>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Player</th>
+                      <th>Dominant Map</th>
+                      <th>Records</th>
+                    </tr>
+                    {playerStreaks.map((item, index) => (
+                      <tr key={item.player}>
+                        <td>{index + 1}</td>
+                        <td>{item.player}</td>
+                        <td><MapWithIcon name={item.map} /></td>
+                        <td>{item.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableFrame>
+            </section>
+          )}
         </>
       )}
     </main>
