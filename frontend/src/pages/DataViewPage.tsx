@@ -57,7 +57,7 @@ const viewMeta: Record<PublicDataView, { eyebrow: string; title: string; descrip
   records: {
     eyebrow: "Leaderboard",
     title: "Records",
-    description: "Search, filter and export the current public Adventure world records."
+    description: "Adventure world records without mythic parts."
   }
 };
 
@@ -943,7 +943,7 @@ export function DataViewPage({ view, mythic = false }: DataViewPageProps) {
       return {
         eyebrow: "Leaderboard",
         title: "Mythic Records",
-        description: "Mythic world records achieved with Echo or Amplifier tuning parts. Yellow accents mark mythic gear."
+        description: "Mythic world records achieved with Echo or Amplifier tuning parts."
       };
     }
     return viewMeta[view];

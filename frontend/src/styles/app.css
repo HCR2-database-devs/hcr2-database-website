@@ -369,6 +369,47 @@ a:hover {
   box-shadow: var(--shadow-inset), 0 5px 0 rgba(5, 38, 21, 0.82), 0 0 22px rgba(73, 255, 117, 0.34);
 }
 
+.nav-dropdown-wrapper {
+  position: relative;
+}
+
+.nav-dropdown-menu {
+  background: var(--surface);
+  border: 2px solid var(--outline);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow), 0 4px 12px rgba(0, 0, 0, 0.4);
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 140px;
+  z-index: 100;
+}
+
+.nav-dropdown-menu.is-open {
+  display: flex;
+}
+
+.nav-dropdown-menu .nav-link {
+  justify-content: flex-start;
+  white-space: nowrap;
+  width: 100%;
+}
+
+@media (max-width: 1060px) {
+  .nav-dropdown-wrapper {
+    flex: 1 1 140px;
+  }
+
+  .nav-dropdown-menu {
+    position: static;
+    width: 100%;
+  }
+}
+
 .button--secondary,
 .button-ghost {
   background: var(--gloss), var(--button-secondary-gradient);

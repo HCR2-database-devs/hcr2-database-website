@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
 
 import { NewsModal } from "./NewsModal";
 import { PublicSubmitModal } from "./PublicSubmitModal";
@@ -11,8 +11,6 @@ const navItems = [
   { label: "Vehicles", to: "/vehicles" },
   { label: "Players", to: "/players" },
   { label: "Tuning", to: "/tuning-parts" },
-  { label: "Records", to: "/records" },
-  { label: "Mythic", to: "/records/mythic" },
   { label: "Stats", to: "/stats" }
 ];
 
@@ -26,6 +24,22 @@ export function Header() {
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [isNewsOpen, setNewsOpen] = useState(false);
   const [isSubmitOpen, setSubmitOpen] = useState(false);
+  const [isRecordsOpen, setRecordsOpen] = useState(false);
+  const recordsRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const canHover = window.matchMedia("(hover: hover)").matches;
+
+  const isRecordsActive = location.pathname === "/records" || location.pathname.startsWith("/records");
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (recordsRef.current && !recordsRef.current.contains(e.target as Node)) {
+        setRecordsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   function closeMobileMenu() {
     setMenuOpen(false);
@@ -66,6 +80,50 @@ export function Header() {
                   {item.label}
                 </NavLink>
               ))}
+              <div
+                className="nav-dropdown-wrapper"
+                ref={recordsRef}
+                onMouseEnter={() => canHover && setRecordsOpen(true)}
+                onMouseLeave={() => canHover && setRecordsOpen(false)}
+              >
+                <span
+                  className={`nav-link${isRecordsActive ? " is-active" : ""}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setRecordsOpen((prev) => !prev)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setRecordsOpen((prev) => !prev);
+                    }
+                  }}
+                >
+                  Records
+                </span>
+                <div className={`nav-dropdown-menu${isRecordsOpen ? " is-open" : ""}`}>
+                  <NavLink
+                    to="/records"
+                    end
+                    className={navClassName}
+                    onClick={() => {
+                      closeMobileMenu();
+                      setRecordsOpen(false);
+                    }}
+                  >
+                    Normal
+                  </NavLink>
+                  <NavLink
+                    to="/records/mythic"
+                    className={navClassName}
+                    onClick={() => {
+                      closeMobileMenu();
+                      setRecordsOpen(false);
+                    }}
+                  >
+                    Mythic
+                  </NavLink>
+                </div>
+              </div>
             </div>
 
             <div className="header-actions">
