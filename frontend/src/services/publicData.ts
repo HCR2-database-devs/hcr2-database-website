@@ -13,7 +13,8 @@ export function getPublicData(view: Exclude<PublicDataView, "records">) {
   return fetchJson<DataRow[]>(dataEndpoints[view]);
 }
 
-function addMythicParam(params: URLSearchParams, mythic: boolean) {
+function addMythicParam(params: URLSearchParams, mythic: boolean | undefined) {
+  if (mythic === undefined) return;
   params.set("mythic", mythic ? "true" : "false");
 }
 

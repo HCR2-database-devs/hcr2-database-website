@@ -83,7 +83,7 @@ export type RecordFilters = {
   questionableOnly: boolean;
   verifiedOnly: boolean;
   sort: string;
-  mythic: boolean;
+  mythic?: boolean;
 };
 
 export const emptyRecordFilters: RecordFilters = {
@@ -96,7 +96,7 @@ export const emptyRecordFilters: RecordFilters = {
   questionableOnly: false,
   verifiedOnly: false,
   sort: "default",
-  mythic: false
+  mythic: undefined
 };
 
 export type PaginatedRecordsResponse = {

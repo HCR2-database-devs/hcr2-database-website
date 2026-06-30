@@ -218,7 +218,7 @@ export function StatsPage() {
     let best: DataRow | null = null;
     for (const row of rows) {
       if (
-        row.current === true &&
+        row.current === 1 &&
         (!best || Number(row.idRecord) < Number(best.idRecord))
       ) {
         best = row;
@@ -230,7 +230,7 @@ export function StatsPage() {
   const playerStreaks = useMemo(() => {
     const perPlayer: Record<string, Record<string, number>> = {};
     rows.forEach((row) => {
-      if (row.current === true) {
+      if (row.current === 1) {
         const player = asText(row.player_name) || "Unknown";
         const map = asText(row.map_name) || "Unknown";
         perPlayer[player] = perPlayer[player] ?? {};
