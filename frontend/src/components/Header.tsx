@@ -27,7 +27,7 @@ export function Header() {
   const [isRecordsOpen, setRecordsOpen] = useState(false);
   const recordsRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
-  const closeTimer = useRef<ReturnType<typeof setTimeout>>();
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const isRecordsActive = location.pathname === "/records" || location.pathname.startsWith("/records");
 
