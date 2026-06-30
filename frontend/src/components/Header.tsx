@@ -27,7 +27,7 @@ export function Header() {
   const [isRecordsOpen, setRecordsOpen] = useState(false);
   const recordsRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
-  const canHover = window.matchMedia("(hover: hover)").matches;
+  const closeTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const isRecordsActive = location.pathname === "/records" || location.pathname.startsWith("/records");
 
@@ -40,6 +40,16 @@ export function Header() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
+
+  function handleRecordsEnter() {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    setRecordsOpen(true);
+  }
+
+  function handleRecordsLeave() {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setRecordsOpen(false), 200);
+  }
 
   function closeMobileMenu() {
     setMenuOpen(false);
@@ -83,14 +93,15 @@ export function Header() {
               <div
                 className="nav-dropdown-wrapper"
                 ref={recordsRef}
-                onMouseEnter={() => canHover && setRecordsOpen(true)}
-                onMouseLeave={() => canHover && setRecordsOpen(false)}
+                onMouseEnter={handleRecordsEnter}
+                onMouseLeave={handleRecordsLeave}
               >
                 <span
                   className={`nav-link${isRecordsActive ? " is-active" : ""}`}
                   role="button"
                   tabIndex={0}
                   onClick={() => setRecordsOpen((prev) => !prev)}
+                  onMouseEnter={handleRecordsEnter}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
@@ -100,7 +111,11 @@ export function Header() {
                 >
                   Records
                 </span>
-                <div className={`nav-dropdown-menu${isRecordsOpen ? " is-open" : ""}`}>
+                <div
+                  className={`nav-dropdown-menu${isRecordsOpen ? " is-open" : ""}`}
+                  onMouseEnter={handleRecordsEnter}
+                  onMouseLeave={handleRecordsLeave}
+                >
                   <NavLink
                     to="/records"
                     end
