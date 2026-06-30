@@ -851,6 +851,10 @@ export function DataViewPage({ view, mythic = false }: DataViewPageProps) {
     mythic
   }));
 
+  useEffect(() => {
+    setRecordFilters((prev) => ({ ...prev, mythic }));
+  }, [mythic]);
+
   const recordsQuery = useInfiniteQuery({
     queryKey: ["records-paginated", mythic, recordFilters],
     queryFn: ({ pageParam }) => getRecordsPaginated(recordFilters, pageParam as number),
