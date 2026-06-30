@@ -32,6 +32,7 @@ export type AdminRecord = {
   distance: number;
   current: number;
   questionable: number;
+  mythic?: boolean;
   questionable_reason?: string | null;
   map_name?: string | null;
   vehicle_name?: string | null;
@@ -82,6 +83,7 @@ export type RecordFilters = {
   questionableOnly: boolean;
   verifiedOnly: boolean;
   sort: string;
+  mythic: boolean;
 };
 
 export const emptyRecordFilters: RecordFilters = {
@@ -93,7 +95,8 @@ export const emptyRecordFilters: RecordFilters = {
   distance: "",
   questionableOnly: false,
   verifiedOnly: false,
-  sort: "default"
+  sort: "default",
+  mythic: false
 };
 
 export type PaginatedRecordsResponse = {

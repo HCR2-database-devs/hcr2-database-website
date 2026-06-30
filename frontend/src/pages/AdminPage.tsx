@@ -90,7 +90,8 @@ function setupLabel(row: DataRow) {
 }
 
 function recordLabel(record: AdminRecord) {
-  return `${record.distance} - ${record.map_name ?? "Unknown"} - ${
+  const mythicTag = record.mythic ? " [M]" : "";
+  return `${record.distance}${mythicTag} - ${record.map_name ?? "Unknown"} - ${
     record.vehicle_name ?? "Unknown"
   } - ${record.player_name ?? "Unknown"}`;
 }

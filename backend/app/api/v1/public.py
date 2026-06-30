@@ -81,6 +81,7 @@ def list_records(
     limit: Annotated[str | None, Query()] = None,
     offset: Annotated[str | None, Query()] = None,
     export: Annotated[str | None, Query()] = None,
+    mythic: Annotated[str | None, Query()] = None,
 ) -> Any:
     filters = {
         "q": q,
@@ -94,6 +95,7 @@ def list_records(
         "limit": limit,
         "offset": offset,
         "export": export,
+        "mythic": mythic,
     }
     try:
         return service.list_records_paginated(filters)

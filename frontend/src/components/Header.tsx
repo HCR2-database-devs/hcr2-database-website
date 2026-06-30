@@ -12,6 +12,7 @@ const navItems = [
   { label: "Players", to: "/players" },
   { label: "Tuning", to: "/tuning-parts" },
   { label: "Records", to: "/records" },
+  { label: "Mythic", to: "/records/mythic" },
   { label: "Stats", to: "/stats" }
 ];
 

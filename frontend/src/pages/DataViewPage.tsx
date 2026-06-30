@@ -64,6 +64,7 @@ const viewMeta: Record<PublicDataView, { eyebrow: string; title: string; descrip
 
 type DataViewPageProps = {
   view: PublicDataView;
+  mythic?: boolean;
 };
 
 type MultiDropdownProps = {
@@ -428,11 +429,11 @@ function ShareButton({ shareUrl }: { shareUrl: string }) {
   );
 }
 
-function recordRow(item: DataRow, index: number, onNote: (note: string) => void) {
+function recordRow(item: DataRow, index: number, onNote: (note: string) => void, shareBasePath = "/records") {
   const recordId = asText(item.idRecord ?? item.record_id ?? item.idrecord);
   const note = asText(item.questionable_reason ?? item.questionableReason);
   const mapName = asText(item.map_name);
-  const shareUrl = `${window.location.origin}/records?recordId=${encodeURIComponent(recordId)}&map=${encodeURIComponent(mapName)}`;
+  const shareUrl = `${window.location.origin}${shareBasePath}?recordId=${encodeURIComponent(recordId)}&map=${encodeURIComponent(mapName)}`;
   return (
     <tr key={recordId || index} data-record-id={recordId}>
       <td data-label="Distance">{formatDistance(item.distance)}</td>
@@ -476,7 +477,8 @@ function VirtualRecordsTable({
   onLoadMore,
   onNote,
   isMobile,
-  scrollToRecordId
+  scrollToRecordId,
+  shareBasePath = "/records"
 }: {
   rows: DataRow[];
   total: number;
@@ -486,6 +488,7 @@ function VirtualRecordsTable({
   onNote: (note: string) => void;
   isMobile: boolean;
   scrollToRecordId?: string | null;
+  shareBasePath?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -570,7 +573,7 @@ function VirtualRecordsTable({
               </tr>
             </thead>
             <tbody>
-              {rows.map((item, index) => recordRow(item, index, onNote))}
+              {rows.map((item, index) => recordRow(item, index, onNote, shareBasePath))}
             </tbody>
           </table>
           <div ref={sentinelRef} />
@@ -614,7 +617,7 @@ function VirtualRecordsTable({
                 <td colSpan={RECORDS_COL_COUNT} style={{ height: paddingTop, padding: 0, border: "none" }} />
               </tr>
             )}
-            {virtualItems.map((vRow) => recordRow(rows[vRow.index], vRow.index, onNote))}
+            {virtualItems.map((vRow) => recordRow(rows[vRow.index], vRow.index, onNote, shareBasePath))}
             {paddingBottom > 0 && (
               <tr>
                 <td colSpan={RECORDS_COL_COUNT} style={{ height: paddingBottom, padding: 0, border: "none" }} />
@@ -833,7 +836,7 @@ function NoteModal({ note, onClose }: { note: string; onClose: () => void }) {
   );
 }
 
-export function DataViewPage({ view }: DataViewPageProps) {
+export function DataViewPage({ view, mythic = false }: DataViewPageProps) {
   const [note, setNote] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
@@ -843,7 +846,10 @@ export function DataViewPage({ view }: DataViewPageProps) {
   );
 
   // ── Records view state ──────────────────────────────────────────────────────
-  const [recordFilters, setRecordFilters] = useState<RecordFilters>(emptyRecordFilters);
+  const [recordFilters, setRecordFilters] = useState<RecordFilters>(() => ({
+    ...emptyRecordFilters,
+    mythic
+  }));
 
   const recordsQuery = useInfiniteQuery({
     queryKey: ["records-paginated", recordFilters],
@@ -932,10 +938,20 @@ export function DataViewPage({ view }: DataViewPageProps) {
   }, [view, rows]);
 
   const [visiblePlayers, setVisiblePlayers] = useState<DataRow[]>([]);
-  const meta = viewMeta[view];
+  const meta = useMemo(() => {
+    if (view === "records" && mythic) {
+      return {
+        eyebrow: "Leaderboard",
+        title: "Mythic Records",
+        description: "Mythic world records achieved with Echo or Amplifier tuning parts. Yellow accents mark mythic gear."
+      };
+    }
+    return viewMeta[view];
+  }, [view, mythic]);
+  const shareBasePath = mythic ? "/records/mythic" : "/records";
 
   return (
-    <main className="data-page">
+    <main className={`data-page${mythic ? " mythic-page" : ""}`}>
       <section className="page-hero page-hero--compact" aria-labelledby="data-view-title">
         <p className="eyebrow">{meta.eyebrow}</p>
         <h1 id="data-view-title">{meta.title}</h1>
@@ -978,6 +994,7 @@ export function DataViewPage({ view }: DataViewPageProps) {
                 onNote={setNote}
                 isMobile={isMobile}
                 scrollToRecordId={scrollTargetRecordId}
+                shareBasePath={shareBasePath}
               />
             )}
           </>

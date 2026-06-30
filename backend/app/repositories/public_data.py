@@ -108,6 +108,7 @@ class PostgresPublicDataRepository:
                 wr.current,
                 wr.id_tuning_setup AS "idTuningSetup",
                 wr.questionable,
+                wr.is_mythic AS "isMythic",
                 COALESCE(wr.questionable_reason, '') AS questionable_reason,
                 m.name_map AS map_name,
                 v.name_vehicle AS vehicle_name,
@@ -123,7 +124,7 @@ class PostgresPublicDataRepository:
             WHERE wr.current = 1
             GROUP BY wr.id_record, wr.id_map, wr.id_vehicle, wr.id_player,
                 wr.distance, wr.current, wr.id_tuning_setup, wr.questionable,
-                wr.questionable_reason, m.name_map, v.name_vehicle, p.name_player, p.country
+                wr.is_mythic, wr.questionable_reason, m.name_map, v.name_vehicle, p.name_player, p.country
             ORDER BY wr.id_map DESC
             """
         )
@@ -162,6 +163,11 @@ class PostgresPublicDataRepository:
                 ")"
             )
             params["tuning_parts"] = tuning_parts
+
+        mythic = filters.get("mythic")
+        if mythic in {"true", "false", True, False}:
+            where.append("wr.is_mythic = %(mythic)s")
+            params["mythic"] = str(mythic).lower() == "true"
 
         questionable = filters.get("questionable")
         if questionable in {"0", "1", 0, 1}:
@@ -222,6 +228,7 @@ class PostgresPublicDataRepository:
                 wr.current,
                 wr.id_tuning_setup AS "idTuningSetup",
                 wr.questionable,
+                wr.is_mythic AS "isMythic",
                 COALESCE(wr.questionable_reason, '') AS questionable_reason,
                 m.name_map AS map_name,
                 v.name_vehicle AS vehicle_name,
@@ -237,7 +244,7 @@ class PostgresPublicDataRepository:
             WHERE {where_clause}
             GROUP BY wr.id_record, wr.id_map, wr.id_vehicle, wr.id_player,
                 wr.distance, wr.current, wr.id_tuning_setup, wr.questionable,
-                wr.questionable_reason, m.name_map, v.name_vehicle, p.name_player, p.country
+                wr.is_mythic, wr.questionable_reason, m.name_map, v.name_vehicle, p.name_player, p.country
             ORDER BY {order_by}
             LIMIT %(limit)s OFFSET %(offset)s
             """,
@@ -265,6 +272,11 @@ class PostgresPublicDataRepository:
         if vehicle_value is not None:
             where.append("LOWER(v.name_vehicle) = LOWER(%(vehicle)s)")
             params["vehicle"] = vehicle_value
+
+        mythic = filters.get("mythic")
+        if mythic in {"true", "false", True, False}:
+            where.append("wr.is_mythic = %(mythic)s")
+            params["mythic"] = str(mythic).lower() == "true"
 
         questionable = filters.get("questionable")
         if questionable in {"0", "1", 0, 1}:
@@ -311,6 +323,7 @@ class PostgresPublicDataRepository:
                 wr.current,
                 wr.id_tuning_setup AS "idTuningSetup",
                 wr.questionable,
+                wr.is_mythic AS "isMythic",
                 COALESCE(wr.questionable_reason, '') AS notes,
                 m.name_map AS map_name,
                 v.name_vehicle AS vehicle_name,
@@ -326,7 +339,7 @@ class PostgresPublicDataRepository:
             WHERE {' AND '.join(where)}
             GROUP BY wr.id_record, wr.id_map, wr.id_vehicle, wr.id_player,
                 wr.distance, wr.current, wr.id_tuning_setup, wr.questionable,
-                wr.questionable_reason, m.name_map, v.name_vehicle, p.name_player, p.country
+                wr.is_mythic, wr.questionable_reason, m.name_map, v.name_vehicle, p.name_player, p.country
             ORDER BY wr.id_map DESC
             LIMIT %(limit)s OFFSET %(offset)s
             """,

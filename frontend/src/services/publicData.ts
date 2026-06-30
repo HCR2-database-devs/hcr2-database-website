@@ -13,6 +13,10 @@ export function getPublicData(view: Exclude<PublicDataView, "records">) {
   return fetchJson<DataRow[]>(dataEndpoints[view]);
 }
 
+function addMythicParam(params: URLSearchParams, mythic: boolean) {
+  params.set("mythic", mythic ? "true" : "false");
+}
+
 export function getRecordsPaginated(filters: RecordFilters, pageParam: number): Promise<PaginatedRecordsResponse> {
   const params = new URLSearchParams();
   params.set("limit", "50");
@@ -26,6 +30,7 @@ export function getRecordsPaginated(filters: RecordFilters, pageParam: number): 
   else if (filters.verifiedOnly) params.set("questionable", "0");
   if (filters.distanceOp === "gte" && filters.distance) params.set("min_distance", filters.distance);
   if (filters.distanceOp === "lte" && filters.distance) params.set("max_distance", filters.distance);
+  addMythicParam(params, filters.mythic);
   return fetchJson<PaginatedRecordsResponse>(`/api/v1/records?${params}`);
 }
 
@@ -41,6 +46,7 @@ export function exportRecords(filters: RecordFilters): Promise<PaginatedRecordsR
   else if (filters.verifiedOnly) params.set("questionable", "0");
   if (filters.distanceOp === "gte" && filters.distance) params.set("min_distance", filters.distance);
   if (filters.distanceOp === "lte" && filters.distance) params.set("max_distance", filters.distance);
+  addMythicParam(params, filters.mythic);
   return fetchJson<PaginatedRecordsResponse>(`/api/v1/records?${params}`);
 }
 

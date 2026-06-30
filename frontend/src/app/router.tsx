@@ -21,6 +21,7 @@ export const router = createBrowserRouter([
       { path: "tuning-parts", element: <DataViewPage view="tuning-parts" /> },
       { path: "tuning-setups", element: <DataViewPage view="tuning-setups" /> },
       { path: "records", element: <DataViewPage view="records" /> },
+      { path: "records/mythic", element: <DataViewPage view="records" mythic /> },
       { path: "stats", element: <StatsPage /> },
       { path: "*", element: <NotFoundPage /> }
     ]

@@ -87,6 +87,7 @@ class AdminService:
                         wr.distance,
                         wr.current,
                         wr.questionable,
+                        wr.is_mythic AS "mythic",
                         COALESCE(wr.questionable_reason, '') AS questionable_reason,
                         m.name_map AS map_name,
                         v.name_vehicle AS vehicle_name,
@@ -144,6 +145,21 @@ class AdminService:
                 )
                 return {"pending": [dict(row) for row in cursor.fetchall()]}
 
+    def _is_mythic_setup(self, cursor: Any, tuning_setup_id: int | None) -> bool:
+        if tuning_setup_id is None:
+            return False
+        cursor.execute(
+            """
+            SELECT 1 FROM tuning_setup_part tsp
+            JOIN tuning_part tp ON tp.id_tuning_part = tsp.id_tuning_part
+            WHERE tsp.id_tuning_setup = %s
+            AND tp.name_tuning_part IN ('Echo', 'Amplifier')
+            LIMIT 1
+            """,
+            (tuning_setup_id,),
+        )
+        return cursor.fetchone() is not None
+
     def submit_record(self, payload: SubmitRecordRequest) -> dict[str, Any]:
         if payload.distance <= 0:
             raise AdminServiceError("Distance must be a positive number.")
@@ -169,19 +185,20 @@ class AdminService:
                         "Tuning setup not found.",
                     )
 
+                is_mythic = self._is_mythic_setup(cursor, payload.tuning_setup_id)
                 player_id = self._resolve_player(cursor, payload)
 
                 cursor.execute(
-                    "DELETE FROM world_record WHERE id_map = %s AND id_vehicle = %s",
-                    (payload.map_id, payload.vehicle_id),
+                    "DELETE FROM world_record WHERE id_map = %s AND id_vehicle = %s AND is_mythic = %s",
+                    (payload.map_id, payload.vehicle_id, is_mythic),
                 )
                 cursor.execute(
                     """
                     INSERT INTO world_record (
                         id_map, id_vehicle, id_player, distance, current,
-                        id_tuning_setup, questionable, questionable_reason
+                        id_tuning_setup, questionable, questionable_reason, is_mythic
                     )
-                    VALUES (%s, %s, %s, %s, 1, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, 1, %s, %s, %s, %s)
                     RETURNING id_record
                     """,
                     (
@@ -192,6 +209,7 @@ class AdminService:
                         payload.tuning_setup_id,
                         payload.questionable,
                         _clean_text(payload.questionable_reason) or None,
+                        is_mythic,
                     ),
                 )
                 record_id = cursor.fetchone()["id_record"]
@@ -396,14 +414,21 @@ class AdminService:
                     )
         return {"success": True, "idTuningSetup": setup_id}
 
+    def _parts_contain_mythic(self, tuning_parts: str) -> bool:
+        names = [p.strip().lower() for p in tuning_parts.split(",") if p.strip()]
+        return "echo" in names or "amplifier" in names
+
     def approve_submission(self, submission_id: int) -> dict[str, bool]:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 submission = self._get_pending_submission(cursor, submission_id)
 
+                tuning_parts = _clean_text(submission.get("tuning_parts"))
+                is_mythic = self._parts_contain_mythic(tuning_parts) if tuning_parts else False
+
                 cursor.execute(
-                    "DELETE FROM world_record WHERE id_map = %s AND id_vehicle = %s",
-                    (submission["id_map"], submission["id_vehicle"]),
+                    "DELETE FROM world_record WHERE id_map = %s AND id_vehicle = %s AND is_mythic = %s",
+                    (submission["id_map"], submission["id_vehicle"], is_mythic),
                 )
 
                 player_id = self._find_or_create_player(
@@ -413,8 +438,8 @@ class AdminService:
                 )
                 cursor.execute(
                     """
-                    INSERT INTO world_record (id_map, id_vehicle, id_player, distance, current)
-                    VALUES (%s, %s, %s, %s, 1)
+                    INSERT INTO world_record (id_map, id_vehicle, id_player, distance, current, is_mythic)
+                    VALUES (%s, %s, %s, %s, 1, %s)
                     RETURNING id_record
                     """,
                     (
@@ -422,11 +447,11 @@ class AdminService:
                         submission["id_vehicle"],
                         player_id,
                         submission["distance"],
+                        is_mythic,
                     ),
                 )
                 record_id = cursor.fetchone()["id_record"]
 
-                tuning_parts = _clean_text(submission.get("tuning_parts"))
                 if tuning_parts:
                     part_ids = self._part_ids_from_names(cursor, tuning_parts)
                     if 3 <= len(part_ids) <= 4:

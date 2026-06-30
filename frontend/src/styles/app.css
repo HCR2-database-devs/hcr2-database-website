@@ -2047,3 +2047,39 @@ tbody tr:hover {
     font-size: 10px;
   }
 }
+
+.mythic-page .filter-container {
+  border-color: rgba(255, 215, 0, 0.6);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.15), inset 0 0 0 1px rgba(255, 215, 0, 0.12);
+}
+
+.mythic-page .filter-search:focus {
+  border-color: gold;
+  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.25), inset 0 2px 0 rgba(0, 0, 0, 0.42);
+}
+
+.mythic-page .page-hero h1 {
+  color: gold;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+}
+
+.mythic-page .public-records-table tbody tr:hover,
+.mythic-page .public-records-table tbody tr:focus-within {
+  box-shadow: inset 0 0 0 1px rgba(255, 215, 0, 0.3);
+}
+
+.mythic-page .public-records-table tbody td:first-child {
+  border-left: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.mythic-page .status-pill--verified {
+  background: rgba(255, 215, 0, 0.15);
+  color: gold;
+  border-color: rgba(255, 215, 0, 0.4);
+}
+
+@media (max-width: 720px) {
+  .mythic-page .filter-container {
+    border-color: rgba(255, 215, 0, 0.5);
+  }
+}
