@@ -1,4 +1,4 @@
-﻿import { FormEvent, useMemo, useState } from "react";
+﻿import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useAuthStatus } from "../hooks/useAuthStatus";
@@ -177,6 +177,19 @@ export function AdminPage() {
       ),
     [playersQuery.data, playerFilter]
   );
+
+  useEffect(() => {
+    if (!recordForm.playerId || !playersQuery.data) return;
+    const player = playersQuery.data.find(
+      (row) => String(numberValue(row, "idPlayer", "idplayer")) === recordForm.playerId
+    );
+    if (player) {
+      const country = text(player, "country");
+      if (country) {
+        setRecordForm((current) => ({ ...current, country }));
+      }
+    }
+  }, [recordForm.playerId, playersQuery.data]);
   const filterRecordOptions = (records: AdminRecord[], filter: string) =>
     records.filter((record) => recordLabel(record).toLowerCase().includes(filter.toLowerCase()));
 

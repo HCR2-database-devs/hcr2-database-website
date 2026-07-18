@@ -1030,6 +1030,19 @@ tbody tr:hover {
   flex-shrink: 0;
 }
 
+.echo-affected-badge {
+  display: block;
+  margin-top: 4px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(255, 180, 60, 0.15);
+  border: 1px solid rgba(255, 180, 60, 0.4);
+  color: var(--accent-yellow);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .country-flag {
   border-radius: 2px;
   display: inline-block;
@@ -1347,10 +1360,10 @@ tbody tr:hover {
 }
 
 .country-records-layout {
-  align-items: center;
+  align-items: start;
   display: grid;
   gap: 24px;
-  grid-template-columns: minmax(440px, 1.35fr) minmax(320px, 0.85fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.85fr);
 }
 
 .country-pie-chart {
@@ -1993,6 +2006,92 @@ tbody tr:hover {
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
+  }
+
+  .stats-usage-table,
+  .stats-usage-table thead,
+  .stats-usage-table tbody,
+  .stats-usage-table tr,
+  .stats-usage-table th,
+  .stats-usage-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .stats-usage-table thead {
+    display: none;
+  }
+
+  .stats-usage-table tr {
+    background: rgba(4, 10, 38, 0.5);
+    border: 1px solid rgba(93, 132, 235, 0.3);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 12px;
+  }
+
+  .stats-usage-table td {
+    border-bottom: 0;
+    padding: 0;
+    height: auto;
+    font-size: 14px;
+  }
+
+  .stats-usage-table td::before {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 780;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .stats-usage-table td:nth-child(1)::before {
+    content: "Rank";
+  }
+
+  .stats-usage-table td:nth-child(2)::before {
+    content: "Player";
+    display: block;
+  }
+
+  .stats-usage-table td:nth-child(3)::before {
+    content: "Map";
+    display: block;
+  }
+
+  .stats-usage-table td:nth-child(4)::before {
+    content: "Records";
+  }
+
+  .stats-usage-table td:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+    color: var(--muted-strong);
+    font-weight: 700;
+    font-size: 13px;
+  }
+
+  .stats-usage-table td:nth-child(2) {
+    grid-column: 2;
+    grid-row: 1;
+    color: var(--text-strong);
+    font-weight: 600;
+  }
+
+  .stats-usage-table td:nth-child(3) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .stats-usage-table td:nth-child(4) {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    color: var(--accent-yellow);
+    font-weight: 700;
+    font-size: 16px;
   }
 }
 

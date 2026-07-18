@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.compat import router as compatibility_router
 from app.api.v1.router import api_router
@@ -17,6 +18,13 @@ def create_app() -> FastAPI:
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
+        )
+
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        return JSONResponse(
+            {"error": "Internal Server Error"},
+            status_code=500,
         )
 
     app.include_router(api_router, prefix="/api/v1")

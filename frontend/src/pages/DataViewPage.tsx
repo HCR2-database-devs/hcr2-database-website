@@ -457,6 +457,9 @@ function recordRow(item: DataRow, index: number, onNote: (note: string) => void,
         <span className="tuning-parts-row">
           <TuningPartsIcons parts={item.tuning_parts} />
         </span>
+        {asText(item.echoAffectedPart ?? item.echo_affected_part) && (
+          <span className="echo-affected-badge">Echo → {asText(item.echoAffectedPart ?? item.echo_affected_part)}</span>
+        )}
       </td>
       <td data-label="Player">{asText(item.player_name)}</td>
       <td data-label="Country">

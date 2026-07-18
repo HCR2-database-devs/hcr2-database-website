@@ -137,6 +137,7 @@ export function StatsPage() {
   });
 
   const rows = records.data ?? [];
+  const normalRows = useMemo(() => rows.filter((row) => row.isMythic !== true), [rows]);
   const stats = useMemo(() => {
     const vehicleTotals: Record<string, number> = {};
     const vehicleLongest: Record<string, { distance: number; map: string }> = {};
@@ -147,7 +148,7 @@ export function StatsPage() {
     const tuningSetups: Record<string, { count: number; parts: string }> = {};
     const mapPlacements: Record<string, DataRow[]> = {};
 
-    rows.forEach((row) => {
+    normalRows.forEach((row) => {
       const vehicle = asText(row.vehicle_name) || "Unknown";
       const map = asText(row.map_name) || "Unknown";
       const value = distance(row);
@@ -186,18 +187,18 @@ export function StatsPage() {
     });
 
     return {
-      countryCounts: countBy(rows, "player_country"),
+      countryCounts: countBy(normalRows, "player_country"),
       mapStars,
       mapTotals,
       placements,
-      playerCounts: countBy(rows, "player_name"),
+      playerCounts: countBy(normalRows, "player_name"),
       tuningParts,
       tuningSetups,
       vehicleLongest,
       vehicleStars,
       vehicleTotals
     };
-  }, [rows]);
+  }, [normalRows]);
 
   const mythicCoverage = useMemo(() => {
     const allPairs = new Set<string>();
@@ -216,7 +217,7 @@ export function StatsPage() {
 
   const longestActive = useMemo(() => {
     let best: DataRow | null = null;
-    for (const row of rows) {
+    for (const row of normalRows) {
       if (
         row.current === 1 &&
         (!best || Number(row.idRecord) < Number(best.idRecord))
@@ -225,11 +226,11 @@ export function StatsPage() {
       }
     }
     return best;
-  }, [rows]);
+  }, [normalRows]);
 
   const playerStreaks = useMemo(() => {
     const perPlayer: Record<string, Record<string, number>> = {};
-    rows.forEach((row) => {
+    normalRows.forEach((row) => {
       if (row.current === 1) {
         const player = asText(row.player_name) || "Unknown";
         const map = asText(row.map_name) || "Unknown";
@@ -244,7 +245,7 @@ export function StatsPage() {
       })
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
-  }, [rows]);
+  }, [normalRows]);
 
   const countryEntries = useMemo(() => {
     let otherCount = 0;
@@ -399,14 +400,14 @@ export function StatsPage() {
   const mostUsedSetups = Object.entries(stats.tuningSetups)
     .sort((a, b) => b[1].count - a[1].count)
     .slice(0, 10);
-  const totalDistance = rows.reduce((sum, row) => sum + distance(row), 0);
+  const totalDistance = normalRows.reduce((sum, row) => sum + distance(row), 0);
   const summary = [
-    { label: "Total Records", value: rows.length },
+    { label: "Total Records", value: normalRows.length },
     { label: "Total Distance", value: formatDistance(totalDistance) },
-    { label: "Average Distance", value: formatDistance(totalDistance / Math.max(rows.length, 1), 2) },
-    { label: "Unique Players", value: new Set(rows.map((row) => asText(row.player_name))).size },
-    { label: "Unique Vehicles", value: new Set(rows.map((row) => asText(row.vehicle_name))).size },
-    { label: "Unique Maps", value: new Set(rows.map((row) => asText(row.map_name))).size },
+    { label: "Average Distance", value: formatDistance(totalDistance / Math.max(normalRows.length, 1), 2) },
+    { label: "Unique Players", value: new Set(normalRows.map((row) => asText(row.player_name))).size },
+    { label: "Unique Vehicles", value: new Set(normalRows.map((row) => asText(row.vehicle_name))).size },
+    { label: "Unique Maps", value: new Set(normalRows.map((row) => asText(row.map_name))).size },
     { label: "Mythic Coverage", value: `${mythicCoverage}%` }
   ];
 
@@ -561,7 +562,7 @@ export function StatsPage() {
                         style={{ left: `${labelX}%`, top: `${labelY}%` }}
                       >
                         <CountryFlag country={s.country} />
-                        <span>{s.country}</span>
+                        <span>{s.country} ({s.count})</span>
                       </div>
                     );
                   })}

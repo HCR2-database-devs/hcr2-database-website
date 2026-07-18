@@ -97,7 +97,8 @@ class AdminService:
                             tp.name_tuning_part,
                             ', '
                             ORDER BY tp.name_tuning_part
-                        ) AS tuning_parts
+                        ) AS tuning_parts,
+                        echo_part.name_tuning_part AS "echoAffectedPart"
                     FROM world_record AS wr
                     LEFT JOIN map AS m ON wr.id_map = m.id_map
                     LEFT JOIN vehicle AS v ON wr.id_vehicle = v.id_vehicle
@@ -105,11 +106,13 @@ class AdminService:
                     LEFT JOIN tuning_setup_part tsp
                         ON wr.id_tuning_setup = tsp.id_tuning_setup
                     LEFT JOIN tuning_part tp ON tsp.id_tuning_part = tp.id_tuning_part
+                    LEFT JOIN tuning_setup ts ON wr.id_tuning_setup = ts.id_tuning_setup
+                    LEFT JOIN tuning_part echo_part ON ts.echo_affected_part_id = echo_part.id_tuning_part
                     WHERE wr.current = 1
                     GROUP BY wr.id_record, wr.id_map, wr.id_vehicle, wr.id_player,
                         wr.id_tuning_setup, wr.distance, wr.current, wr.questionable,
                         wr.questionable_reason, m.name_map, v.name_vehicle,
-                        p.name_player, p.country
+                        p.name_player, p.country, echo_part.name_tuning_part
                     ORDER BY m.name_map, v.name_vehicle
                     """
                 )

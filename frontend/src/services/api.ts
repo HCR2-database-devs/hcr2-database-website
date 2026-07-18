@@ -11,15 +11,22 @@ export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T>
     }
   });
 
-  const payload = (await response.json()) as T;
+  const text = await response.text();
+
   if (!response.ok) {
-    const message =
-      typeof payload === "object" && payload !== null && "error" in payload
-        ? String((payload as { error: unknown }).error)
-        : typeof payload === "object" && payload !== null && "detail" in payload
-          ? String((payload as { detail: unknown }).detail)
-        : "Request failed";
+    let message = `Request failed (${response.status})`;
+    try {
+      const payload = JSON.parse(text);
+      if (typeof payload === "object" && payload !== null) {
+        if ("error" in payload) message = String(payload.error);
+        else if ("detail" in payload) message = String(payload.detail);
+      }
+    } catch {
+      if (text && text.length < 200) message = text;
+    }
     throw new Error(message);
   }
-  return payload;
+
+  if (!text) return undefined as T;
+  return JSON.parse(text) as T;
 }

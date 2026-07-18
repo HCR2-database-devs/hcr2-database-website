@@ -49,6 +49,7 @@ class RecordItem(ApiRow):
     player_name: str
     player_country: str | None = None
     tuning_parts: str | None = None
+    echoAffectedPart: str | None = None
 
 
 class ApiError(BaseModel):

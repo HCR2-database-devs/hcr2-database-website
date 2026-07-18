@@ -39,6 +39,7 @@ export type AdminRecord = {
   player_name?: string | null;
   player_country?: string | null;
   tuning_parts?: string | null;
+  echoAffectedPart?: string | null;
 };
 
 export type PendingSubmission = {
