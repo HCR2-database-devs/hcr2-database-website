@@ -642,7 +642,23 @@ export function AdminPage() {
             onChange={(event) => setStatusFilter(event.target.value)}
           />
           <label>Record</label>
-          <select id="questionable-record-select" required value={statusRecordId} onChange={(event) => setStatusRecordId(event.target.value)}>
+          <select
+            id="questionable-record-select"
+            required
+            value={statusRecordId}
+            onChange={(event) => {
+              const id = event.target.value;
+              setStatusRecordId(id);
+              const record = (recordsQuery.data ?? []).find((r) => String(r.idRecord) === id);
+              if (record) {
+                setStatusValue(String(record.questionable));
+                setStatusNote(record.questionable_reason ?? "");
+              } else {
+                setStatusValue("");
+                setStatusNote("");
+              }
+            }}
+          >
             <option value="">Select a record</option>
             {statusRecords.map((record) => (
               <option key={record.idRecord} value={record.idRecord}>
