@@ -18,6 +18,10 @@ function navClassName({ isActive }: { isActive: boolean }) {
   return `nav-link${isActive ? " is-active" : ""}`;
 }
 
+function canUseHover() {
+  return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+}
+
 export function Header() {
   const { data: authStatus } = useAuthStatus();
   const { isDark, toggleDarkMode } = useDarkMode();
@@ -25,6 +29,8 @@ export function Header() {
   const [isNewsOpen, setNewsOpen] = useState(false);
   const [isSubmitOpen, setSubmitOpen] = useState(false);
   const [isRecordsOpen, setRecordsOpen] = useState(false);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuRef = useRef<HTMLElement>(null);
   const recordsRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -41,18 +47,41 @@ export function Header() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    function handleOutsideMobileMenu(e: MouseEvent | TouchEvent) {
+      const target = e.target as Node;
+      if (mobileMenuRef.current?.contains(target) || mobileMenuButtonRef.current?.contains(target)) {
+        return;
+      }
+      setMenuOpen(false);
+      setRecordsOpen(false);
+    }
+
+    document.addEventListener("mousedown", handleOutsideMobileMenu);
+    document.addEventListener("touchstart", handleOutsideMobileMenu);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideMobileMenu);
+      document.removeEventListener("touchstart", handleOutsideMobileMenu);
+    };
+  }, [isMenuOpen]);
+
   function handleRecordsEnter() {
+    if (!canUseHover()) return;
     if (closeTimer.current) clearTimeout(closeTimer.current);
     setRecordsOpen(true);
   }
 
   function handleRecordsLeave() {
+    if (!canUseHover()) return;
     if (closeTimer.current) clearTimeout(closeTimer.current);
     closeTimer.current = setTimeout(() => setRecordsOpen(false), 200);
   }
 
   function closeMobileMenu() {
     setMenuOpen(false);
+    setRecordsOpen(false);
   }
 
   return (
@@ -68,6 +97,7 @@ export function Header() {
           </Link>
 
           <button
+            ref={mobileMenuButtonRef}
             id="mobile-menu-btn"
             className="mobile-menu-btn"
             type="button"
@@ -80,6 +110,7 @@ export function Header() {
           </button>
 
           <nav
+            ref={mobileMenuRef}
             id="mobile-menu"
             className={`header-nav${isMenuOpen ? " is-open" : ""}`}
             aria-label="Primary navigation"
@@ -97,9 +128,13 @@ export function Header() {
                 onMouseLeave={handleRecordsLeave}
               >
                 <span
-                  className={`nav-link${isRecordsActive ? " is-active" : ""}`}
+                  className={`nav-link nav-dropdown-toggle${isRecordsActive ? " is-active" : ""}${
+                    isRecordsOpen ? " is-open" : ""
+                  }`}
                   role="button"
                   tabIndex={0}
+                  aria-expanded={isRecordsOpen}
+                  aria-controls="records-nav-menu"
                   onClick={() => setRecordsOpen((prev) => !prev)}
                   onMouseEnter={handleRecordsEnter}
                   onKeyDown={(e) => {
@@ -112,6 +147,7 @@ export function Header() {
                   Records
                 </span>
                 <div
+                  id="records-nav-menu"
                   className={`nav-dropdown-menu${isRecordsOpen ? " is-open" : ""}`}
                   onMouseEnter={handleRecordsEnter}
                   onMouseLeave={handleRecordsLeave}
@@ -198,19 +234,19 @@ export function Header() {
                   Logout
                 </button>
               )}
+
+              <button
+                type="button"
+                id="dark-mode-toggle"
+                className="theme-toggle"
+                aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+                title={isDark ? "Light mode" : "Dark mode"}
+                onClick={toggleDarkMode}
+              >
+                {isDark ? "Light" : "Dark"}
+              </button>
             </div>
           </nav>
-
-          <button
-            type="button"
-            id="dark-mode-toggle"
-            className="theme-toggle"
-            aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            title={isDark ? "Light mode" : "Dark mode"}
-            onClick={toggleDarkMode}
-          >
-            {isDark ? "Light" : "Dark"}
-          </button>
         </div>
 
         <div id="auth-warning" />

@@ -373,6 +373,26 @@ a:hover {
   position: relative;
 }
 
+.nav-dropdown-toggle {
+  padding-right: 10px;
+}
+
+.nav-dropdown-toggle::after {
+  border-bottom: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  content: "";
+  display: block;
+  height: 7px;
+  margin-left: auto;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 150ms ease;
+  width: 7px;
+}
+
+.nav-dropdown-toggle.is-open::after {
+  transform: rotate(225deg) translateY(-1px);
+}
+
 .nav-dropdown-menu {
   background: var(--surface);
   border: 2px solid var(--outline);
@@ -401,12 +421,42 @@ a:hover {
 
 @media (max-width: 1060px) {
   .nav-dropdown-wrapper {
-    flex: 1 1 140px;
+    display: flex;
+    flex: 1 1 100%;
+    flex-direction: column;
+    gap: 6px;
+    position: static;
+  }
+
+  .nav-dropdown-wrapper > [role="button"] {
+    display: flex;
+    flex: 0 0 auto;
+    width: 100%;
   }
 
   .nav-dropdown-menu {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    display: none;
+    flex: 1 1 auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+    padding: 0;
     position: static;
     width: 100%;
+  }
+
+  .nav-dropdown-menu.is-open {
+    display: flex;
+  }
+
+  .nav-dropdown-menu .nav-link {
+    flex: 1 1 calc(50% - 3px);
+    justify-content: center;
+    width: auto;
   }
 }
 
@@ -848,7 +898,7 @@ h3 {
 .table-shell {
   overflow: hidden;
   max-width: 100%;
-  width: fit-content;
+  width: 100%;
 }
 
 .table-scroll {
@@ -1702,16 +1752,33 @@ tbody tr:hover {
     border: 2px solid var(--outline);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
-    display: none;
-    flex-basis: 100%;
+    display: flex;
     flex-direction: column;
-    order: 4;
     gap: 12px;
+    left: var(--page-padding);
+    max-height: min(calc(100vh - 96px), 680px);
+    opacity: 0;
+    overflow-y: auto;
     padding: 12px;
+    pointer-events: none;
+    position: absolute;
+    right: var(--page-padding);
+    top: calc(100% + 8px);
+    transform: translateY(-8px) scale(0.98);
+    transform-origin: top center;
+    transition:
+      opacity 160ms ease,
+      transform 160ms ease,
+      visibility 160ms ease;
+    visibility: hidden;
+    z-index: 80;
   }
 
   .header-nav.is-open {
-    display: flex;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+    visibility: visible;
   }
 
   .nav-links,
@@ -1723,6 +1790,10 @@ tbody tr:hover {
   .nav-link,
   .nav-action {
     flex: 1 1 140px;
+  }
+
+  .table-scroll table {
+    width: 100%;
   }
 }
 
@@ -1909,10 +1980,6 @@ tbody tr:hover {
   .filter-distance .filter-input {
     flex: 1 1 0;
     min-width: 0;
-  }
-
-  .table-shell {
-    width: 100%;
   }
 
   .dropdown-panel {
