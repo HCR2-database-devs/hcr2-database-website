@@ -2327,7 +2327,7 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg, #f7f8f8);
+  background: var(--canvas, #11104f);
   padding: 1rem;
 }
 
@@ -2344,10 +2344,11 @@ tbody tr:hover {
 
 .adblock-overlay__card h2 {
   margin-bottom: 0.75rem;
+  color: var(--text-strong, #ffffff);
 }
 
 .adblock-overlay__card p {
-  color: var(--muted, #666);
+  color: var(--muted, #bac8e8);
   line-height: 1.6;
   margin-bottom: 1.5rem;
 }
@@ -2358,7 +2359,7 @@ tbody tr:hover {
 }
 
 .adblock-overlay__alt a {
-  color: var(--accent, #4f8cff);
+  color: var(--accent, #36d961);
   text-decoration: underline;
 }
 
@@ -2371,7 +2372,7 @@ tbody tr:hover {
   padding: 0.625rem 1.5rem;
   border: none;
   border-radius: 8px;
-  background: var(--accent, #4f8cff);
+  background: var(--button-gradient, linear-gradient(180deg, #98ff58 0%, #25ca4b 48%, #118735 100%));
   color: #fff;
   font-size: 0.95rem;
   font-weight: 600;

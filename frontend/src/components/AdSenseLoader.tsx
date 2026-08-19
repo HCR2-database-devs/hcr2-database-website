@@ -14,6 +14,9 @@ export function AdSenseLoader() {
     script.async = true;
     script.crossOrigin = "anonymous";
     script.src = `${ADSENSE_SRC}?client=${publisherId}`;
+    script.onload = () => {
+      window.__adsenseLoaded = true;
+    };
     document.head.appendChild(script);
   }, [enabled, publisherId]);
 

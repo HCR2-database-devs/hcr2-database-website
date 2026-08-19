@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
-const BAIT_CLASS = "ad-banner";
-const CHECK_DELAY_MS = 500;
+const CHECK_DELAY_MS = 600;
 
 export function AdBlockerDetector() {
   const enabled = import.meta.env.VITE_ADS_ENABLED === "true";
@@ -10,25 +9,28 @@ export function AdBlockerDetector() {
   useEffect(() => {
     if (!enabled) return;
 
-    const bait = document.createElement("div");
-    bait.className = BAIT_CLASS;
-    bait.setAttribute("aria-hidden", "true");
-    document.body.appendChild(bait);
+    const baits = ["ad", "ads", "ad-slot", "adsbygoogle"].map((cls) => {
+      const el = document.createElement("div");
+      el.className = cls;
+      el.setAttribute("aria-hidden", "true");
+      document.body.appendChild(el);
+      return el;
+    });
 
     const timer = setTimeout(() => {
-      const baitRemoved = !document.body.contains(bait);
-      const scriptBlocked = typeof window.adsbygoogle === "undefined";
+      const anyBaitRemoved = baits.some((el) => !document.body.contains(el));
+      const scriptBlocked = window.__adsenseLoaded !== true;
 
-      bait.remove();
+      baits.forEach((el) => el.remove());
 
-      if (baitRemoved || scriptBlocked) {
+      if (anyBaitRemoved || scriptBlocked) {
         setBlocked(true);
       }
     }, CHECK_DELAY_MS);
 
     return () => {
       clearTimeout(timer);
-      bait.remove();
+      baits.forEach((el) => el.remove());
     };
   }, [enabled]);
 
