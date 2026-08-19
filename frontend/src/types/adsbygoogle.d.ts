@@ -1,7 +1,3 @@
-interface Adsbygoogle {
-  push(command: object): void;
-}
-
 interface Window {
-  adsbygoogle?: Adsbygoogle[];
+  adsbygoogle?: { push(command: Record<string, unknown>): void }[];
 }
