@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 
+import { AdSlot } from "../components/AdSlot";
+
 const principles = [
   {
     title: "Verified records",
@@ -63,6 +65,8 @@ export function HomePage() {
           <img src="/img/hcrdatabaselogo.png" alt="" />
         </div>
       </section>
+
+      <AdSlot slotId="7228862095" />
 
       <section className="content-section" id="about-section" aria-labelledby="about-title">
         <div className="section-heading">

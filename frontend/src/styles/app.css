@@ -2290,3 +2290,18 @@ tbody tr:hover {
     border-color: rgba(255, 215, 0, 0.5);
   }
 }
+
+.ad-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: var(--max-width, 1180px);
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+@media (max-width: 720px) {
+  .ad-container {
+    padding: 1rem 0.5rem;
+  }
+}

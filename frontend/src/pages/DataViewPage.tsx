@@ -4,6 +4,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useSearchParams } from "react-router-dom";
 
+import { AdSlot } from "../components/AdSlot";
 import {
   asText,
   CountryWithFlag,
@@ -979,6 +980,8 @@ export function DataViewPage({ view, mythic = false }: DataViewPageProps) {
       {view === "players" && data.data && (
         <PlayerFilters rows={rows} recordCounts={playerRecordCounts} onRowsChange={setVisiblePlayers} />
       )}
+
+      <AdSlot slotId="9695011824" />
 
       <section id="data-container" className="data-section">
         <h2>{dataTypeByView[view].toUpperCase()}</h2>

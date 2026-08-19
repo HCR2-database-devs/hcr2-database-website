@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+import { AdSlot } from "../components/AdSlot";
 import {
   asText,
   formatDistance,
@@ -492,6 +493,8 @@ export function StatsPage() {
               </table>
             </TableFrame>
           </section>
+
+          <AdSlot slotId="7433323338" />
 
           <section className="stats-section">
             <div className="section-toolbar">
