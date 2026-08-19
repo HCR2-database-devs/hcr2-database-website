@@ -2305,3 +2305,80 @@ tbody tr:hover {
     padding: 1rem 0.5rem;
   }
 }
+
+/* ── Ad blocker bait (invisible to users, targeted by ad blockers) ── */
+
+.ad-banner {
+  height: 1px;
+  width: 1px;
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Ad blocker overlay ── */
+
+.adblock-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg, #f7f8f8);
+  padding: 1rem;
+}
+
+.adblock-overlay__card {
+  max-width: 480px;
+  text-align: center;
+}
+
+.adblock-overlay__icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 1.5rem;
+}
+
+.adblock-overlay__card h2 {
+  margin-bottom: 0.75rem;
+}
+
+.adblock-overlay__card p {
+  color: var(--muted, #666);
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.adblock-overlay__alt {
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.adblock-overlay__alt a {
+  color: var(--accent, #4f8cff);
+  text-decoration: underline;
+}
+
+.adblock-overlay__alt a:hover {
+  opacity: 0.8;
+}
+
+.adblock-overlay__refresh {
+  display: inline-block;
+  padding: 0.625rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent, #4f8cff);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.adblock-overlay__refresh:hover {
+  opacity: 0.85;
+}

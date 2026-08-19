@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 
+import { AdBlockerDetector } from "../components/AdBlockerDetector";
 import { AdSenseLoader } from "../components/AdSenseLoader";
 import { AdSlot } from "../components/AdSlot";
 import { Footer } from "../components/Footer";
@@ -27,6 +28,7 @@ export function App() {
 
   return (
     <>
+      <AdBlockerDetector />
       <AdSenseLoader />
       <Header />
       <main>
