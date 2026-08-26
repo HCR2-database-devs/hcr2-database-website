@@ -5,6 +5,7 @@ from fastapi import Depends
 from app.core.config import Settings, get_settings
 from app.repositories.news import PostgresNewsRepository
 from app.repositories.public_data import PostgresPublicDataRepository
+from app.services.activity_log_service import ActivityLogService
 from app.services.admin_service import AdminService
 from app.services.auth_service import AuthService
 from app.services.news_service import NewsService
@@ -30,7 +31,11 @@ def get_auth_service(settings: SettingsDep) -> AuthService:
 
 
 def get_admin_service() -> AdminService:
-    return AdminService()
+    return AdminService(activity_log=get_activity_log_service())
+
+
+def get_activity_log_service() -> ActivityLogService:
+    return ActivityLogService()
 
 
 def get_public_submission_service(settings: SettingsDep) -> PublicSubmissionService:

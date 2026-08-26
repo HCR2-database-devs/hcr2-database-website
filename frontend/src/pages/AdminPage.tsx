@@ -1,6 +1,7 @@
 ﻿import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { ActivityLogPanel } from "../components/ActivityLogPanel";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { formatDate, MapWithIcon, TuningPartWithIcon, VehicleWithIcon } from "../lib/legacyDisplay";
 import {
@@ -132,6 +133,7 @@ export function AdminPage() {
   const [integrity, setIntegrity] = useState<IntegrityStatus | null>(null);
   const [backupMessage, setBackupMessage] = useState("");
   const [backupError, setBackupError] = useState("");
+  const [activityLogOpen, setActivityLogOpen] = useState(false);
 
   const mapsQuery = useQuery({ queryKey: ["public-data", "maps"], queryFn: () => getPublicData("maps") });
   const vehiclesQuery = useQuery({
@@ -1042,6 +1044,16 @@ export function AdminPage() {
         </div>
         <p id="maintenance-message" />
       </div>
+
+      <button
+        type="button"
+        className="activity-log-toggle"
+        onClick={() => setActivityLogOpen(true)}
+      >
+        Activity Log
+      </button>
+
+      <ActivityLogPanel isOpen={activityLogOpen} onClose={() => setActivityLogOpen(false)} />
     </div>
   );
 }

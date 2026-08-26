@@ -2510,3 +2510,236 @@ tbody tr:hover {
 .adblock-overlay__refresh:hover {
   opacity: 0.85;
 }
+
+.activity-log-toggle {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 90;
+  min-height: 48px;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: var(--gloss), var(--button-secondary-gradient);
+  border: 2px solid var(--outline);
+  color: var(--text);
+  box-shadow: var(--shadow), 0 0 20px rgba(62, 232, 255, 0.2);
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.activity-log-toggle:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow), 0 0 28px rgba(62, 232, 255, 0.35);
+}
+
+.activity-log-overlay {
+  background: rgba(4, 8, 28, 0.6);
+  backdrop-filter: blur(4px);
+  inset: 0;
+  position: fixed;
+  z-index: 95;
+}
+
+.activity-log-panel {
+  background: var(--surface-gradient);
+  border-left: 2px solid var(--outline);
+  box-shadow: -8px 0 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 400px;
+  max-width: 90vw;
+  z-index: 100;
+}
+
+.activity-log-header {
+  align-items: center;
+  border-bottom: 2px solid rgba(95, 232, 255, 0.22);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 16px 18px;
+}
+
+.activity-log-header h2 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.activity-log-close {
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-size: 24px;
+  line-height: 1;
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0;
+  text-align: center;
+}
+
+.activity-log-close:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent-cyan);
+  color: var(--text-strong);
+}
+
+.activity-log-filters {
+  border-bottom: 1px solid rgba(95, 232, 255, 0.15);
+  display: grid;
+  gap: 8px;
+  padding: 14px 18px;
+}
+
+.activity-log-filters label {
+  color: var(--muted-strong);
+  display: grid;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 4px;
+}
+
+.activity-log-filters select,
+.activity-log-filters input {
+  background: rgba(4, 10, 38, 0.72);
+  border: 2px solid rgba(93, 132, 235, 0.78);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  min-height: 34px;
+  padding: 6px 8px;
+}
+
+.activity-log-filters select:focus,
+.activity-log-filters input:focus {
+  border-color: var(--accent-cyan);
+  outline: 0;
+}
+
+.activity-log-date-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.activity-log-filter-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.activity-log-filter-actions button {
+  flex: 1;
+  font-size: 12px;
+  min-height: 32px;
+}
+
+.activity-log-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 18px;
+}
+
+.activity-log-loading,
+.activity-log-empty {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px 0;
+}
+
+.activity-log-entry {
+  border-bottom: 1px solid rgba(95, 232, 255, 0.1);
+  padding: 10px 0;
+}
+
+.activity-log-entry:last-child {
+  border-bottom: 0;
+}
+
+.activity-log-entry-header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.activity-log-action-badge {
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+}
+
+.activity-log-entity-type {
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.activity-log-timestamp {
+  color: var(--muted);
+  font-size: 11px;
+  margin-left: auto;
+}
+
+.activity-log-entry-body {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.activity-log-admin {
+  color: var(--accent-cyan);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.activity-log-entity-name {
+  color: var(--text);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.activity-log-entity-id {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.activity-log-footer {
+  align-items: center;
+  border-top: 1px solid rgba(95, 232, 255, 0.15);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 12px 18px;
+}
+
+.activity-log-count {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.activity-log-pagination {
+  display: flex;
+  gap: 6px;
+}
+
+.activity-log-pagination button {
+  font-size: 12px;
+  min-height: 30px;
+  padding: 0 10px;
+}

@@ -70,9 +70,10 @@ def submit_record(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
+    username = str(admin.get("username") or "")
     try:
-        return service.submit_record(payload)
+        return service.submit_record(payload, username)
     except (AdminServiceError, AdminNotFoundError, AdminConflictError) as exc:
         return _error_response(exc)
 
@@ -84,8 +85,8 @@ def delete_record_by_path(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
-    return service.delete_record(DeleteRecordRequest(recordId=record_id))
+    admin = _admin_status(request, auth_service)
+    return service.delete_record(DeleteRecordRequest(recordId=record_id), str(admin.get("username") or ""))
 
 
 @router.post("/records/delete", response_model=None)
@@ -95,8 +96,8 @@ def delete_record(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
-    return service.delete_record(payload)
+    admin = _admin_status(request, auth_service)
+    return service.delete_record(payload, str(admin.get("username") or ""))
 
 
 @router.patch("/records/{record_id}/questionable", response_model=None)
@@ -107,10 +108,10 @@ def set_questionable_by_path(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
     payload.record_id = record_id
     try:
-        return service.set_questionable(payload)
+        return service.set_questionable(payload, str(admin.get("username") or ""))
     except (AdminServiceError, AdminNotFoundError) as exc:
         return _error_response(exc)
 
@@ -122,9 +123,9 @@ def set_questionable(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
     try:
-        return service.set_questionable(payload)
+        return service.set_questionable(payload, str(admin.get("username") or ""))
     except (AdminServiceError, AdminNotFoundError) as exc:
         return _error_response(exc)
 
@@ -137,10 +138,10 @@ def assign_tuning_setup_by_path(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
     payload.record_id = record_id
     try:
-        return service.assign_setup(payload)
+        return service.assign_setup(payload, str(admin.get("username") or ""))
     except (AdminServiceError, AdminNotFoundError) as exc:
         return _error_response(exc)
 
@@ -152,9 +153,9 @@ def assign_tuning_setup(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
     try:
-        return service.assign_setup(payload)
+        return service.assign_setup(payload, str(admin.get("username") or ""))
     except (AdminServiceError, AdminNotFoundError) as exc:
         return _error_response(exc)
 
@@ -166,9 +167,9 @@ def add_map(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
     try:
-        return service.add_map(payload)
+        return service.add_map(payload, str(admin.get("username") or ""))
     except (AdminServiceError, AdminConflictError) as exc:
         return _error_response(exc)
 
@@ -181,11 +182,12 @@ async def add_map_form(
     auth_service: AuthServiceDep,
     icon: Annotated[UploadFile | None, File()] = None,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
+    username = str(admin.get("username") or "")
     filename, content_type, content = await _read_upload(icon)
     try:
         service.validate_icon_upload(filename, content_type, content)
-        result = service.add_map(AddMapRequest(mapName=map_name))
+        result = service.add_map(AddMapRequest(mapName=map_name), username)
         result["iconMessage"] = service.save_icon(
             "map_icons",
             map_name,
@@ -205,9 +207,9 @@ def add_vehicle(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
     try:
-        return service.add_vehicle(payload)
+        return service.add_vehicle(payload, str(admin.get("username") or ""))
     except (AdminServiceError, AdminConflictError) as exc:
         return _error_response(exc)
 
@@ -220,11 +222,12 @@ async def add_vehicle_form(
     auth_service: AuthServiceDep,
     icon: Annotated[UploadFile | None, File()] = None,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
+    username = str(admin.get("username") or "")
     filename, content_type, content = await _read_upload(icon)
     try:
         service.validate_icon_upload(filename, content_type, content)
-        result = service.add_vehicle(AddVehicleRequest(vehicleName=vehicle_name))
+        result = service.add_vehicle(AddVehicleRequest(vehicleName=vehicle_name), username)
         result["iconMessage"] = service.save_icon(
             "vehicle_icons",
             vehicle_name,
@@ -244,9 +247,9 @@ def add_tuning_part(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
     try:
-        return service.add_tuning_part(payload)
+        return service.add_tuning_part(payload, str(admin.get("username") or ""))
     except (AdminServiceError, AdminConflictError) as exc:
         return _error_response(exc)
 
@@ -259,11 +262,12 @@ async def add_tuning_part_form(
     auth_service: AuthServiceDep,
     icon: Annotated[UploadFile | None, File()] = None,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
+    username = str(admin.get("username") or "")
     filename, content_type, content = await _read_upload(icon)
     try:
         service.validate_icon_upload(filename, content_type, content)
-        result = service.add_tuning_part(AddTuningPartRequest(partName=part_name))
+        result = service.add_tuning_part(AddTuningPartRequest(partName=part_name), username)
         result["iconMessage"] = service.save_icon(
             "tuning_parts_icons",
             part_name,
@@ -283,9 +287,9 @@ def add_tuning_setup(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
     try:
-        return service.add_tuning_setup(payload)
+        return service.add_tuning_setup(payload, str(admin.get("username") or ""))
     except (AdminServiceError, AdminNotFoundError, AdminConflictError) as exc:
         return _error_response(exc)
 
@@ -307,9 +311,9 @@ def approve_pending_by_path(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
     try:
-        return service.approve_submission(submission_id)
+        return service.approve_submission(submission_id, str(admin.get("username") or ""))
     except (AdminServiceError, AdminNotFoundError) as exc:
         return _error_response(exc)
 
@@ -321,9 +325,9 @@ def reject_pending_by_path(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
     try:
-        return service.reject_submission(submission_id)
+        return service.reject_submission(submission_id, str(admin.get("username") or ""))
     except (AdminServiceError, AdminNotFoundError) as exc:
         return _error_response(exc)
 
@@ -335,9 +339,9 @@ def approve_pending(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
     try:
-        return service.approve_submission(payload.id)
+        return service.approve_submission(payload.id, str(admin.get("username") or ""))
     except (AdminServiceError, AdminNotFoundError) as exc:
         return _error_response(exc)
 
@@ -349,9 +353,9 @@ def reject_pending(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
     try:
-        return service.reject_submission(payload.id)
+        return service.reject_submission(payload.id, str(admin.get("username") or ""))
     except (AdminServiceError, AdminNotFoundError) as exc:
         return _error_response(exc)
 
@@ -364,8 +368,9 @@ def post_news(
     auth_service: AuthServiceDep,
 ) -> Any:
     admin = _admin_status(request, auth_service)
+    username = str(admin.get("username") or "")
     try:
-        return service.post_news(payload, str(admin.get("username") or ""))
+        return service.post_news(payload, username, username)
     except AdminServiceError as exc:
         return _error_response(exc)
 
@@ -378,9 +383,9 @@ def update_news(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
     try:
-        return service.update_news(news_id, payload)
+        return service.update_news(news_id, payload, str(admin.get("username") or ""))
     except AdminServiceError as exc:
         return _error_response(exc)
 
@@ -403,9 +408,9 @@ def delete_news_by_path(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
     try:
-        return service.delete_news(DeleteNewsRequest(id=news_id))
+        return service.delete_news(DeleteNewsRequest(id=news_id), str(admin.get("username") or ""))
     except AdminServiceError as exc:
         return _error_response(exc)
 
@@ -417,9 +422,9 @@ def delete_news(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
     try:
-        return service.delete_news(payload)
+        return service.delete_news(payload, str(admin.get("username") or ""))
     except AdminServiceError as exc:
         return _error_response(exc)
 
@@ -441,8 +446,8 @@ def set_maintenance(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
-    return service.set_maintenance(payload.action, payload.maintenance)
+    admin = _admin_status(request, auth_service)
+    return service.set_maintenance(payload.action, payload.maintenance, str(admin.get("username") or ""))
 
 
 @router.get("/integrity", response_model=None)
@@ -471,9 +476,9 @@ def create_backup(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
     try:
-        return service.create_backup()
+        return service.create_backup(str(admin.get("username") or ""))
     except AdminServiceError as exc:
         return _error_response(exc)
 
@@ -504,8 +509,8 @@ def delete_backup(
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
 ) -> Any:
-    _admin_status(request, auth_service)
+    admin = _admin_status(request, auth_service)
     try:
-        return service.delete_backup(filename)
+        return service.delete_backup(filename, str(admin.get("username") or ""))
     except (AdminServiceError, AdminNotFoundError) as exc:
         return _error_response(exc)

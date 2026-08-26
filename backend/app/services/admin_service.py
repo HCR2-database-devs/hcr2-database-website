@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import re
 import stat
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from psycopg import sql
 
@@ -20,6 +22,9 @@ from app.schemas.admin import (
     SubmitRecordRequest,
     UpdateNewsRequest,
 )
+
+if TYPE_CHECKING:
+    from app.services.activity_log_service import ActivityLogService
 
 
 class AdminServiceError(Exception):
@@ -47,8 +52,13 @@ def _strip_tags(value: str) -> str:
 
 
 class AdminService:
-    def __init__(self, config: DatabaseConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: DatabaseConfig | None = None,
+        activity_log: ActivityLogService | None = None,
+    ) -> None:
         self._config = config
+        self._activity_log = activity_log
         self._maintenance_flag = REPO_ROOT / "MAINTENANCE"
         self._backups_dir = REPO_ROOT / "backups"
         self._backup_tables = (
@@ -72,6 +82,20 @@ class AdminService:
             "pending_submission": ("pending_submission_id_seq", "id"),
             "news": ("news_id_seq", "id"),
         }
+
+    def _log(
+        self,
+        username: str,
+        action: str,
+        entity_type: str,
+        entity_id: int | None = None,
+        entity_name: str | None = None,
+    ) -> None:
+        if self._activity_log:
+            try:
+                self._activity_log.log_action(username, action, entity_type, entity_id, entity_name)
+            except Exception:
+                pass
 
     def list_records(self) -> list[dict[str, Any]]:
         with open_connection(self._config) as connection:
@@ -163,7 +187,7 @@ class AdminService:
         )
         return cursor.fetchone() is not None
 
-    def submit_record(self, payload: SubmitRecordRequest) -> dict[str, Any]:
+    def submit_record(self, payload: SubmitRecordRequest, admin_username: str = "") -> dict[str, Any]:
         if payload.distance <= 0:
             raise AdminServiceError("Distance must be a positive number.")
         if payload.questionable not in (0, 1):
@@ -233,6 +257,8 @@ class AdminService:
                     player_id,
                 )
 
+        entity_name = f"{map_name} - {vehicle_name} - {player_name} ({payload.distance})"
+        self._log(admin_username, "created", "record", record_id, entity_name)
         return {
             "success": True,
             "idRecord": record_id,
@@ -243,7 +269,7 @@ class AdminService:
             "distance": payload.distance,
         }
 
-    def delete_record(self, payload: DeleteRecordRequest) -> dict[str, Any]:
+    def delete_record(self, payload: DeleteRecordRequest, admin_username: str = "") -> dict[str, Any]:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
@@ -251,9 +277,10 @@ class AdminService:
                     (payload.record_id,),
                 )
                 deleted = cursor.rowcount
+        self._log(admin_username, "deleted", "record", payload.record_id)
         return {"success": True, "deleted": deleted}
 
-    def set_questionable(self, payload: SetQuestionableRequest) -> dict[str, Any]:
+    def set_questionable(self, payload: SetQuestionableRequest, admin_username: str = "") -> dict[str, Any]:
         if payload.questionable not in (0, 1):
             raise AdminServiceError("Invalid questionable value (must be 0 or 1)")
 
@@ -273,9 +300,10 @@ class AdminService:
                     """,
                     (payload.questionable, _clean_text(payload.note) or None, payload.record_id),
                 )
+        self._log(admin_username, "updated", "record", payload.record_id)
         return {"success": True, "message": "Record status updated successfully"}
 
-    def assign_setup(self, payload: AssignSetupRequest) -> dict[str, bool]:
+    def assign_setup(self, payload: AssignSetupRequest, admin_username: str = "") -> dict[str, bool]:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
@@ -303,9 +331,10 @@ class AdminService:
                     """,
                     (payload.tuning_setup_id, payload.record_id),
                 )
+        self._log(admin_username, "updated", "record", payload.record_id)
         return {"success": True}
 
-    def add_map(self, payload: AddMapRequest) -> dict[str, Any]:
+    def add_map(self, payload: AddMapRequest, admin_username: str = "") -> dict[str, Any]:
         name = _clean_text(payload.map_name)
         if not name:
             raise AdminServiceError("Map name is required.")
@@ -324,9 +353,10 @@ class AdminService:
                     (name,),
                 )
                 new_id = cursor.fetchone()["id_map"]
+        self._log(admin_username, "created", "map", new_id, name)
         return {"success": True, "idMap": new_id, "nameMap": name, "iconMessage": ""}
 
-    def add_vehicle(self, payload: AddVehicleRequest) -> dict[str, Any]:
+    def add_vehicle(self, payload: AddVehicleRequest, admin_username: str = "") -> dict[str, Any]:
         name = _clean_text(payload.vehicle_name)
         if not name:
             raise AdminServiceError("Vehicle name is required.")
@@ -345,9 +375,10 @@ class AdminService:
                     (name,),
                 )
                 new_id = cursor.fetchone()["id_vehicle"]
+        self._log(admin_username, "created", "vehicle", new_id, name)
         return {"success": True, "idVehicle": new_id, "nameVehicle": name, "iconMessage": ""}
 
-    def add_tuning_part(self, payload: AddTuningPartRequest) -> dict[str, Any]:
+    def add_tuning_part(self, payload: AddTuningPartRequest, admin_username: str = "") -> dict[str, Any]:
         name = _clean_text(payload.part_name)
         if not name:
             raise AdminServiceError("Tuning part name is required.")
@@ -370,6 +401,7 @@ class AdminService:
                     (name,),
                 )
                 new_id = cursor.fetchone()["id_tuning_part"]
+        self._log(admin_username, "created", "tuning_part", new_id, name)
         return {"success": True, "idTuningPart": new_id, "nameTuningPart": name, "iconMessage": ""}
 
     def save_icon(
@@ -398,7 +430,7 @@ class AdminService:
         if content:
             self._validate_svg_icon(filename, content_type, content)
 
-    def add_tuning_setup(self, payload: AddTuningSetupRequest) -> dict[str, Any]:
+    def add_tuning_setup(self, payload: AddTuningSetupRequest, admin_username: str = "") -> dict[str, Any]:
         part_ids = sorted(set(int(part_id) for part_id in payload.part_ids))
         if len(part_ids) < 3 or len(part_ids) > 4:
             raise AdminServiceError("Must select 3 or 4 tuning parts.")
@@ -415,13 +447,14 @@ class AdminService:
                         "UPDATE tuning_setup SET echo_affected_part_id = %s WHERE id_tuning_setup = %s",
                         (payload.echo_affected_part_id, setup_id),
                     )
+        self._log(admin_username, "created", "tuning_setup", setup_id)
         return {"success": True, "idTuningSetup": setup_id}
 
     def _parts_contain_mythic(self, tuning_parts: str) -> bool:
         names = [p.strip().lower() for p in tuning_parts.split(",") if p.strip()]
         return "echo" in names or "amplifier" in names
 
-    def approve_submission(self, submission_id: int) -> dict[str, bool]:
+    def approve_submission(self, submission_id: int, admin_username: str = "") -> dict[str, bool]:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 submission = self._get_pending_submission(cursor, submission_id)
@@ -474,9 +507,10 @@ class AdminService:
                     "UPDATE pending_submission SET status = 'approved' WHERE id = %s",
                     (submission_id,),
                 )
+        self._log(admin_username, "approved", "submission", submission_id)
         return {"success": True}
 
-    def reject_submission(self, submission_id: int) -> dict[str, bool]:
+    def reject_submission(self, submission_id: int, admin_username: str = "") -> dict[str, bool]:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 self._get_pending_submission(cursor, submission_id)
@@ -484,9 +518,10 @@ class AdminService:
                     "UPDATE pending_submission SET status = 'rejected' WHERE id = %s",
                     (submission_id,),
                 )
+        self._log(admin_username, "rejected", "submission", submission_id)
         return {"success": True}
 
-    def post_news(self, payload: PostNewsRequest, author: str | None) -> dict[str, Any]:
+    def post_news(self, payload: PostNewsRequest, author: str | None, admin_username: str = "") -> dict[str, Any]:
         title = _strip_tags(payload.title)
         content = _strip_tags(payload.content)
         if not title or not content:
@@ -502,9 +537,10 @@ class AdminService:
                     (title, content, author or ""),
                 )
                 news_id = int(cursor.fetchone()["id"])
+        self._log(admin_username, "created", "news", news_id, title)
         return {"success": True, "id": news_id}
 
-    def update_news(self, news_id: int, payload: UpdateNewsRequest) -> dict[str, Any]:
+    def update_news(self, news_id: int, payload: UpdateNewsRequest, admin_username: str = "") -> dict[str, Any]:
         title = _strip_tags(payload.title)
         content = _strip_tags(payload.content)
         if news_id <= 0 or not title or not content:
@@ -515,14 +551,16 @@ class AdminService:
                     "UPDATE news SET title = %s, content = %s WHERE id = %s",
                     (title, content, news_id),
                 )
+        self._log(admin_username, "updated", "news", news_id, title)
         return {"success": True, "dryRun": False}
 
-    def delete_news(self, payload: DeleteNewsRequest) -> dict[str, Any]:
+    def delete_news(self, payload: DeleteNewsRequest, admin_username: str = "") -> dict[str, Any]:
         if payload.id <= 0:
             raise AdminServiceError("Invalid news ID.")
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 cursor.execute("DELETE FROM news WHERE id = %s", (payload.id,))
+        self._log(admin_username, "deleted", "news", payload.id)
         return {"success": True, "dryRun": False}
 
     def maintenance_status(self, allowed: bool) -> dict[str, bool]:
@@ -532,6 +570,7 @@ class AdminService:
         self,
         action: str | None,
         maintenance: bool | None = None,
+        admin_username: str = "",
     ) -> dict[str, bool]:
         target = maintenance
         normalized = _clean_text(action).lower()
@@ -547,6 +586,7 @@ class AdminService:
             self._maintenance_flag.write_text("1", encoding="utf-8")
         elif self._maintenance_flag.exists():
             self._maintenance_flag.unlink()
+        self._log(admin_username, "updated", "maintenance", None, "enabled" if target else "disabled")
         return {"success": True, "maintenance": bool(target)}
 
     def integrity_check(self) -> dict[str, Any]:
@@ -569,7 +609,7 @@ class AdminService:
                     counts[table] = int(cursor.fetchone()["count"])
         return {"ok": True, "result": ok, "counts": counts}
 
-    def create_backup(self) -> dict[str, Any]:
+    def create_backup(self, admin_username: str = "") -> dict[str, Any]:
         self._ensure_backups_dir()
         filename = self._next_backup_filename()
         target = self._backups_dir / filename
@@ -581,10 +621,10 @@ class AdminService:
         try:
             target.chmod(stat.S_IRUSR | stat.S_IWUSR)
         except OSError:
-            # Windows may ignore POSIX-like permission bits; the file is still stored locally.
             pass
 
         info = self._backup_info(target)
+        self._log(admin_username, "created", "backup", None, filename)
         return {"success": True, "filename": info["name"], "backup": info}
 
     def list_backups(self) -> dict[str, list[dict[str, Any]]]:
@@ -597,11 +637,12 @@ class AdminService:
         backups.sort(key=lambda item: str(item["mtime"]), reverse=True)
         return {"backups": backups}
 
-    def delete_backup(self, filename: str) -> dict[str, bool]:
+    def delete_backup(self, filename: str, admin_username: str = "") -> dict[str, bool]:
         path = self._safe_backup_path(filename)
         if not path.exists() or not path.is_file():
             raise AdminNotFoundError("Backup file not found.")
         path.unlink()
+        self._log(admin_username, "deleted", "backup", None, filename)
         return {"success": True}
 
     def backup_path(self, filename: str) -> Path:

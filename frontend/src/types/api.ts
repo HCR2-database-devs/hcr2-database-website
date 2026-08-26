@@ -106,3 +106,18 @@ export type PaginatedRecordsResponse = {
   limit: number;
   offset: number;
 };
+
+export type ActivityLogEntry = {
+  id: number;
+  admin_username: string;
+  action: string;
+  entity_type: string;
+  entity_id: number | null;
+  entity_name: string | null;
+  created_at: string;
+};
+
+export type ActivityLogResponse = {
+  entries: ActivityLogEntry[];
+  total: number;
+};
