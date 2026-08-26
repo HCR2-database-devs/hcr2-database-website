@@ -805,7 +805,7 @@ h3 {
 
 .donator-banner__names {
   display: inline-block;
-  animation: marquee 40s linear infinite;
+  animation: marquee 25s linear infinite;
   color: var(--muted-strong);
   font-size: 14px;
   font-weight: 600;
