@@ -742,6 +742,18 @@ h3 {
     inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
+.staff-card--owner {
+  border-top: 3px solid var(--accent);
+}
+
+.staff-card--admin {
+  border-top: 3px solid var(--accent-cyan);
+}
+
+.staff-card--developer {
+  border-top: 3px solid var(--accent-violet);
+}
+
 .rule-list {
   color: var(--muted-strong);
   display: grid;

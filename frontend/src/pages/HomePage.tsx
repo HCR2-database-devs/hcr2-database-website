@@ -32,12 +32,14 @@ const moderationNotes = [
 ];
 
 const staff = [
-  ["Nipatsu", "Owner"],
-  ["Titanium", "Owner"],
-  ["Bir Insan", "Admin"],
-  ["Danioduck", "Admin"],
-  ["Noya", "Admin, Developer"],
-  ["Adam", "Admin, Discord bot developer"]
+  { name: "Nipatsu", role: "Owner", group: "owner" },
+  { name: "Titanium", role: "Owner", group: "owner" },
+  { name: "Danioduck", role: "Admin", group: "admin" },
+  { name: "Noya", role: "Developer", group: "developer" },
+  { name: "Adam", role: "Bot developer", group: "developer" },
+  { name: "Psyduck", role: "Developer", group: "developer" },
+  { name: "Eleco", role: "Developer", group: "developer" },
+  { name: "Blackwing", role: "Developer", group: "developer" },
 ];
 
 const partners = [
@@ -167,10 +169,10 @@ export function HomePage() {
           <h2 id="staff-title">Staff</h2>
         </div>
         <div className="feature-grid">
-          {staff.map(([name, role]) => (
-            <article className="feature-card" key={name}>
-              <h3>{name}</h3>
-              <p>{role}</p>
+          {staff.map((member) => (
+            <article className={`feature-card staff-card staff-card--${member.group}`} key={member.name}>
+              <h3>{member.name}</h3>
+              <p>{member.role}</p>
             </article>
           ))}
         </div>
