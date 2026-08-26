@@ -2513,7 +2513,7 @@ tbody tr:hover {
 
 .activity-log-toggle {
   position: fixed;
-  bottom: 24px;
+  top: 24px;
   right: 24px;
   z-index: 90;
   min-height: 48px;
