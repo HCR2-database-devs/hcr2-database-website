@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import { AdSlot } from "../components/AdSlot";
+import { DonatorBanner } from "../components/DonatorBanner";
 
 const principles = [
   {
@@ -201,6 +202,8 @@ export function HomePage() {
           ))}
         </div>
       </section>
+
+      <DonatorBanner />
 
       <section className="content-section content-section--compact" aria-labelledby="updates-title">
         <div className="section-heading">

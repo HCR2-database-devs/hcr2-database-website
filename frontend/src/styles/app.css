@@ -754,6 +754,73 @@ h3 {
   border-top: 3px solid var(--accent-violet);
 }
 
+.donator-banner {
+  align-items: center;
+  background: var(--surface-gradient);
+  border: 2px solid var(--outline);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft), inset 0 0 0 1px rgba(114, 232, 255, 0.18);
+  display: flex;
+  gap: 16px;
+  margin: 0 auto;
+  max-width: var(--content-width);
+  overflow: hidden;
+  padding: 12px 0;
+  position: relative;
+}
+
+.donator-banner::before {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 46%);
+  border-radius: inherit;
+  content: "";
+  inset: 2px;
+  pointer-events: none;
+  position: absolute;
+}
+
+.donator-banner__label {
+  background: var(--accent-soft);
+  border-right: 2px solid var(--outline);
+  color: var(--accent-strong);
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 780;
+  letter-spacing: 0.08em;
+  padding: 8px 16px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.donator-banner__track {
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 24px,
+    #000 calc(100% - 24px),
+    transparent
+  );
+  overflow: hidden;
+  width: 100%;
+}
+
+.donator-banner__names {
+  display: inline-block;
+  animation: marquee 40s linear infinite;
+  color: var(--muted-strong);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
 .rule-list {
   color: var(--muted-strong);
   display: grid;
