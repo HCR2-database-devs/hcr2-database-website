@@ -694,6 +694,54 @@ h3 {
   margin: 10px 0 0;
 }
 
+.partner-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.partner-card__header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.partner-card__icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.partner-card__subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 2px 0 0;
+}
+
+.partner-card__discord-btn {
+  align-self: flex-start;
+  background: linear-gradient(135deg, #5865F2 0%, #4752C4 100%);
+  border: 2px solid var(--outline);
+  border-radius: var(--radius-sm);
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 650;
+  min-height: 36px;
+  padding: 0 16px;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(88, 101, 242, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transition: transform var(--transition), box-shadow var(--transition);
+  white-space: nowrap;
+}
+
+.partner-card__discord-btn:hover {
+  background: linear-gradient(135deg, #6c7cf7 0%, #5865F2 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px rgba(88, 101, 242, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
 .rule-list {
   color: var(--muted-strong);
   display: grid;

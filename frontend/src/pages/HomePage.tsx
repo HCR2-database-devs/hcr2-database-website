@@ -40,6 +40,25 @@ const staff = [
   ["Adam", "Admin, Discord bot developer"]
 ];
 
+const partners = [
+  {
+    icon: "\u{1F916}",
+    name: "Adam's HCR2 Bot",
+    subtitle: "Discord Integration \u2022 Real-time Records",
+    description:
+      "Adam's HCR2 Bot brings HCR2 database lookups and community tools into Discord. The site keeps the database canonical, while the bot makes those records easier to access from community servers.",
+    invite: "https://discord.gg/PPEEg7BnNS",
+  },
+  {
+    icon: "\u2694\uFE0F",
+    name: "Adventure Lovers",
+    subtitle: "Largest adventure clan \u2022 2025\u20132026",
+    description:
+      "Adventure Lovers is the biggest adventure-based clan of 2025 and 2026. Join to meet the best adventure players worldwide and share your records.",
+    invite: "https://discord.gg/mPEYwGsEEC",
+  },
+];
+
 export function HomePage() {
   return (
     <main className="home-page">
@@ -159,14 +178,26 @@ export function HomePage() {
 
       <section className="content-section content-section--compact" aria-labelledby="partners-title">
         <div className="section-heading">
-          <p className="eyebrow">Partner</p>
-          <h2 id="partners-title">Adam's HCR2 Bot</h2>
+          <p className="eyebrow">Partners</p>
+          <h2 id="partners-title">Community partners</h2>
         </div>
-        <p className="section-copy">
-          Adam's HCR2 Bot brings HCR2 database lookups and community tools into Discord. The site
-          keeps the database canonical, while the bot makes those records easier to access from
-          community servers.
-        </p>
+        <div className="feature-grid">
+          {partners.map((partner) => (
+            <article className="feature-card partner-card" key={partner.name}>
+              <div className="partner-card__header">
+                <span className="partner-card__icon">{partner.icon}</span>
+                <div>
+                  <h3>{partner.name}</h3>
+                  <p className="partner-card__subtitle">{partner.subtitle}</p>
+                </div>
+              </div>
+              <p>{partner.description}</p>
+              <a className="partner-card__discord-btn" href={partner.invite} target="_blank" rel="noopener noreferrer">
+                Join server
+              </a>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="content-section content-section--compact" aria-labelledby="updates-title">
