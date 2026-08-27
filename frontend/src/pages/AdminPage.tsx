@@ -111,12 +111,24 @@ function setupPartNames(row: DataRow): string[] {
     .filter(Boolean);
 }
 
+function parsePartTerms(rest: string): string[] {
+  return rest
+    .split(",")
+    .map((term) => term.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function matchesPartTerms(names: string[], terms: string[]): boolean {
+  return terms.every((term) => names.some((name) => name.includes(term)));
+}
+
 function matchesSetupFilter(row: DataRow, filter: string): boolean {
   const query = filter.trim().toLowerCase();
   if (!query) return true;
   if (query.startsWith("part:")) {
-    const partQuery = query.slice(5).trim();
-    return setupPartNames(row).some((name) => name.includes(partQuery));
+    const terms = parsePartTerms(query.slice(5));
+    if (terms.length === 0) return true;
+    return matchesPartTerms(setupPartNames(row), terms);
   }
   return setupLabel(row).toLowerCase().includes(query);
 }
@@ -789,7 +801,7 @@ export function AdminPage() {
             <input
               id="tuning-setup-filter"
               type="text"
-              placeholder="Filter by part name or use part: prefix (e.g., 'magnet' or 'part:magnet')..."
+              placeholder="Filter by part name or use part: prefix (e.g., 'magnet' or 'part:wings,nitro')..."
               value={tuningSetupFilter}
               onChange={(event) => setTuningSetupFilter(event.target.value)}
               className="stacked-control"
@@ -975,7 +987,7 @@ export function AdminPage() {
           <input
             type="text"
             id="assign-tuning-setup-filter"
-            placeholder="Filter by part name or use part: prefix (e.g., 'magnet' or 'part:magnet')..."
+            placeholder="Filter by part name or use part: prefix (e.g., 'magnet' or 'part:wings,nitro')..."
             value={assignSetupFilter}
             onChange={(event) => setAssignSetupFilter(event.target.value)}
             className="stacked-control"
