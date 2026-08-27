@@ -32,6 +32,9 @@ export function Footer() {
           <Link to="/terms" id="terms-link">
             Terms of Service
           </Link>
+          <Link to="/changelog" id="changelog-link">
+            Changelog
+          </Link>
         </p>
       </div>
     </footer>

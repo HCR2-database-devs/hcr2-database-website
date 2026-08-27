@@ -11,8 +11,7 @@ const navItems = [
   { label: "Vehicles", to: "/vehicles" },
   { label: "Players", to: "/players" },
   { label: "Tuning", to: "/tuning-parts" },
-  { label: "Stats", to: "/stats" },
-  { label: "Changelog", to: "/changelog" }
+  { label: "Stats", to: "/stats" }
 ];
 
 function navClassName({ isActive }: { isActive: boolean }) {
