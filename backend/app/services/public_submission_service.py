@@ -96,6 +96,31 @@ class PublicSubmissionService:
                     if rate and int(rate["c"]) >= 5:
                         return self._error("Rate limit exceeded. Please try again later.", 429)
 
+                is_mythic = self._parts_contain_mythic(tuning_parts)
+                cursor.execute(
+                    """
+                    SELECT MAX(distance) AS best_distance
+                    FROM world_record
+                    WHERE id_map = %(map_id)s
+                      AND id_vehicle = %(vehicle_id)s
+                      AND is_mythic = %(mythic)s
+                      AND current = 1
+                    """,
+                    {
+                        "map_id": map_id,
+                        "vehicle_id": vehicle_id,
+                        "mythic": is_mythic,
+                    },
+                )
+                best = cursor.fetchone()
+                best_distance = best["best_distance"] if best else None
+                if best_distance is not None and distance <= int(best_distance):
+                    return self._error(
+                        "This distance is not higher than the current record "
+                        f"for this map and vehicle ({best_distance}).",
+                        400,
+                    )
+
                 cursor.execute(
                     """
                     INSERT INTO pending_submission
@@ -142,6 +167,12 @@ class PublicSubmissionService:
             return False
         payload = response.json()
         return bool(payload.get("success") is True)
+
+    @staticmethod
+    def _parts_contain_mythic(value: Any) -> bool:
+        parts = PublicSubmissionService._normalize_tuning_parts(value)
+        names = [part.lower() for part in parts]
+        return "echo" in names or "amplifier" in names
 
     @staticmethod
     def _normalize_tuning_parts(value: Any) -> list[str]:

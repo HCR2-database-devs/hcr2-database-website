@@ -10,6 +10,8 @@ from app.schemas.admin import (
     AddTuningSetupRequest,
     AddVehicleRequest,
     AssignSetupRequest,
+    ChangelogPayload,
+    DeleteChangelogRequest,
     DeleteNewsRequest,
     DeleteRecordRequest,
     PendingActionRequest,
@@ -17,6 +19,7 @@ from app.schemas.admin import (
     SetMaintenanceRequest,
     SetQuestionableRequest,
     SubmitRecordRequest,
+    UpdateChangelogRequest,
     UpdateNewsRequest,
 )
 from app.services.admin_service import (
@@ -180,6 +183,7 @@ async def add_map_form(
     request: Request,
     service: AdminServiceDep,
     auth_service: AuthServiceDep,
+    special: Annotated[int, Form()] = 0,
     icon: Annotated[UploadFile | None, File()] = None,
 ) -> Any:
     admin = _admin_status(request, auth_service)
@@ -187,7 +191,7 @@ async def add_map_form(
     filename, content_type, content = await _read_upload(icon)
     try:
         service.validate_icon_upload(filename, content_type, content)
-        result = service.add_map(AddMapRequest(mapName=map_name), username)
+        result = service.add_map(AddMapRequest(mapName=map_name, special=special), username)
         result["iconMessage"] = service.save_icon(
             "map_icons",
             map_name,
@@ -425,6 +429,75 @@ def delete_news(
     admin = _admin_status(request, auth_service)
     try:
         return service.delete_news(payload, str(admin.get("username") or ""))
+    except AdminServiceError as exc:
+        return _error_response(exc)
+
+
+@router.post("/changelog", response_model=None)
+def post_changelog(
+    payload: ChangelogPayload,
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    admin = _admin_status(request, auth_service)
+    username = str(admin.get("username") or "")
+    try:
+        return service.post_changelog(payload, username, username)
+    except AdminServiceError as exc:
+        return _error_response(exc)
+
+
+@router.put("/changelog/{changelog_id}", response_model=None)
+def update_changelog(
+    changelog_id: int,
+    payload: UpdateChangelogRequest,
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    admin = _admin_status(request, auth_service)
+    try:
+        return service.update_changelog(changelog_id, payload, str(admin.get("username") or ""))
+    except AdminServiceError as exc:
+        return _error_response(exc)
+
+
+@router.patch("/changelog/{changelog_id}", response_model=None)
+def patch_changelog(
+    changelog_id: int,
+    payload: UpdateChangelogRequest,
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    return update_changelog(changelog_id, payload, request, service, auth_service)
+
+
+@router.delete("/changelog/{changelog_id}", response_model=None)
+def delete_changelog_by_path(
+    changelog_id: int,
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    admin = _admin_status(request, auth_service)
+    try:
+        return service.delete_changelog(DeleteChangelogRequest(id=changelog_id), str(admin.get("username") or ""))
+    except AdminServiceError as exc:
+        return _error_response(exc)
+
+
+@router.post("/changelog/delete", response_model=None)
+def delete_changelog(
+    payload: DeleteChangelogRequest,
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    admin = _admin_status(request, auth_service)
+    try:
+        return service.delete_changelog(payload, str(admin.get("username") or ""))
     except AdminServiceError as exc:
         return _error_response(exc)
 

@@ -15,11 +15,14 @@ from app.schemas.admin import (
     AddTuningSetupRequest,
     AddVehicleRequest,
     AssignSetupRequest,
+    ChangelogPayload,
+    DeleteChangelogRequest,
     DeleteNewsRequest,
     DeleteRecordRequest,
     PostNewsRequest,
     SetQuestionableRequest,
     SubmitRecordRequest,
+    UpdateChangelogRequest,
     UpdateNewsRequest,
 )
 
@@ -71,6 +74,7 @@ class AdminService:
             "world_record",
             "pending_submission",
             "news",
+            "changelog",
         )
         self._backup_sequences = {
             "map": ("map_id_seq", "id_map"),
@@ -81,6 +85,7 @@ class AdminService:
             "world_record": ("world_record_id_seq", "id_record"),
             "pending_submission": ("pending_submission_id_seq", "id"),
             "news": ("news_id_seq", "id"),
+            "changelog": ("changelog_id_seq", "id"),
         }
 
     def _log(
@@ -339,6 +344,7 @@ class AdminService:
         if not name:
             raise AdminServiceError("Map name is required.")
         self._ensure_max_length(name, 19, "Map name must be 19 characters or fewer.")
+        special = 1 if payload.special else 0
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 self._ensure_unique_name(
@@ -349,12 +355,18 @@ class AdminService:
                     "Map already exists in database.",
                 )
                 cursor.execute(
-                    "INSERT INTO map (name_map) VALUES (%s) RETURNING id_map",
-                    (name,),
+                    "INSERT INTO map (name_map, special) VALUES (%s, %s) RETURNING id_map",
+                    (name, special),
                 )
                 new_id = cursor.fetchone()["id_map"]
         self._log(admin_username, "created", "map", new_id, name)
-        return {"success": True, "idMap": new_id, "nameMap": name, "iconMessage": ""}
+        return {
+            "success": True,
+            "idMap": new_id,
+            "nameMap": name,
+            "special": special,
+            "iconMessage": "",
+        }
 
     def add_vehicle(self, payload: AddVehicleRequest, admin_username: str = "") -> dict[str, Any]:
         name = _clean_text(payload.vehicle_name)
@@ -563,6 +575,88 @@ class AdminService:
         self._log(admin_username, "deleted", "news", payload.id)
         return {"success": True, "dryRun": False}
 
+    def _clean_bullets(self, value: list[str]) -> list[str]:
+        bullets = [_strip_tags(item) for item in value]
+        bullets = [item for item in bullets if item]
+        if len(bullets) > 50:
+            raise AdminServiceError("Each changelog category allows up to 50 entries.")
+        for item in bullets:
+            if len(item) > 300:
+                raise AdminServiceError("Changelog entries must be 300 characters or fewer.")
+        return bullets
+
+    def post_changelog(
+        self,
+        payload: ChangelogPayload,
+        author: str | None,
+        admin_username: str = "",
+    ) -> dict[str, Any]:
+        version = _clean_text(payload.version)
+        title = _clean_text(payload.title)
+        added = self._clean_bullets(payload.added)
+        changed = self._clean_bullets(payload.changed)
+        fixed = self._clean_bullets(payload.fixed)
+        if not version:
+            raise AdminServiceError("Version is required.")
+        self._ensure_max_length(version, 32, "Version must be 32 characters or fewer.")
+        self._ensure_max_length(title, 100, "Title must be 100 characters or fewer.")
+        if not (added or changed or fixed):
+            raise AdminServiceError("At least one changelog entry is required.")
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO changelog (version, title, added, changed, fixed, author)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                    """,
+                    (version, title or None, added, changed, fixed, author or ""),
+                )
+                changelog_id = int(cursor.fetchone()["id"])
+        self._log(admin_username, "created", "changelog", changelog_id, version)
+        return {"success": True, "id": changelog_id}
+
+    def update_changelog(
+        self,
+        changelog_id: int,
+        payload: UpdateChangelogRequest,
+        admin_username: str = "",
+    ) -> dict[str, Any]:
+        version = _clean_text(payload.version)
+        title = _clean_text(payload.title)
+        added = self._clean_bullets(payload.added)
+        changed = self._clean_bullets(payload.changed)
+        fixed = self._clean_bullets(payload.fixed)
+        if changelog_id <= 0:
+            raise AdminServiceError("Invalid changelog ID.")
+        if not version:
+            raise AdminServiceError("Version is required.")
+        self._ensure_max_length(version, 32, "Version must be 32 characters or fewer.")
+        self._ensure_max_length(title, 100, "Title must be 100 characters or fewer.")
+        if not (added or changed or fixed):
+            raise AdminServiceError("At least one changelog entry is required.")
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE changelog
+                    SET version = %s, title = %s, added = %s, changed = %s, fixed = %s
+                    WHERE id = %s
+                    """,
+                    (version, title or None, added, changed, fixed, changelog_id),
+                )
+        self._log(admin_username, "updated", "changelog", changelog_id, version)
+        return {"success": True, "dryRun": False}
+
+    def delete_changelog(self, payload: DeleteChangelogRequest, admin_username: str = "") -> dict[str, Any]:
+        if payload.id <= 0:
+            raise AdminServiceError("Invalid changelog ID.")
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM changelog WHERE id = %s", (payload.id,))
+        self._log(admin_username, "deleted", "changelog", payload.id)
+        return {"success": True, "dryRun": False}
+
     def maintenance_status(self, allowed: bool) -> dict[str, bool]:
         return {"maintenance": self._maintenance_flag.exists(), "allowed": allowed}
 
@@ -604,6 +698,7 @@ class AdminService:
                     "world_record",
                     "pending_submission",
                     "news",
+                    "changelog",
                 ):
                     cursor.execute(f"SELECT count(*) AS count FROM {table}")
                     counts[table] = int(cursor.fetchone()["count"])

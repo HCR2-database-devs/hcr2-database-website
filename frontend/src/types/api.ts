@@ -23,6 +23,17 @@ export type NewsItem = {
   created_at: string;
 };
 
+export type ChangelogItem = {
+  id: number;
+  version: string;
+  title?: string | null;
+  added: string[];
+  changed: string[];
+  fixed: string[];
+  author?: string | null;
+  created_at: string;
+};
+
 export type AdminRecord = {
   idRecord: number;
   idMap: number;

@@ -152,6 +152,21 @@ ALTER SEQUENCE news_id_seq OWNED BY news.id;
 
 CREATE INDEX news_created_at_id_desc_idx ON news (created_at DESC, id DESC);
 
+CREATE SEQUENCE changelog_id_seq;
+CREATE TABLE changelog (
+    id integer PRIMARY KEY DEFAULT nextval('changelog_id_seq'),
+    version text NOT NULL,
+    title text,
+    added text[] NOT NULL DEFAULT '{}',
+    changed text[] NOT NULL DEFAULT '{}',
+    fixed text[] NOT NULL DEFAULT '{}',
+    author text,
+    created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+ALTER SEQUENCE changelog_id_seq OWNED BY changelog.id;
+
+CREATE INDEX changelog_created_at_id_desc_idx ON changelog (created_at DESC, id DESC);
+
 CREATE SEQUENCE activity_log_id_seq;
 CREATE TABLE activity_log (
     id integer PRIMARY KEY DEFAULT nextval('activity_log_id_seq'),

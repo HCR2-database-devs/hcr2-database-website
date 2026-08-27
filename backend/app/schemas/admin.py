@@ -52,6 +52,7 @@ class AssignSetupRequest(AdminPayload):
 
 class AddMapRequest(AdminPayload):
     map_name: str = Field(validation_alias=AliasChoices("mapName", "map_name", "name"))
+    special: int = 0
 
 
 class AddVehicleRequest(AdminPayload):
@@ -85,6 +86,22 @@ class UpdateNewsRequest(AdminPayload):
 
 
 class DeleteNewsRequest(AdminPayload):
+    id: int
+
+
+class ChangelogPayload(AdminPayload):
+    version: str
+    title: str | None = None
+    added: list[str] = []
+    changed: list[str] = []
+    fixed: list[str] = []
+
+
+class UpdateChangelogRequest(ChangelogPayload):
+    id: int
+
+
+class DeleteChangelogRequest(AdminPayload):
     id: int
 
 

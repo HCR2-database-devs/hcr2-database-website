@@ -50,8 +50,10 @@ export function assignTuningSetup(body: unknown) {
   return jsonRequest<SuccessResponse>("/api/v1/admin/records/tuning-setup", "PATCH", body);
 }
 
-export function addMap(name: string, icon?: File | null) {
-  return formRequest<SuccessResponse>("/api/v1/admin/maps/form", withOptionalIcon("mapName", name, icon));
+export function addMap(name: string, icon?: File | null, special: boolean = false) {
+  const body = withOptionalIcon("mapName", name, icon);
+  body.append("special", special ? "1" : "0");
+  return formRequest<SuccessResponse>("/api/v1/admin/maps/form", body);
 }
 
 export function addVehicle(name: string, icon?: File | null) {
@@ -91,6 +93,35 @@ export function updateAdminNews(id: number, title: string, content: string) {
 
 export function deleteAdminNews(id: number) {
   return fetchJson<SuccessResponse>(`/api/v1/admin/news/${id}`, {
+    method: "DELETE"
+  });
+}
+
+export function postAdminChangelog(body: {
+  version: string;
+  title?: string | null;
+  added?: string[];
+  changed?: string[];
+  fixed?: string[];
+}) {
+  return jsonRequest<SuccessResponse & { id?: number }>("/api/v1/admin/changelog", "POST", body);
+}
+
+export function updateAdminChangelog(
+  id: number,
+  body: {
+    version: string;
+    title?: string | null;
+    added?: string[];
+    changed?: string[];
+    fixed?: string[];
+  }
+) {
+  return jsonRequest<SuccessResponse>(`/api/v1/admin/changelog/${id}`, "PUT", body);
+}
+
+export function deleteAdminChangelog(id: number) {
+  return fetchJson<SuccessResponse>(`/api/v1/admin/changelog/${id}`, {
     method: "DELETE"
   });
 }

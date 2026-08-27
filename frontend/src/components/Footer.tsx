@@ -29,6 +29,9 @@ export function Footer() {
           <Link to="/privacy" id="privacy-link">
             Privacy Policy
           </Link>
+          <Link to="/terms" id="terms-link">
+            Terms of Service
+          </Link>
         </p>
       </div>
     </footer>

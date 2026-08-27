@@ -1,4 +1,11 @@
-import type { DataRow, NewsItem, PaginatedRecordsResponse, PublicDataView, RecordFilters } from "../types/api";
+import type {
+  ChangelogItem,
+  DataRow,
+  NewsItem,
+  PaginatedRecordsResponse,
+  PublicDataView,
+  RecordFilters
+} from "../types/api";
 import { fetchJson } from "./api";
 
 const dataEndpoints: Record<Exclude<PublicDataView, "records">, string> = {
@@ -53,6 +60,10 @@ export function exportRecords(filters: RecordFilters): Promise<PaginatedRecordsR
 
 export function getNews(limit = 10) {
   return fetchJson<{ news: NewsItem[] }>(`/api/v1/news?limit=${limit}`);
+}
+
+export function getChangelog(limit = 50) {
+  return fetchJson<{ changelog: ChangelogItem[] }>(`/api/v1/changelog?limit=${limit}`);
 }
 
 export function getHcaptchaSitekey() {

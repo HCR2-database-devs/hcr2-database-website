@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS changelog;
+DROP SEQUENCE IF EXISTS changelog_id_seq;

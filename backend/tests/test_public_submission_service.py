@@ -51,3 +51,20 @@ def test_public_submission_rejects_country_above_main_form_limit(
 
     assert result.status_code == 400
     assert result.payload == {"error": "Country must be 20 characters or fewer."}
+
+
+@pytest.mark.parametrize(
+    ("parts", "expected"),
+    [
+        (["Wings", "Coin Boost", "Magnet"], False),
+        (["Echo", "Wings"], True),
+        (["Amplifier"], True),
+        (["echo", "amplifier"], True),
+        ("Streamlined, Amplifier", True),
+        ("", False),
+        ([], False),
+        (None, False),
+    ],
+)
+def test_parts_contain_mythic(parts: Any, expected: bool) -> None:
+    assert PublicSubmissionService._parts_contain_mythic(parts) is expected

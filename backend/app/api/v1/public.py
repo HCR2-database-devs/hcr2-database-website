@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from app.api.dependencies import (
+    get_changelog_service,
     get_news_service,
     get_public_data_service,
     get_public_submission_service,
@@ -11,6 +12,7 @@ from app.api.dependencies import (
 from app.api.responses import DATABASE_ERROR_TYPES, database_error_response, error_response
 from app.core.config import Settings, get_settings
 from app.services.admin_service import maintenance_flag_path
+from app.services.changelog_service import ChangelogService
 from app.services.news_service import NewsService
 from app.services.public_data_service import PublicDataService
 from app.services.public_submission_service import PublicSubmissionService
@@ -25,6 +27,7 @@ router = APIRouter(tags=["public"], dependencies=[Depends(_check_maintenance)])
 
 PublicDataServiceDep = Annotated[PublicDataService, Depends(get_public_data_service)]
 NewsServiceDep = Annotated[NewsService, Depends(get_news_service)]
+ChangelogServiceDep = Annotated[ChangelogService, Depends(get_changelog_service)]
 PublicSubmissionServiceDep = Annotated[
     PublicSubmissionService,
     Depends(get_public_submission_service),
@@ -125,6 +128,17 @@ def list_news(
 ) -> Any:
     try:
         return service.list_news(limit)
+    except DATABASE_ERROR_TYPES as exc:
+        return database_error_response(exc)  # type: ignore[return-value]
+
+
+@router.get("/changelog", response_model=None)
+def list_changelog(
+    service: ChangelogServiceDep,
+    limit: Annotated[str | None, Query()] = None,
+) -> Any:
+    try:
+        return service.list_changelog(limit)
     except DATABASE_ERROR_TYPES as exc:
         return database_error_response(exc)  # type: ignore[return-value]
 

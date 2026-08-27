@@ -12,7 +12,7 @@ import {
   TuningPartsIcons,
   VehicleWithIcon
 } from "../lib/legacyDisplay";
-import { exportRecords } from "../services/publicData";
+import { exportRecords, getPublicData } from "../services/publicData";
 import { emptyRecordFilters } from "../types/api";
 import type { DataRow } from "../types/api";
 
@@ -39,7 +39,6 @@ type HoveredCountry = {
   y: number;
 };
 
-const specialMaps = ["Forest Trials", "Intense City", "Raging Winter"];
 const chartVariables = ["--accent", "--chart-2", "--chart-3", "--chart-4", "--chart-5", "--chart-6"];
 const tuningStatsSlots = Array.from({ length: 10 }, (_, index) => index);
 const pieStartAngle = -0.5 * Math.PI;
@@ -54,9 +53,9 @@ function distance(row: DataRow) {
   return Number(row.distance ?? 0);
 }
 
-function adventureStars(row: DataRow) {
+function adventureStars(row: DataRow, specialMapNames: Set<string>) {
   const value = distance(row);
-  return specialMaps.includes(asText(row.map_name)) ? (value >= 5000 ? 15000 : value * 3) : value >= 10000 ? 10000 : value;
+  return specialMapNames.has(asText(row.map_name)) ? (value >= 5000 ? 15000 : value * 3) : value >= 10000 ? 10000 : value;
 }
 
 function cssValue(name: string, fallback: string) {
@@ -136,9 +135,17 @@ export function StatsPage() {
     queryKey: ["public-data", "records"],
     queryFn: () => exportRecords(emptyRecordFilters).then((r) => r.records)
   });
+  const maps = useQuery({
+    queryKey: ["public-data", "maps"],
+    queryFn: () => getPublicData("maps")
+  });
 
   const rows = records.data ?? [];
   const normalRows = useMemo(() => rows.filter((row) => row.isMythic !== true), [rows]);
+  const specialMapNames = useMemo(
+    () => new Set((maps.data ?? []).filter((row) => Number(row.special) === 1).map((row) => asText(row.nameMap) || asText(row.namemap))),
+    [maps.data]
+  );
   const stats = useMemo(() => {
     const vehicleTotals: Record<string, number> = {};
     const vehicleLongest: Record<string, { distance: number; map: string }> = {};
@@ -154,8 +161,8 @@ export function StatsPage() {
       const map = asText(row.map_name) || "Unknown";
       const value = distance(row);
       vehicleTotals[vehicle] = (vehicleTotals[vehicle] ?? 0) + value;
-      vehicleStars[vehicle] = (vehicleStars[vehicle] ?? 0) + adventureStars(row);
-      mapStars[map] = (mapStars[map] ?? 0) + adventureStars(row);
+      vehicleStars[vehicle] = (vehicleStars[vehicle] ?? 0) + adventureStars(row, specialMapNames);
+      mapStars[map] = (mapStars[map] ?? 0) + adventureStars(row, specialMapNames);
       mapTotals[map] = mapTotals[map] ?? { distance: 0, count: 0 };
       mapTotals[map].distance += value;
       mapTotals[map].count += 1;
@@ -199,7 +206,7 @@ export function StatsPage() {
       vehicleStars,
       vehicleTotals
     };
-  }, [normalRows]);
+  }, [normalRows, specialMapNames]);
 
   const mythicCoverage = useMemo(() => {
     const allPairs = new Set<string>();

@@ -727,11 +727,19 @@ function StaticTable({
             <tr>
               <th>Map ID</th>
               <th>Map Name</th>
+              <th>Special</th>
             </tr>
             {rows.map((item) => (
               <tr key={numeric(item, "idMap", "idmap")}>
                 <td>{numeric(item, "idMap", "idmap")}</td>
                 <td><MapWithIcon name={item.nameMap ?? item.namemap} /></td>
+                <td>
+                  {Number(item.special) === 1 ? (
+                    <span className="status-pill status-pill--special" title="Special map">★</span>
+                  ) : (
+                    <span className="frontend-muted">—</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

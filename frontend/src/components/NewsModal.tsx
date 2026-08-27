@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { getNews } from "../services/publicData";
 import { formatDate } from "../lib/legacyDisplay";
+import { FormattedText } from "./FormattedText";
 
 type NewsModalProps = {
   onClose: () => void;
@@ -30,7 +31,7 @@ export function NewsModal({ onClose }: NewsModalProps) {
               <div className="frontend-muted">
                 {formatDate(item.created_at)} - {item.author ?? ""}
               </div>
-              <div className="frontend-pre-wrap">{item.content}</div>
+              <FormattedText text={item.content} />
             </div>
           ))}
         </div>

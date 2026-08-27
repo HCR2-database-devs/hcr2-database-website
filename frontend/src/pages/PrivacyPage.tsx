@@ -164,6 +164,10 @@ export function PrivacyPage() {
         </p>
         <p>The effective date at the top of this page indicates the most recent revision.</p>
 
+        <p>
+          <a href="/terms">See our Terms of Service</a>
+        </p>
+
         <p className="policy-note">
           <strong>Last updated: 26 June 2026</strong>
         </p>

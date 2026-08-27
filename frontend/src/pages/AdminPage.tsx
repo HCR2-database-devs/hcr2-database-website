@@ -1,7 +1,8 @@
-﻿import { FormEvent, useEffect, useMemo, useState } from "react";
+﻿import { FormEvent, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ActivityLogPanel } from "../components/ActivityLogPanel";
+import { FormattedText } from "../components/FormattedText";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { formatDate, MapWithIcon, TuningPartWithIcon, VehicleWithIcon } from "../lib/legacyDisplay";
 import {
@@ -14,22 +15,25 @@ import {
   backupDownloadUrl,
   createBackup,
   deleteAdminRecord,
+  deleteAdminChangelog,
   deleteAdminNews,
   deleteBackup,
   getAdminRecords,
   getMaintenanceStatus,
   getPendingSubmissions,
   listBackups as listAdminBackups,
+  postAdminChangelog,
   postAdminNews,
   rejectPendingSubmission,
   runIntegrityCheck,
   setMaintenance,
   setRecordQuestionable,
   submitAdminRecord,
+  updateAdminChangelog,
   updateAdminNews
 } from "../services/admin";
-import { getNews, getPublicData } from "../services/publicData";
-import type { AdminRecord, DataRow, IntegrityStatus, NewsItem } from "../types/api";
+import { getChangelog, getNews, getPublicData } from "../services/publicData";
+import type { AdminRecord, ChangelogItem, DataRow, IntegrityStatus, NewsItem } from "../types/api";
 
 type RecordFormState = {
   mapId: string;
@@ -90,6 +94,33 @@ function setupLabel(row: DataRow) {
   return parts ? `Setup ${id}: ${parts}` : `Setup ${id}`;
 }
 
+function setupPartNames(row: DataRow): string[] {
+  const rawParts = row.parts;
+  if (Array.isArray(rawParts)) {
+    return rawParts
+      .map((part) =>
+        typeof part === "object" && part !== null && "nameTuningPart" in part
+          ? String((part as { nameTuningPart: unknown }).nameTuningPart)
+          : String(part)
+      )
+      .map((name) => name.toLowerCase());
+  }
+  return String(row.parts ?? "")
+    .split(",")
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function matchesSetupFilter(row: DataRow, filter: string): boolean {
+  const query = filter.trim().toLowerCase();
+  if (!query) return true;
+  if (query.startsWith("part:")) {
+    const partQuery = query.slice(5).trim();
+    return setupPartNames(row).some((name) => name.includes(partQuery));
+  }
+  return setupLabel(row).toLowerCase().includes(query);
+}
+
 function recordLabel(record: AdminRecord) {
   const mythicTag = record.mythic ? " [M]" : "";
   return `${record.distance}${mythicTag} - ${record.map_name ?? "Unknown"} - ${
@@ -100,6 +131,134 @@ function recordLabel(record: AdminRecord) {
 function optionalIcon(form: HTMLFormElement) {
   const icon = new FormData(form).get("icon");
   return icon instanceof File && icon.size > 0 ? icon : null;
+}
+
+function applyMarkup(
+  textarea: HTMLTextAreaElement | null,
+  setValue: (value: string) => void,
+  prefix: string,
+  suffix: string
+) {
+  if (!textarea) return;
+  const { selectionStart, selectionEnd, value } = textarea;
+  const selected = value.slice(selectionStart, selectionEnd);
+  const next = `${value.slice(0, selectionStart)}${prefix}${selected}${suffix}${value.slice(selectionEnd)}`;
+  setValue(next);
+  const innerStart = selectionStart + prefix.length;
+  const innerEnd = selectionEnd + prefix.length;
+  requestAnimationFrame(() => {
+    textarea.focus();
+    textarea.setSelectionRange(innerStart, innerEnd);
+  });
+}
+
+function applyLinkMarkup(textarea: HTMLTextAreaElement | null, setValue: (value: string) => void) {
+  if (!textarea) return;
+  const { selectionStart, selectionEnd, value } = textarea;
+  const selected = value.slice(selectionStart, selectionEnd);
+  const label = selected || "text";
+  const placeholder = "https://";
+  const next = `${value.slice(0, selectionStart)}[${label}](${placeholder})${value.slice(selectionEnd)}`;
+  setValue(next);
+  const urlStart = selectionStart + label.length + 3;
+  requestAnimationFrame(() => {
+    textarea.focus();
+    textarea.setSelectionRange(urlStart, urlStart + placeholder.length);
+  });
+}
+
+function applyLinePrefix(textarea: HTMLTextAreaElement | null, setValue: (value: string) => void, prefix: string) {
+  if (!textarea) return;
+  const value = textarea.value;
+  const { selectionStart } = textarea;
+  const lineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
+  const next = `${value.slice(0, lineStart)}${prefix}${value.slice(lineStart)}`;
+  setValue(next);
+  requestAnimationFrame(() => {
+    textarea.focus();
+    textarea.setSelectionRange(lineStart + prefix.length, lineStart + prefix.length);
+  });
+}
+
+type NewsFormatToolbarProps = {
+  textareaRef: RefObject<HTMLTextAreaElement | null>;
+  setValue: (value: string) => void;
+  previewVisible: boolean;
+  onTogglePreview: () => void;
+};
+
+function NewsFormatToolbar({ textareaRef, setValue, previewVisible, onTogglePreview }: NewsFormatToolbarProps) {
+  const target = () => textareaRef.current;
+  return (
+    <>
+      <div className="news-toolbar" role="toolbar" aria-label="Formatting options">
+        <button
+          type="button"
+          title="Bold (**text**)"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => applyMarkup(target(), setValue, "**", "**")}
+        >
+          <strong>B</strong>
+        </button>
+        <button
+          type="button"
+          title="Italic (*text*)"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => applyMarkup(target(), setValue, "*", "*")}
+        >
+          <em>I</em>
+        </button>
+        <button
+          type="button"
+          title="Strikethrough (~~text~~)"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => applyMarkup(target(), setValue, "~~", "~~")}
+        >
+          <del>S</del>
+        </button>
+        <button
+          type="button"
+          title="Inline code (`text`)"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => applyMarkup(target(), setValue, "`", "`")}
+        >
+          {"</>"}
+        </button>
+        <button
+          type="button"
+          title="Link ([text](url))"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => applyLinkMarkup(target(), setValue)}
+        >
+          Link
+        </button>
+        <button
+          type="button"
+          title="Bullet list (- item)"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => applyLinePrefix(target(), setValue, "- ")}
+        >
+          {"\u2022"} List
+        </button>
+        <button
+          type="button"
+          title="Heading (## text)"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => applyLinePrefix(target(), setValue, "## ")}
+        >
+          H
+        </button>
+        <span className="news-toolbar-spacer" />
+        <button type="button" className="button-ghost" onClick={onTogglePreview}>
+          {previewVisible ? "Hide Preview" : "Preview"}
+        </button>
+      </div>
+      <p className="frontend-muted news-format-hint">
+        Markup: <strong>**bold**</strong>, <em>*italic*</em>, <del>~~strikethrough~~</del>, <code>`code`</code>,
+        [text](/records) links, and {"{{ Stats }}"} mentions.
+      </p>
+    </>
+  );
 }
 
 export function AdminPage() {
@@ -121,6 +280,7 @@ export function AdminPage() {
   const [assignSetupId, setAssignSetupId] = useState("");
   const [assignSetupFilter, setAssignSetupFilter] = useState("");
   const [mapName, setMapName] = useState("");
+  const [mapSpecial, setMapSpecial] = useState(false);
   const [vehicleName, setVehicleName] = useState("");
   const [partName, setPartName] = useState("");
   const [selectedPartIds, setSelectedPartIds] = useState<number[]>([]);
@@ -130,10 +290,25 @@ export function AdminPage() {
   const [editingNewsId, setEditingNewsId] = useState<number | null>(null);
   const [editingNewsTitle, setEditingNewsTitle] = useState("");
   const [editingNewsContent, setEditingNewsContent] = useState("");
+  const [changelogVersion, setChangelogVersion] = useState("");
+  const [changelogTitle, setChangelogTitle] = useState("");
+  const [changelogAdded, setChangelogAdded] = useState("");
+  const [changelogChanged, setChangelogChanged] = useState("");
+  const [changelogFixed, setChangelogFixed] = useState("");
+  const [editingChangelogId, setEditingChangelogId] = useState<number | null>(null);
+  const [editingChangelogVersion, setEditingChangelogVersion] = useState("");
+  const [editingChangelogTitle, setEditingChangelogTitle] = useState("");
+  const [editingChangelogAdded, setEditingChangelogAdded] = useState("");
+  const [editingChangelogChanged, setEditingChangelogChanged] = useState("");
+  const [editingChangelogFixed, setEditingChangelogFixed] = useState("");
   const [integrity, setIntegrity] = useState<IntegrityStatus | null>(null);
   const [backupMessage, setBackupMessage] = useState("");
   const [backupError, setBackupError] = useState("");
   const [activityLogOpen, setActivityLogOpen] = useState(false);
+  const newsContentRef = useRef<HTMLTextAreaElement | null>(null);
+  const newsEditContentRef = useRef<HTMLTextAreaElement | null>(null);
+  const [newsPreviewVisible, setNewsPreviewVisible] = useState(false);
+  const [newsEditPreviewVisible, setNewsEditPreviewVisible] = useState(false);
 
   const mapsQuery = useQuery({ queryKey: ["public-data", "maps"], queryFn: () => getPublicData("maps") });
   const vehiclesQuery = useQuery({
@@ -155,6 +330,7 @@ export function AdminPage() {
   const recordsQuery = useQuery({ queryKey: ["admin", "records"], queryFn: getAdminRecords });
   const pendingQuery = useQuery({ queryKey: ["admin", "pending"], queryFn: getPendingSubmissions });
   const newsQuery = useQuery({ queryKey: ["news", 20], queryFn: () => getNews(20) });
+  const changelogQuery = useQuery({ queryKey: ["changelog"], queryFn: () => getChangelog(200) });
   const backupsQuery = useQuery({ queryKey: ["admin", "backups"], queryFn: listAdminBackups });
   const maintenanceQuery = useQuery({
     queryKey: ["admin", "maintenance"],
@@ -163,13 +339,11 @@ export function AdminPage() {
 
   const tuningSetups = setupsQuery.data ?? [];
   const filteredTuningSetups = useMemo(
-    () =>
-      tuningSetups.filter((row) => setupLabel(row).toLowerCase().includes(tuningSetupFilter.toLowerCase())),
+    () => tuningSetups.filter((row) => matchesSetupFilter(row, tuningSetupFilter)),
     [tuningSetups, tuningSetupFilter]
   );
   const filteredAssignTuningSetups = useMemo(
-    () =>
-      tuningSetups.filter((row) => setupLabel(row).toLowerCase().includes(assignSetupFilter.toLowerCase())),
+    () => tuningSetups.filter((row) => matchesSetupFilter(row, assignSetupFilter)),
     [tuningSetups, assignSetupFilter]
   );
   const filteredPlayers = useMemo(
@@ -212,7 +386,8 @@ export function AdminPage() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["admin"] }),
       queryClient.invalidateQueries({ queryKey: ["public-data"] }),
-      queryClient.invalidateQueries({ queryKey: ["news"] })
+      queryClient.invalidateQueries({ queryKey: ["news"] }),
+      queryClient.invalidateQueries({ queryKey: ["changelog"] })
     ]);
   }
 
@@ -246,11 +421,27 @@ export function AdminPage() {
 
   async function handleSubmitRecord(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const mapId = Number(recordForm.mapId);
+    const vehicleId = Number(recordForm.vehicleId);
+    const distance = Number(recordForm.distance);
+    if (Number.isFinite(distance)) {
+      const existing = (recordsQuery.data ?? []).find(
+        (record) => record.current === 1 && record.idMap === mapId && record.idVehicle === vehicleId
+      );
+      if (existing && distance <= existing.distance) {
+        const proceed = window.confirm(
+          `The new distance (${distance}) is not higher than the current record (${existing.distance}) for this map and vehicle. Submit anyway?`
+        );
+        if (!proceed) {
+          return;
+        }
+      }
+    }
     await runAction(async () => {
       await submitAdminRecord({
-        mapId: Number(recordForm.mapId),
-        vehicleId: Number(recordForm.vehicleId),
-        distance: Number(recordForm.distance),
+        mapId,
+        vehicleId,
+        distance,
         tuningSetupId: recordForm.tuningSetupId ? Number(recordForm.tuningSetupId) : null,
         playerId: recordForm.playerId ? Number(recordForm.playerId) : null,
         newPlayerName: recordForm.newPlayerName || null,
@@ -301,8 +492,9 @@ export function AdminPage() {
     const form = event.currentTarget;
     const icon = optionalIcon(form);
     await runAction(async () => {
-      await addMap(mapName, icon);
+      await addMap(mapName, icon, mapSpecial);
       setMapName("");
+      setMapSpecial(false);
       form.reset();
     }, "Map added.");
   }
@@ -381,6 +573,79 @@ export function AdminPage() {
         cancelEditingNews();
       }
     }, "News deleted.");
+  }
+
+  function splitBullets(value: string): string[] {
+    return value
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+  }
+
+  async function handlePostChangelog(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runAction(async () => {
+      await postAdminChangelog({
+        version: changelogVersion,
+        title: changelogTitle || null,
+        added: splitBullets(changelogAdded),
+        changed: splitBullets(changelogChanged),
+        fixed: splitBullets(changelogFixed)
+      });
+      setChangelogVersion("");
+      setChangelogTitle("");
+      setChangelogAdded("");
+      setChangelogChanged("");
+      setChangelogFixed("");
+    }, "Changelog entry posted.");
+  }
+
+  function startEditingChangelog(item: ChangelogItem) {
+    setEditingChangelogId(item.id);
+    setEditingChangelogVersion(item.version);
+    setEditingChangelogTitle(item.title ?? "");
+    setEditingChangelogAdded(item.added.join("\n"));
+    setEditingChangelogChanged(item.changed.join("\n"));
+    setEditingChangelogFixed(item.fixed.join("\n"));
+  }
+
+  function cancelEditingChangelog() {
+    setEditingChangelogId(null);
+    setEditingChangelogVersion("");
+    setEditingChangelogTitle("");
+    setEditingChangelogAdded("");
+    setEditingChangelogChanged("");
+    setEditingChangelogFixed("");
+  }
+
+  async function handleUpdateChangelog(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (editingChangelogId === null) {
+      return;
+    }
+    await runAction(async () => {
+      await updateAdminChangelog(editingChangelogId, {
+        version: editingChangelogVersion,
+        title: editingChangelogTitle || null,
+        added: splitBullets(editingChangelogAdded),
+        changed: splitBullets(editingChangelogChanged),
+        fixed: splitBullets(editingChangelogFixed)
+      });
+      cancelEditingChangelog();
+    }, "Changelog entry updated.");
+  }
+
+  async function handleDeleteChangelog(changelogId: number) {
+    const confirmed = window.confirm("Delete this changelog entry?");
+    if (!confirmed) {
+      return;
+    }
+    await runAction(async () => {
+      await deleteAdminChangelog(changelogId);
+      if (editingChangelogId === changelogId) {
+        cancelEditingChangelog();
+      }
+    }, "Changelog entry deleted.");
   }
 
   function togglePart(partId: number) {
@@ -751,6 +1016,15 @@ export function AdminPage() {
         <form id="add-map-form" onSubmit={handleAddMap} encType="multipart/form-data">
           <label>Map Name</label>
           <input id="map-name-input" type="text" required placeholder="e.g., Forest Trials" value={mapName} onChange={(event) => setMapName(event.target.value)} />
+          <label className="admin-inline">
+            <input
+              id="map-special-input"
+              type="checkbox"
+              checked={mapSpecial}
+              onChange={(event) => setMapSpecial(event.target.checked)}
+            />
+            Special Map
+          </label>
           <label>Icon (SVG - optional)</label>
           <input id="map-icon-input" name="icon" type="file" accept=".svg,image/svg+xml" />
           <small className="form-hint">
@@ -892,7 +1166,25 @@ export function AdminPage() {
           <label>Title</label>
           <input id="news-title-input" type="text" required value={newsTitle} onChange={(event) => setNewsTitle(event.target.value)} />
           <label>Content</label>
-          <textarea id="news-content-input" required rows={6} value={newsContent} onChange={(event) => setNewsContent(event.target.value)} />
+          <NewsFormatToolbar
+            textareaRef={newsContentRef}
+            setValue={setNewsContent}
+            previewVisible={newsPreviewVisible}
+            onTogglePreview={() => setNewsPreviewVisible((visible) => !visible)}
+          />
+          <textarea
+            id="news-content-input"
+            required
+            rows={6}
+            ref={newsContentRef}
+            value={newsContent}
+            onChange={(event) => setNewsContent(event.target.value)}
+          />
+          {newsPreviewVisible && newsContent.trim() !== "" && (
+            <div className="formatted-preview" aria-label="News preview">
+              <FormattedText text={newsContent} />
+            </div>
+          )}
           <div className="admin-actions">
             <button type="submit">Post News</button>
             <button type="button" onClick={() => newsQuery.refetch()} className="button-ghost">
@@ -913,13 +1205,25 @@ export function AdminPage() {
               onChange={(event) => setEditingNewsTitle(event.target.value)}
             />
             <label>Content</label>
+            <NewsFormatToolbar
+              textareaRef={newsEditContentRef}
+              setValue={setEditingNewsContent}
+              previewVisible={newsEditPreviewVisible}
+              onTogglePreview={() => setNewsEditPreviewVisible((visible) => !visible)}
+            />
             <textarea
               id="news-edit-content-input"
               required
               rows={6}
+              ref={newsEditContentRef}
               value={editingNewsContent}
               onChange={(event) => setEditingNewsContent(event.target.value)}
             />
+            {newsEditPreviewVisible && editingNewsContent.trim() !== "" && (
+              <div className="formatted-preview" aria-label="News edit preview">
+                <FormattedText text={editingNewsContent} />
+              </div>
+            )}
             <div className="admin-actions">
               <button type="submit">Save News</button>
               <button type="button" onClick={cancelEditingNews} className="button-ghost">
@@ -934,12 +1238,163 @@ export function AdminPage() {
             <div className="news-item" key={item.id}>
               <h3>{item.title}</h3>
               <div className="frontend-muted">{formatDate(item.created_at)} - {item.author ?? ""}</div>
-              <div className="frontend-pre-wrap">{item.content}</div>
+              <FormattedText text={item.content} />
               <div className="admin-actions admin-actions--compact">
                 <button type="button" onClick={() => startEditingNews(item)} className="button-ghost">
                   Edit
                 </button>
                 <button type="button" onClick={() => handleDeleteNews(item.id)} className="button-ghost">
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="form-container">
+        <h2>Changelog (Releases)</h2>
+        <form id="changelog-form" onSubmit={handlePostChangelog}>
+          <label>Version</label>
+          <input
+            id="changelog-version-input"
+            type="text"
+            required
+            placeholder="e.g., 0.2.0"
+            value={changelogVersion}
+            onChange={(event) => setChangelogVersion(event.target.value)}
+          />
+          <label>Title (optional)</label>
+          <input
+            id="changelog-title-input"
+            type="text"
+            placeholder="e.g., Site update"
+            value={changelogTitle}
+            onChange={(event) => setChangelogTitle(event.target.value)}
+          />
+          <label>Added (one entry per line)</label>
+          <textarea
+            id="changelog-added-input"
+            rows={5}
+            value={changelogAdded}
+            onChange={(event) => setChangelogAdded(event.target.value)}
+          />
+          <label>Changed (one entry per line)</label>
+          <textarea
+            id="changelog-changed-input"
+            rows={5}
+            value={changelogChanged}
+            onChange={(event) => setChangelogChanged(event.target.value)}
+          />
+          <label>Fixed (one entry per line)</label>
+          <textarea
+            id="changelog-fixed-input"
+            rows={5}
+            value={changelogFixed}
+            onChange={(event) => setChangelogFixed(event.target.value)}
+          />
+          <div className="admin-actions">
+            <button type="submit">Post Changelog</button>
+            <button type="button" onClick={() => changelogQuery.refetch()} className="button-ghost">
+              Refresh
+            </button>
+          </div>
+        </form>
+        <p id="changelog-message" />
+        {editingChangelogId !== null && (
+          <form id="changelog-edit-form" className="admin-block" onSubmit={handleUpdateChangelog}>
+            <h3 className="admin-subtitle">Edit Changelog Entry</h3>
+            <label>Version</label>
+            <input
+              id="changelog-edit-version-input"
+              type="text"
+              required
+              value={editingChangelogVersion}
+              onChange={(event) => setEditingChangelogVersion(event.target.value)}
+            />
+            <label>Title (optional)</label>
+            <input
+              id="changelog-edit-title-input"
+              type="text"
+              value={editingChangelogTitle}
+              onChange={(event) => setEditingChangelogTitle(event.target.value)}
+            />
+            <label>Added (one entry per line)</label>
+            <textarea
+              id="changelog-edit-added-input"
+              rows={5}
+              value={editingChangelogAdded}
+              onChange={(event) => setEditingChangelogAdded(event.target.value)}
+            />
+            <label>Changed (one entry per line)</label>
+            <textarea
+              id="changelog-edit-changed-input"
+              rows={5}
+              value={editingChangelogChanged}
+              onChange={(event) => setEditingChangelogChanged(event.target.value)}
+            />
+            <label>Fixed (one entry per line)</label>
+            <textarea
+              id="changelog-edit-fixed-input"
+              rows={5}
+              value={editingChangelogFixed}
+              onChange={(event) => setEditingChangelogFixed(event.target.value)}
+            />
+            <div className="admin-actions">
+              <button type="submit">Save Changelog</button>
+              <button type="button" onClick={cancelEditingChangelog} className="button-ghost">
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+        <div id="admin-changelog-list">
+          {changelogQuery.isLoading && <p>Loading changelog...</p>}
+          {changelogQuery.data?.changelog.map((item) => (
+            <div className="news-item" key={item.id}>
+              <h3>v{item.version}{item.title ? ` - ${item.title}` : ""}</h3>
+              <div className="frontend-muted">{formatDate(item.created_at)} - {item.author ?? ""}</div>
+              {item.added.length > 0 && (
+                <div className="admin-changelog-category">
+                  <strong>Added:</strong>
+                  <ul>
+                    {item.added.map((bullet, index) => (
+                      <li key={`added-${index}`}>
+                        <FormattedText text={bullet} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {item.changed.length > 0 && (
+                <div className="admin-changelog-category">
+                  <strong>Changed:</strong>
+                  <ul>
+                    {item.changed.map((bullet, index) => (
+                      <li key={`changed-${index}`}>
+                        <FormattedText text={bullet} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {item.fixed.length > 0 && (
+                <div className="admin-changelog-category">
+                  <strong>Fixed:</strong>
+                  <ul>
+                    {item.fixed.map((bullet, index) => (
+                      <li key={`fixed-${index}`}>
+                        <FormattedText text={bullet} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="admin-actions admin-actions--compact">
+                <button type="button" onClick={() => startEditingChangelog(item)} className="button-ghost">
+                  Edit
+                </button>
+                <button type="button" onClick={() => handleDeleteChangelog(item.id)} className="button-ghost">
                   Delete
                 </button>
               </div>
