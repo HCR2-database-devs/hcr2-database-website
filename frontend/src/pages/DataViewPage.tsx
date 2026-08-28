@@ -474,6 +474,23 @@ function recordRow(item: DataRow, index: number, onNote: (note: string) => void,
   );
 }
 
+function applyRowHighlight(recordId: string, maxAttempts = 6) {
+  const selector = `[data-record-id="${CSS.escape(recordId)}"]`;
+  let attempts = 0;
+  const tryHighlight = () => {
+    const row = document.querySelector(selector);
+    if (row) {
+      row.classList.add("highlighted-record");
+      return;
+    }
+    if (attempts < maxAttempts) {
+      attempts += 1;
+      requestAnimationFrame(tryHighlight);
+    }
+  };
+  tryHighlight();
+}
+
 function VirtualRecordsTable({
   rows,
   total,
@@ -483,7 +500,8 @@ function VirtualRecordsTable({
   onNote,
   isMobile,
   scrollToRecordId,
-  shareBasePath = "/records"
+  shareBasePath = "/records",
+  onShareHandled
 }: {
   rows: DataRow[];
   total: number;
@@ -494,11 +512,14 @@ function VirtualRecordsTable({
   isMobile: boolean;
   scrollToRecordId?: string | null;
   shareBasePath?: string;
+  onShareHandled?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shareLoadPagesRef = useRef(0);
+  const onShareHandledRef = useRef(onShareHandled);
+  onShareHandledRef.current = onShareHandled;
 
   const rowVirtualizer = useVirtualizer({
     count: isMobile ? 0 : rows.length,
@@ -531,22 +552,18 @@ function VirtualRecordsTable({
 
     if (isMobile) {
       const row = document.querySelector(`[data-record-id="${CSS.escape(scrollToRecordId)}"]`);
-      if (row) {
-        row.scrollIntoView({ behavior: "smooth", block: "center" });
-        row.classList.add("highlighted-record");
-      }
+      row?.scrollIntoView({ behavior: "smooth", block: "center" });
     } else {
       rowVirtualizer.scrollToIndex(targetIndex, { align: "center" });
-      const row = document.querySelector(`[data-record-id="${CSS.escape(scrollToRecordId)}"]`);
-      if (row) {
-        row.classList.add("highlighted-record");
-      }
     }
+    applyRowHighlight(scrollToRecordId);
 
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
     highlightTimerRef.current = setTimeout(() => {
       document.querySelectorAll(".highlighted-record").forEach((el) => el.classList.remove("highlighted-record"));
     }, 3000);
+
+    onShareHandledRef.current?.();
   }, [scrollToRecordId, rows, hasNextPage, isFetchingNextPage, isMobile, rowVirtualizer]);
 
   useEffect(() => {
@@ -865,7 +882,7 @@ export function DataViewPage({ view, mythic = false }: DataViewPageProps) {
   const [note, setNote] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const initialSharedRecordId = searchParams.get("recordId");
   const initialSharedMap = searchParams.get("map");
   const [scrollTargetRecordId, setScrollTargetRecordId] = useState<string | null>(() =>
@@ -994,6 +1011,13 @@ export function DataViewPage({ view, mythic = false }: DataViewPageProps) {
   }, [view, mythic]);
   const shareBasePath = mythic ? "/records/mythic" : "/records";
 
+  const handleShareLinkHandled = useCallback(() => {
+    if (!searchParams.has("recordId")) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("recordId");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   return (
     <main className={`data-page${mythic ? " mythic-page" : ""}`}>
       <section className="page-hero page-hero--compact" aria-labelledby="data-view-title">
@@ -1041,6 +1065,7 @@ export function DataViewPage({ view, mythic = false }: DataViewPageProps) {
                 isMobile={isMobile}
                 scrollToRecordId={scrollTargetRecordId}
                 shareBasePath={shareBasePath}
+                onShareHandled={handleShareLinkHandled}
               />
             )}
           </>

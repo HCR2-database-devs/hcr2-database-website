@@ -2186,9 +2186,12 @@ tbody tr:hover {
 }
 
 @media (min-width: 1061px) {
+  .header-inner {
+    min-height: 92px;
+  }
+
   .header-inner .branding {
     align-self: flex-start;
-    padding-top: 6px;
   }
 }
 
