@@ -342,7 +342,7 @@ export function StatsPage() {
     const x = ((event.clientX - bounds.left) / bounds.width) * pieCanvasWidth;
     const y = ((event.clientY - bounds.top) / bounds.height) * pieCanvasHeight;
     const slice = countrySliceAtPoint(x, y);
-    if (!slice || slice.fraction >= pieLabelThreshold) {
+    if (!slice) {
       setHoveredCountry(null);
       return;
     }
@@ -508,7 +508,7 @@ export function StatsPage() {
               <h2>Records by Country</h2>
               <button
                 type="button"
-                className="filter-btn"
+                className="filter-btn country-labels-toggle"
                 onClick={() => setShowAllLabels((v) => !v)}
               >
                 {showAllLabels ? "Fewer labels" : "See all labels"}
@@ -523,7 +523,7 @@ export function StatsPage() {
                   height={pieCanvasHeight}
                   aria-label="Pie chart showing records by country"
                   onMouseLeave={() => setHoveredCountry(null)}
-                  onMouseMove={showAllLabels ? undefined : handleCountryPieMove}
+                  onMouseMove={handleCountryPieMove}
                 />
 
                 {/* SVG overlay: connector lines for external labels */}
@@ -559,23 +559,24 @@ export function StatsPage() {
                   </svg>
                 )}
 
-                {/* Internal labels — large slices only */}
-                {countrySlices
-                  .filter((s) => s.fraction >= pieLabelThreshold)
-                  .map((s) => {
-                    const labelX = 50 + Math.cos(s.midAngle) * 28;
-                    const labelY = 50 + Math.sin(s.midAngle) * 38;
-                    return (
-                      <div
-                        className="country-slice-label"
-                        key={s.country}
-                        style={{ left: `${labelX}%`, top: `${labelY}%` }}
-                      >
-                        <CountryFlag country={s.country} />
-                        <span>{s.country} ({s.count})</span>
-                      </div>
-                    );
-                  })}
+                {/* Internal labels — large slices, "see all" mode only */}
+                {showAllLabels &&
+                  countrySlices
+                    .filter((s) => s.fraction >= pieLabelThreshold)
+                    .map((s) => {
+                      const labelX = 50 + Math.cos(s.midAngle) * 28;
+                      const labelY = 50 + Math.sin(s.midAngle) * 38;
+                      return (
+                        <div
+                          className="country-slice-label"
+                          key={s.country}
+                          style={{ left: `${labelX}%`, top: `${labelY}%` }}
+                        >
+                          <CountryFlag country={s.country} />
+                          <span>{s.country} ({s.count})</span>
+                        </div>
+                      );
+                    })}
 
                 {/* External labels — small slices, "see all" mode */}
                 {showAllLabels &&
@@ -600,8 +601,8 @@ export function StatsPage() {
                       );
                     })}
 
-                {/* Hover tooltip — normal mode only */}
-                {!showAllLabels && hoveredCountry && (
+                {/* Hover tooltip */}
+                {hoveredCountry && (
                   <div className="country-pie-tooltip" style={{ left: hoveredCountry.x, top: hoveredCountry.y }}>
                     <CountryFlag country={hoveredCountry.country} />
                     <span>
@@ -610,6 +611,22 @@ export function StatsPage() {
                   </div>
                 )}
               </div>
+              <ol className="country-mobile-list">
+                {countrySlices.map((slice) => (
+                  <li key={slice.country} className="country-mobile-list__row">
+                    <CountryFlag country={slice.country} />
+                    <span className="country-mobile-list__name">{slice.country}</span>
+                    <span
+                      className="country-mobile-list__bar"
+                      style={{ width: `${Math.max(slice.fraction * 100, 1.5)}%` }}
+                      aria-hidden="true"
+                    />
+                    <span className="country-mobile-list__count">
+                      {slice.count} ({Math.round(slice.fraction * 100)}%)
+                    </span>
+                  </li>
+                ))}
+              </ol>
               <div className="country-player-ranking">
                 <h3>Top 10 Players by Record Count</h3>
                 <div className="chart-container">

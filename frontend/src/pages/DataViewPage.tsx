@@ -402,6 +402,7 @@ const RECORD_ROW_HEIGHT = 50;
 const PLAYER_ROW_HEIGHT = 48;
 const VIRTUAL_TABLE_HEIGHT = "72vh";
 const MOBILE_BREAKPOINT = "(max-width: 720px)";
+const SHARE_LINK_AUTO_LOAD_CAP = 60;
 
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
@@ -497,6 +498,7 @@ function VirtualRecordsTable({
   const containerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shareLoadPagesRef = useRef(0);
 
   const rowVirtualizer = useVirtualizer({
     count: isMobile ? 0 : rows.length,
@@ -514,7 +516,18 @@ function VirtualRecordsTable({
       const id = asText(item.idRecord ?? item.record_id ?? item.idrecord);
       return id === scrollToRecordId;
     });
-    if (targetIndex === -1) return;
+
+    // Share link opened: keep loading pages until the target record appears
+    // (backed by a page cap so a tampered link cannot load the whole table).
+    if (targetIndex === -1) {
+      if (hasNextPage && !isFetchingNextPage && shareLoadPagesRef.current < SHARE_LINK_AUTO_LOAD_CAP) {
+        shareLoadPagesRef.current += 1;
+        onLoadMore();
+      }
+      return;
+    }
+
+    shareLoadPagesRef.current = 0;
 
     if (isMobile) {
       const row = document.querySelector(`[data-record-id="${CSS.escape(scrollToRecordId)}"]`);
@@ -534,7 +547,7 @@ function VirtualRecordsTable({
     highlightTimerRef.current = setTimeout(() => {
       document.querySelectorAll(".highlighted-record").forEach((el) => el.classList.remove("highlighted-record"));
     }, 3000);
-  }, [scrollToRecordId, rows, isMobile, rowVirtualizer]);
+  }, [scrollToRecordId, rows, hasNextPage, isFetchingNextPage, isMobile, rowVirtualizer]);
 
   useEffect(() => {
     if (isMobile) {
@@ -853,19 +866,34 @@ export function DataViewPage({ view, mythic = false }: DataViewPageProps) {
   const [isExporting, setIsExporting] = useState(false);
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
   const [searchParams] = useSearchParams();
+  const initialSharedRecordId = searchParams.get("recordId");
+  const initialSharedMap = searchParams.get("map");
   const [scrollTargetRecordId, setScrollTargetRecordId] = useState<string | null>(() =>
-    searchParams.get("recordId") ?? null
+    initialSharedRecordId ?? null
   );
 
   // ── Records view state ──────────────────────────────────────────────────────
   const [recordFilters, setRecordFilters] = useState<RecordFilters>(() => ({
     ...emptyRecordFilters,
-    mythic
+    mythic,
+    ...(initialSharedRecordId && initialSharedMap ? { maps: [initialSharedMap] } : {})
   }));
 
   useEffect(() => {
     setRecordFilters((prev) => ({ ...prev, mythic }));
   }, [mythic]);
+
+  useEffect(() => {
+    const recordId = searchParams.get("recordId");
+    const mapName = searchParams.get("map");
+    setScrollTargetRecordId(recordId);
+    if (recordId && mapName) {
+      setRecordFilters((prev) => {
+        if (prev.maps.length === 1 && prev.maps[0] === mapName) return prev;
+        return { ...prev, maps: [mapName] };
+      });
+    }
+  }, [searchParams, mythic]);
 
   const recordsQuery = useInfiniteQuery({
     queryKey: ["records-paginated", mythic, recordFilters],
