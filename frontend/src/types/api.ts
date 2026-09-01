@@ -132,3 +132,14 @@ export type ActivityLogResponse = {
   entries: ActivityLogEntry[];
   total: number;
 };
+
+export type BanEntry = {
+  id: number;
+  bannedIp: string;
+  reason: string;
+  bannedBy: string;
+  created_at: string;
+  expiresAt: string | null;
+  active: boolean;
+  expired?: boolean;
+};

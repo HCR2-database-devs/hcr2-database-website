@@ -110,4 +110,13 @@ class SetMaintenanceRequest(AdminPayload):
     maintenance: bool | None = None
 
 
+class BanIPRequest(AdminPayload):
+    ip: str = Field(validation_alias=AliasChoices("ip", "banned_ip"))
+    reason: str
+    expires_at: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("expiresAt", "expires_at"),
+    )
+
+
 AdminResponse = dict[str, Any]

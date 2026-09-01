@@ -2009,6 +2009,57 @@ tbody tr:hover {
   margin-top: 16px;
 }
 
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 20px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: linear-gradient(180deg, var(--canvas) 78%, rgba(0, 0, 0, 0));
+  padding: 10px 0 6px;
+}
+
+.admin-tab {
+  align-items: center;
+  background: var(--surface);
+  border: 2px solid var(--outline);
+  border-radius: var(--radius-sm);
+  color: var(--muted-strong);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 650;
+  justify-content: center;
+  line-height: 1;
+  min-height: 38px;
+  padding: 0 16px;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.54);
+  box-shadow: var(--shadow-inset), 0 4px 0 rgba(3, 7, 24, 0.72), 0 0 0 1px rgba(94, 232, 255, 0.12);
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.05s ease,
+    box-shadow 0.05s ease;
+}
+
+.admin-tab:hover {
+  color: var(--text);
+}
+
+.admin-tab:active {
+  box-shadow: var(--shadow-inset), 0 1px 0 rgba(3, 7, 24, 0.72);
+  transform: translateY(3px);
+}
+
+.admin-tab--active {
+  background: linear-gradient(180deg, rgba(95, 232, 255, 0.24), rgba(47, 109, 190, 0.28));
+  border-color: var(--accent);
+  color: var(--text);
+  box-shadow: var(--shadow-inset), 0 4px 0 var(--accent), 0 0 0 1px rgba(94, 232, 255, 0.4), 0 0 18px rgba(95, 232, 255, 0.18);
+}
+
 .admin-button-link {
   min-height: 34px;
 }

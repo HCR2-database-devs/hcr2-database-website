@@ -14,6 +14,7 @@ import {
   assignTuningSetup,
   backupDownloadUrl,
   createBackup,
+  createBan,
   deleteAdminRecord,
   deleteAdminChangelog,
   deleteAdminNews,
@@ -21,6 +22,7 @@ import {
   getAdminRecords,
   getMaintenanceStatus,
   getPendingSubmissions,
+  listBans,
   listBackups as listAdminBackups,
   postAdminChangelog,
   postAdminNews,
@@ -29,11 +31,19 @@ import {
   setMaintenance,
   setRecordQuestionable,
   submitAdminRecord,
+  unbanPlayer,
   updateAdminChangelog,
   updateAdminNews
 } from "../services/admin";
 import { getChangelog, getNews, getPublicData } from "../services/publicData";
-import type { AdminRecord, ChangelogItem, DataRow, IntegrityStatus, NewsItem } from "../types/api";
+import type {
+  AdminRecord,
+  BanEntry,
+  ChangelogItem,
+  DataRow,
+  IntegrityStatus,
+  NewsItem
+} from "../types/api";
 
 type RecordFormState = {
   mapId: string;
@@ -61,6 +71,16 @@ const emptyRecordForm: RecordFormState = {
 
 const ECHO_PART_ID = 26;
 const ECHO_EXCLUDED_PART_IDS = new Set([26, 2, 14, 13, 7, 18, 16, 17, 25]);
+
+type AdminTab = "records" | "catalog" | "submissions" | "content" | "system";
+
+const ADMIN_TABS: { id: AdminTab; label: string }[] = [
+  { id: "records", label: "Records" },
+  { id: "catalog", label: "Catalog" },
+  { id: "submissions", label: "Submissions" },
+  { id: "content", label: "Content" },
+  { id: "system", label: "System" }
+];
 
 function text(row: DataRow, ...keys: string[]) {
   for (const key of keys) {
@@ -317,6 +337,10 @@ export function AdminPage() {
   const [backupMessage, setBackupMessage] = useState("");
   const [backupError, setBackupError] = useState("");
   const [activityLogOpen, setActivityLogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<AdminTab>("records");
+  const [banIp, setBanIp] = useState("");
+  const [banReason, setBanReason] = useState("");
+  const [banExpiresAt, setBanExpiresAt] = useState("");
   const newsContentRef = useRef<HTMLTextAreaElement | null>(null);
   const newsEditContentRef = useRef<HTMLTextAreaElement | null>(null);
   const [newsPreviewVisible, setNewsPreviewVisible] = useState(false);
@@ -348,6 +372,7 @@ export function AdminPage() {
     queryKey: ["admin", "maintenance"],
     queryFn: getMaintenanceStatus
   });
+  const bansQuery = useQuery({ queryKey: ["admin", "bans"], queryFn: listBans });
 
   const tuningSetups = setupsQuery.data ?? [];
   const filteredTuningSetups = useMemo(
@@ -699,6 +724,30 @@ export function AdminPage() {
     }, "Backup deleted.");
   }
 
+  async function handleCreateBan(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runAction(async () => {
+      await createBan({
+        ip: banIp,
+        reason: banReason,
+        expiresAt: banExpiresAt || null
+      });
+      setBanIp("");
+      setBanReason("");
+      setBanExpiresAt("");
+    }, "IP address banned.");
+  }
+
+  async function handleUnban(ban: BanEntry) {
+    const confirmed = window.confirm(`Unban IP ${ban.bannedIp}?`);
+    if (!confirmed) {
+      return;
+    }
+    await runAction(async () => {
+      await unbanPlayer(ban.id);
+    }, "IP address unbanned.");
+  }
+
   function showImportUnsupported() {
     setBackupMessage("");
     setBackupError("SQL import and restore are intentionally disabled in the React admin because they are destructive PostgreSQL operations.");
@@ -752,6 +801,21 @@ export function AdminPage() {
       {notice && <p className="admin-notice">{notice}</p>}
       {error && <p className="frontend-error">{error}</p>}
 
+      <nav className="admin-tabs" aria-label="Admin sections">
+        {ADMIN_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={`admin-tab${activeTab === tab.id ? " admin-tab--active" : ""}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      {activeTab === "records" && (
+        <>
       <div className="form-container">
         <h2>Submit a New Record</h2>
         <form id="record-form" onSubmit={handleSubmitRecord}>
@@ -1007,7 +1071,11 @@ export function AdminPage() {
         </form>
         <p id="assign-message" />
       </div>
+        </>
+      )}
 
+      {activeTab === "catalog" && (
+        <>
       <div className="form-container">
         <h2>Add a Vehicle</h2>
         <form id="add-vehicle-form" onSubmit={handleAddVehicle} encType="multipart/form-data">
@@ -1109,7 +1177,11 @@ export function AdminPage() {
         </form>
         <p id="add-tuning-setup-message" />
       </div>
+        </>
+      )}
 
+      {activeTab === "submissions" && (
+        <>
       <div className="form-container" id="pending-submissions-container">
         <h2>Pending Submissions (from users)</h2>
         {pendingQuery.isLoading && <p>Loading...</p>}
@@ -1172,6 +1244,85 @@ export function AdminPage() {
         )}
       </div>
 
+      <div className="form-container">
+        <h2>Banned IP Addresses</h2>
+        <form id="ban-form" onSubmit={handleCreateBan}>
+          <label>IP Address</label>
+          <input
+            id="ban-ip-input"
+            type="text"
+            required
+            placeholder="e.g., 123.45.67.89"
+            value={banIp}
+            onChange={(event) => setBanIp(event.target.value)}
+          />
+          <label>Reason</label>
+          <textarea
+            id="ban-reason-input"
+            required
+            placeholder="Why is this IP banned?"
+            value={banReason}
+            onChange={(event) => setBanReason(event.target.value)}
+          />
+          <label>
+            Expires (optional)
+            <input
+              id="ban-expiry-input"
+              type="date"
+              value={banExpiresAt}
+              onChange={(event) => setBanExpiresAt(event.target.value)}
+            />
+          </label>
+          <small className="form-hint">Leave empty for a permanent ban. Expired bans are lifted automatically.</small>
+          <button type="submit">Ban IP</button>
+        </form>
+        <p id="ban-message" />
+        <div id="bans-list" className="admin-block">
+          {bansQuery.isLoading && <p>Loading...</p>}
+          {!bansQuery.isLoading && (bansQuery.data?.bans ?? []).length === 0 && <p>No IP bans.</p>}
+          {!bansQuery.isLoading && (bansQuery.data?.bans ?? []).length > 0 && (
+            <div className="table-scroll">
+              <table className="admin-pending-table">
+                <thead>
+                  <tr>
+                    <th>IP Address</th>
+                    <th>Reason</th>
+                    <th>Banned By</th>
+                    <th>When</th>
+                    <th>Expires</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bansQuery.data?.bans.map((ban) => (
+                    <tr key={ban.id}>
+                      <td>{ban.bannedIp}</td>
+                      <td>{ban.reason}</td>
+                      <td>{ban.bannedBy}</td>
+                      <td>{formatDate(ban.created_at)}</td>
+                      <td>{ban.expiresAt ? formatDate(ban.expiresAt) : "Permanent"}</td>
+                      <td>{ban.expired ? "Expired" : ban.active ? "Active" : "Unbanned"}</td>
+                      <td className="admin-table-actions">
+                        {ban.active && !ban.expired && (
+                          <button type="button" onClick={() => handleUnban(ban)} className="button-ghost">
+                            Unban
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+        </>
+      )}
+
+      {activeTab === "content" && (
+        <>
       <div className="form-container">
         <h2>Site News (Admins)</h2>
         <form id="news-form" onSubmit={handlePostNews}>
@@ -1414,7 +1565,11 @@ export function AdminPage() {
           ))}
         </div>
       </div>
+        </>
+      )}
 
+      {activeTab === "system" && (
+        <>
       <div className="form-container">
         <h2>Database & Backups</h2>
         <div className="admin-actions">
@@ -1519,6 +1674,8 @@ export function AdminPage() {
       >
         Activity Log
       </button>
+        </>
+      )}
 
       <ActivityLogPanel isOpen={activityLogOpen} onClose={() => setActivityLogOpen(false)} />
     </div>

@@ -10,6 +10,7 @@ from app.schemas.admin import (
     AddTuningSetupRequest,
     AddVehicleRequest,
     AssignSetupRequest,
+    BanIPRequest,
     ChangelogPayload,
     DeleteChangelogRequest,
     DeleteNewsRequest,
@@ -521,6 +522,44 @@ def set_maintenance(
 ) -> Any:
     admin = _admin_status(request, auth_service)
     return service.set_maintenance(payload.action, payload.maintenance, str(admin.get("username") or ""))
+
+
+@router.get("/bans", response_model=None)
+def list_bans(
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    _admin_status(request, auth_service)
+    return service.list_bans()
+
+
+@router.post("/bans", response_model=None)
+def create_ban(
+    payload: BanIPRequest,
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    admin = _admin_status(request, auth_service)
+    try:
+        return service.create_ban(payload, str(admin.get("username") or ""))
+    except (AdminServiceError, AdminConflictError) as exc:
+        return _error_response(exc)
+
+
+@router.delete("/bans/{ban_id}", response_model=None)
+def unban(
+    ban_id: int,
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    admin = _admin_status(request, auth_service)
+    try:
+        return service.unban_player(ban_id, str(admin.get("username") or ""))
+    except (AdminServiceError, AdminNotFoundError) as exc:
+        return _error_response(exc)
 
 
 @router.get("/integrity", response_model=None)

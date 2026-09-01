@@ -15,6 +15,7 @@ from app.schemas.admin import (
     AddTuningSetupRequest,
     AddVehicleRequest,
     AssignSetupRequest,
+    BanIPRequest,
     ChangelogPayload,
     DeleteChangelogRequest,
     DeleteNewsRequest,
@@ -54,6 +55,24 @@ def _strip_tags(value: str) -> str:
     return re.sub(r"<[^>]*>", "", value).strip()
 
 
+def _parse_expiry(value: str | None):
+    if not value or not _clean_text(value):
+        return None
+    from datetime import datetime
+
+    candidate = _clean_text(value)
+    try:
+        return datetime.fromisoformat(candidate.replace("Z", "+00:00")).replace(tzinfo=None)
+    except ValueError:
+        try:
+            return datetime.strptime(candidate, "%Y-%m-%d").replace(tzinfo=None)
+        except ValueError:
+            try:
+                return datetime.strptime(candidate, "%Y-%m-%d %H:%M:%S").replace(tzinfo=None)
+            except ValueError:
+                raise AdminServiceError("Invalid expiry date format. Use YYYY-MM-DD.")
+
+
 class AdminService:
     def __init__(
         self,
@@ -75,6 +94,7 @@ class AdminService:
             "pending_submission",
             "news",
             "changelog",
+            "ip_ban",
         )
         self._backup_sequences = {
             "map": ("map_id_seq", "id_map"),
@@ -86,6 +106,7 @@ class AdminService:
             "pending_submission": ("pending_submission_id_seq", "id"),
             "news": ("news_id_seq", "id"),
             "changelog": ("changelog_id_seq", "id"),
+            "ip_ban": ("ip_ban_id_seq", "id"),
         }
 
     def _log(
@@ -656,6 +677,88 @@ class AdminService:
                 cursor.execute("DELETE FROM changelog WHERE id = %s", (payload.id,))
         self._log(admin_username, "deleted", "changelog", payload.id)
         return {"success": True, "dryRun": False}
+
+    def list_bans(self) -> dict[str, list[dict[str, Any]]]:
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT
+                        id,
+                        banned_ip AS "bannedIp",
+                        reason,
+                        banned_by AS "bannedBy",
+                        created_at,
+                        expires_at AS "expiresAt",
+                        active,
+                        (active AND expires_at IS NOT NULL AND expires_at <= NOW()) AS expired
+                    FROM ip_ban
+                    ORDER BY active DESC, created_at DESC, id DESC
+                    """
+                )
+                return {"bans": [dict(row) for row in cursor.fetchall()]}
+
+    def create_ban(self, payload: BanIPRequest, admin_username: str = "") -> dict[str, Any]:
+        ip = _clean_text(payload.ip)
+        reason = _clean_text(payload.reason)
+        if not ip:
+            raise AdminServiceError("IP address is required.")
+        if not reason:
+            raise AdminServiceError("A ban reason is required.")
+        if len(reason) > 500:
+            raise AdminServiceError("Reason must be 500 characters or fewer.")
+
+        expires = self._parse_expiry(payload.expires_at)
+
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT id FROM ip_ban
+                    WHERE banned_ip = %s AND active = TRUE
+                    LIMIT 1
+                    """,
+                    (ip,),
+                )
+                if cursor.fetchone() is not None:
+                    raise AdminConflictError("This IP address is already banned.")
+                cursor.execute(
+                    """
+                    INSERT INTO ip_ban (banned_ip, reason, banned_by, expires_at, active)
+                    VALUES (%s, %s, %s, %s, TRUE)
+                    RETURNING id
+                    """,
+                    (ip, reason, admin_username, expires),
+                )
+                ban_id = cursor.fetchone()["id"]
+
+        self._log(admin_username, "created", "ban", ban_id, ip)
+        return {
+            "success": True,
+            "id": ban_id,
+            "bannedIp": ip,
+            "reason": reason,
+            "bannedBy": admin_username,
+            "expiresAt": expires,
+        }
+
+    def unban_player(self, ban_id: int, admin_username: str = "") -> dict[str, Any]:
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT banned_ip AS \"bannedIp\" FROM ip_ban WHERE id = %s AND active = TRUE LIMIT 1",
+                    (ban_id,),
+                )
+                row = cursor.fetchone()
+                if row is None:
+                    raise AdminNotFoundError("Active ban not found")
+                ip = row["bannedIp"]
+                cursor.execute(
+                    "UPDATE ip_ban SET active = FALSE WHERE id = %s AND active = TRUE",
+                    (ban_id,),
+                )
+        self._log(admin_username, "deleted", "ban", ban_id, ip)
+        return {"success": True, "unbannedIp": ip}
 
     def maintenance_status(self, allowed: bool) -> dict[str, bool]:
         return {"maintenance": self._maintenance_flag.exists(), "allowed": allowed}

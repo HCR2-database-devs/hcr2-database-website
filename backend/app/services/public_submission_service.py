@@ -96,6 +96,28 @@ class PublicSubmissionService:
                     if rate and int(rate["c"]) >= 5:
                         return self._error("Rate limit exceeded. Please try again later.", 429)
 
+                    cursor.execute(
+                        """
+                        SELECT reason
+                        FROM ip_ban
+                        WHERE banned_ip = %s
+                          AND active = TRUE
+                          AND (expires_at IS NULL OR expires_at > NOW())
+                        ORDER BY id DESC
+                        LIMIT 1
+                        """,
+                        (submitter_ip,),
+                    )
+                    ban = cursor.fetchone()
+                    if ban is not None:
+                        reason = str(ban["reason"] or "")
+                        suffix = f": {reason}" if reason else ""
+                        return self._error(
+                            "Your IP address is banned from submitting records."
+                            f"{suffix}",
+                            403,
+                        )
+
                 is_mythic = self._parts_contain_mythic(tuning_parts)
                 cursor.execute(
                     """

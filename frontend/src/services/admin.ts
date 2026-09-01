@@ -1,4 +1,11 @@
-import type { AdminRecord, BackupItem, IntegrityStatus, MaintenanceStatus, PendingSubmission } from "../types/api";
+import type {
+  AdminRecord,
+  BackupItem,
+  BanEntry,
+  IntegrityStatus,
+  MaintenanceStatus,
+  PendingSubmission
+} from "../types/api";
 import { fetchJson } from "./api";
 
 type SuccessResponse = {
@@ -154,4 +161,18 @@ export function deleteBackup(filename: string) {
 
 export function backupDownloadUrl(filename: string) {
   return `/api/v1/admin/backups/${encodeURIComponent(filename)}/download`;
+}
+
+export function listBans() {
+  return fetchJson<{ bans: BanEntry[] }>("/api/v1/admin/bans");
+}
+
+export function createBan(body: { ip: string; reason: string; expiresAt?: string | null }) {
+  return jsonRequest<SuccessResponse & { id?: number }>("/api/v1/admin/bans", "POST", body);
+}
+
+export function unbanPlayer(banId: number) {
+  return fetchJson<SuccessResponse>(`/api/v1/admin/bans/${banId}`, {
+    method: "DELETE"
+  });
 }

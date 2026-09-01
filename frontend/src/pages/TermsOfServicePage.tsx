@@ -3,7 +3,7 @@ export function TermsOfServicePage() {
     <main className="standalone-page">
       <div className="policy-container">
         <h1>Terms of Service</h1>
-        <p><strong>Effective Date: 27 August 2026</strong></p>
+        <p><strong>Effective Date: 1 September 2026</strong></p>
 
         <h2>Acceptance of Terms</h2>
         <p>
@@ -62,6 +62,12 @@ export function TermsOfServicePage() {
         <p>
           We are not required to accept or publish any submission. Decisions made by administrators
           regarding submissions are final.
+        </p>
+        <p>
+          Administrative abuse of the website, including spam, tampering with records, or otherwise
+          violating these Terms, may result in the submitter&apos;s IP address being blocked from
+          submitting further records. Bans may be permanent or time-limited, and administrators may
+          remove associated records.
         </p>
 
         <h2>Third-Party Services</h2>
@@ -136,7 +142,7 @@ export function TermsOfServicePage() {
         </p>
 
         <p className="policy-note">
-          <strong>Last updated: 27 August 2026</strong>
+          <strong>Last updated: 1 September 2026</strong>
         </p>
         <p>
           <a href="/">Back to site</a>

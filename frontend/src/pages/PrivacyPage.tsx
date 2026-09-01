@@ -3,7 +3,7 @@ export function PrivacyPage() {
     <main className="standalone-page">
       <div className="policy-container">
         <h1>Privacy Policy</h1>
-        <p><strong>Effective Date: 26 June 2026</strong></p>
+        <p><strong>Effective Date: 1 September 2026</strong></p>
 
         <h2>Introduction</h2>
         <p>
@@ -45,8 +45,14 @@ export function PrivacyPage() {
           <li>Blocking malicious or automated submissions</li>
         </ul>
         <p>
-          IP addresses are automatically deleted once a submission has been accepted or declined by
-          the moderation team.
+          When a user is banned from submitting records, the associated IP address may be retained for
+          the duration of the ban to enforce the ban and prevent repeated abuse. Banned IP addresses
+          are stored with the reason for the ban and the date it was issued. Such data is used solely
+          to enforce the ban and is removed when the ban expires or is lifted.
+        </p>
+        <p>
+          For all other submissions, IP addresses are automatically deleted once a submission has
+          been accepted or declined by the moderation team.
         </p>
 
         <h3>Administrator Authentication</h3>
@@ -121,6 +127,10 @@ export function PrivacyPage() {
           declined.
         </p>
         <p>
+          IP addresses associated with a ban are retained for the duration of the ban, including
+          optional expiry dates, and are no longer retained once the ban expires or is lifted.
+        </p>
+        <p>
           Administrative session data is retained only for the duration necessary to maintain secure
           authentication.
         </p>
@@ -169,7 +179,7 @@ export function PrivacyPage() {
         </p>
 
         <p className="policy-note">
-          <strong>Last updated: 26 June 2026</strong>
+          <strong>Last updated: 1 September 2026</strong>
         </p>
         <p>
           <a href="/">Back to site</a>

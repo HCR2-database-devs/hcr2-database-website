@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS ip_ban;
+DROP SEQUENCE IF EXISTS ip_ban_id_seq;
