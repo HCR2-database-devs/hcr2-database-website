@@ -22,7 +22,8 @@ const guidelines = [
   "Official Adventure leaderboard runs and Adventure challenge runs can be accepted.",
   "Patched glitches, pre-nerf vehicle exploits and respawn-based records are excluded for consistency.",
   "If two players reach the same distance, the first known achievement is treated as the record holder.",
-  "Admins may revise or remove records when evidence changes or a rule violation is found."
+  "Admins may revise or remove records when evidence changes or a rule violation is found.",
+  "Records for newly released vehicles are added once the public event where the vehicle can be obtained for free begins."
 ];
 
 const moderationNotes = [

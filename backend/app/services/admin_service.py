@@ -708,7 +708,7 @@ class AdminService:
         if len(reason) > 500:
             raise AdminServiceError("Reason must be 500 characters or fewer.")
 
-        expires = self._parse_expiry(payload.expires_at)
+        expires = _parse_expiry(payload.expires_at)
 
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
