@@ -242,7 +242,11 @@ class AdminService:
                 player_id = self._resolve_player(cursor, payload)
 
                 cursor.execute(
-                    "DELETE FROM world_record WHERE id_map = %s AND id_vehicle = %s AND is_mythic = %s",
+                    """
+                    UPDATE world_record
+                    SET current = 0
+                    WHERE id_map = %s AND id_vehicle = %s AND is_mythic = %s AND current = 1
+                    """,
                     (payload.map_id, payload.vehicle_id, is_mythic),
                 )
                 cursor.execute(
@@ -496,7 +500,11 @@ class AdminService:
                 is_mythic = self._parts_contain_mythic(tuning_parts) if tuning_parts else False
 
                 cursor.execute(
-                    "DELETE FROM world_record WHERE id_map = %s AND id_vehicle = %s AND is_mythic = %s",
+                    """
+                    UPDATE world_record
+                    SET current = 0
+                    WHERE id_map = %s AND id_vehicle = %s AND is_mythic = %s AND current = 1
+                    """,
                     (submission["id_map"], submission["id_vehicle"], is_mythic),
                 )
 

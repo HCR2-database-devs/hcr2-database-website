@@ -115,7 +115,8 @@ class PostgresPublicDataRepository:
                 p.name_player AS player_name,
                 COALESCE(p.country, '') AS player_country,
                 string_agg(tp.name_tuning_part, ', ' ORDER BY tp.name_tuning_part) AS tuning_parts,
-                echo_part.name_tuning_part AS "echoAffectedPart"
+                echo_part.name_tuning_part AS "echoAffectedPart",
+                wr.created_at
             FROM world_record AS wr
             JOIN map AS m ON wr.id_map = m.id_map
             JOIN vehicle AS v ON wr.id_vehicle = v.id_vehicle
@@ -128,7 +129,7 @@ class PostgresPublicDataRepository:
             GROUP BY wr.id_record, wr.id_map, wr.id_vehicle, wr.id_player,
                 wr.distance, wr.current, wr.id_tuning_setup, wr.questionable,
                 wr.is_mythic, wr.questionable_reason, m.name_map, v.name_vehicle, p.name_player, p.country,
-                echo_part.name_tuning_part
+                echo_part.name_tuning_part, wr.created_at
             ORDER BY wr.id_map DESC
             """
         )
@@ -242,7 +243,8 @@ class PostgresPublicDataRepository:
                 p.name_player AS player_name,
                 COALESCE(p.country, '') AS player_country,
                 string_agg(tp.name_tuning_part, ', ' ORDER BY tp.name_tuning_part) AS tuning_parts,
-                echo_part.name_tuning_part AS "echoAffectedPart"
+                echo_part.name_tuning_part AS "echoAffectedPart",
+                wr.created_at
             FROM world_record AS wr
             JOIN map AS m ON wr.id_map = m.id_map
             JOIN vehicle AS v ON wr.id_vehicle = v.id_vehicle
@@ -255,7 +257,7 @@ class PostgresPublicDataRepository:
             GROUP BY wr.id_record, wr.id_map, wr.id_vehicle, wr.id_player,
                 wr.distance, wr.current, wr.id_tuning_setup, wr.questionable,
                 wr.is_mythic, wr.questionable_reason, m.name_map, v.name_vehicle, p.name_player, p.country,
-                echo_part.name_tuning_part
+                echo_part.name_tuning_part, wr.created_at
             ORDER BY {order_by}
             LIMIT %(limit)s OFFSET %(offset)s
             """,
@@ -341,7 +343,8 @@ class PostgresPublicDataRepository:
                 p.name_player AS player_name,
                 COALESCE(p.country, '') AS player_country,
                 string_agg(tp.name_tuning_part, ', ' ORDER BY tp.name_tuning_part) AS tuning_parts,
-                echo_part.name_tuning_part AS "echoAffectedPart"
+                echo_part.name_tuning_part AS "echoAffectedPart",
+                wr.created_at
             FROM world_record AS wr
             JOIN map AS m ON wr.id_map = m.id_map
             JOIN vehicle AS v ON wr.id_vehicle = v.id_vehicle
@@ -354,7 +357,7 @@ class PostgresPublicDataRepository:
             GROUP BY wr.id_record, wr.id_map, wr.id_vehicle, wr.id_player,
                 wr.distance, wr.current, wr.id_tuning_setup, wr.questionable,
                 wr.is_mythic, wr.questionable_reason, m.name_map, v.name_vehicle, p.name_player, p.country,
-                echo_part.name_tuning_part
+                echo_part.name_tuning_part, wr.created_at
             ORDER BY wr.id_map DESC
             LIMIT %(limit)s OFFSET %(offset)s
             """,

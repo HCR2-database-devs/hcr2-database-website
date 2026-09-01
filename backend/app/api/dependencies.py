@@ -13,6 +13,7 @@ from app.services.changelog_service import ChangelogService
 from app.services.news_service import NewsService
 from app.services.public_data_service import PublicDataService
 from app.services.public_submission_service import PublicSubmissionService
+from app.services.stats_service import StatsService
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
@@ -46,3 +47,7 @@ def get_activity_log_service() -> ActivityLogService:
 
 def get_public_submission_service(settings: SettingsDep) -> PublicSubmissionService:
     return PublicSubmissionService(settings)
+
+
+def get_stats_service() -> StatsService:
+    return StatsService()

@@ -3,8 +3,11 @@ import type { MouseEvent, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { AdSlot } from "../components/AdSlot";
+import { BarChart, LineChart } from "../components/StatsCharts";
+import type { BarChartPoint, LineChartPoint } from "../components/StatsCharts";
 import {
   asText,
+  formatDate,
   formatDistance,
   getCountryCode,
   MapWithIcon,
@@ -12,7 +15,7 @@ import {
   TuningPartsIcons,
   VehicleWithIcon
 } from "../lib/legacyDisplay";
-import { exportRecords, getPublicData } from "../services/publicData";
+import { exportRecords, getPublicData, getRecordHistory, getSubmissionVolume } from "../services/publicData";
 import { emptyRecordFilters } from "../types/api";
 import type { DataRow } from "../types/api";
 
@@ -138,6 +141,48 @@ export function StatsPage() {
   const maps = useQuery({
     queryKey: ["public-data", "maps"],
     queryFn: () => getPublicData("maps")
+  });
+  const vehicles = useQuery({
+    queryKey: ["public-data", "vehicles"],
+    queryFn: () => getPublicData("vehicles")
+  });
+
+  const mapNames = useMemo(
+    () =>
+      (maps.data ?? [])
+        .map((row) => asText(row.nameMap) || asText(row.namemap))
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b)),
+    [maps.data]
+  );
+  const vehicleNames = useMemo(
+    () =>
+      (vehicles.data ?? [])
+        .map((row) => asText(row.nameVehicle) || asText(row.namevehicle))
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b)),
+    [vehicles.data]
+  );
+
+  const [historyMap, setHistoryMap] = useState("");
+  const [historyVehicle, setHistoryVehicle] = useState("");
+  const [historyMythic, setHistoryMythic] = useState<boolean | undefined>(undefined);
+  const [volumeWeeks, setVolumeWeeks] = useState(12);
+  const [tuningMap, setTuningMap] = useState("");
+
+  const activeHistoryMap = historyMap || mapNames[0] || "";
+  const activeHistoryVehicle = historyVehicle || vehicleNames[0] || "";
+  const activeTuningMap = tuningMap || mapNames[0] || "";
+  const canFetchHistory = activeHistoryMap !== "" && activeHistoryVehicle !== "";
+
+  const recordHistoryQuery = useQuery({
+    queryKey: ["stats", "record-history", activeHistoryMap, activeHistoryVehicle, historyMythic],
+    queryFn: () => getRecordHistory(activeHistoryMap, activeHistoryVehicle, historyMythic),
+    enabled: canFetchHistory
+  });
+  const volumeQuery = useQuery({
+    queryKey: ["stats", "submission-volume", volumeWeeks],
+    queryFn: () => getSubmissionVolume(volumeWeeks)
   });
 
   const rows = records.data ?? [];
@@ -419,6 +464,67 @@ export function StatsPage() {
     { label: "Mythic Coverage", value: `${mythicCoverage}%` }
   ];
 
+  const recentKpis = useMemo(() => {
+    const now = Date.now();
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    const monthMs = 30 * 24 * 60 * 60 * 1000;
+    let thisWeek = 0;
+    let thisMonth = 0;
+    rows.forEach((row) => {
+      const iso = asText(row.created_at);
+      if (!iso) return;
+      const time = new Date(iso).getTime();
+      if (Number.isNaN(time)) return;
+      if (time >= now - weekMs) thisWeek += 1;
+      if (time >= now - monthMs) thisMonth += 1;
+    });
+    const topMap = Object.entries(stats.mapTotals).sort((a, b) => b[1].count - a[1].count)[0]?.[0] ?? "-";
+    const topVehicle = Object.entries(stats.vehicleTotals).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "-";
+    const topPlayer = Object.entries(stats.playerCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "-";
+    return { thisWeek, thisMonth, topMap, topVehicle, topPlayer };
+  }, [rows, stats.mapTotals, stats.vehicleTotals, stats.playerCounts]);
+
+  const currentWeekSubmissions = useMemo(() => {
+    const entries = volumeQuery.data?.weeks ?? [];
+    const last = entries[entries.length - 1];
+    return { week: last?.weekStart ?? "", total: last?.total ?? 0, pending: last?.pending ?? 0 };
+  }, [volumeQuery.data]);
+
+  const historyChartData: LineChartPoint[] = useMemo(
+    () =>
+      (recordHistoryQuery.data?.entries ?? [])
+        .map((entry) => ({
+          label: formatDate(entry.created_at).split(",")[0] ?? entry.created_at,
+          value: Number(entry.distance ?? 0),
+          detail: `${formatDate(entry.created_at)}  ·  ${entry.playerName ?? "?"}  ·  ${formatDistance(entry.distance)}`
+        })),
+    [recordHistoryQuery.data]
+  );
+
+  const volumeChartData: BarChartPoint[] = useMemo(
+    () =>
+      (volumeQuery.data?.weeks ?? []).map((entry, index) => ({
+        label: entry.weekStart.slice(5),
+        value: entry.total,
+        color: entry.total > 0 ? `var(${chartVariables[index % chartVariables.length]})` : "var(--muted)"
+      })),
+    [volumeQuery.data]
+  );
+
+  const tuningByMap = useMemo(() => {
+    const mapRows = normalRows.filter((row) => asText(row.map_name) === activeTuningMap);
+    const setups: Record<string, { count: number; parts: string }> = {};
+    mapRows.forEach((row) => {
+      if (!row.idTuningSetup) return;
+      const key = `Setup ${row.idTuningSetup}`;
+      setups[key] = setups[key] ?? { count: 0, parts: asText(row.tuning_parts) };
+      setups[key].count += 1;
+    });
+    return Object.entries(setups)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 10);
+  }, [normalRows, activeTuningMap]);
+
   return (
     <main id="stats-container" className="stats-page">
       <section className="page-hero page-hero--compact" aria-labelledby="stats-title">
@@ -438,6 +544,133 @@ export function StatsPage() {
                 <strong>{item.value}</strong>
               </div>
             ))}
+          </section>
+
+          <section className="stats-section dash-section" aria-label="Activity dashboard">
+            <h2>Activity Dashboard</h2>
+            <div className="dash-grid">
+              <div className="dash-card">
+                <span>Records this week</span>
+                <strong>{recentKpis.thisWeek}</strong>
+              </div>
+              <div className="dash-card">
+                <span>Records this month</span>
+                <strong>{recentKpis.thisMonth}</strong>
+              </div>
+              <div className="dash-card">
+                <span>Submissions this week</span>
+                <strong>
+                  {currentWeekSubmissions.week ? currentWeekSubmissions.total : "—"}
+                  {currentWeekSubmissions.pending > 0 && (
+                    <small>&nbsp;({currentWeekSubmissions.pending} pending)</small>
+                  )}
+                </strong>
+              </div>
+              <div className="dash-card">
+                <span>Busiest map</span>
+                <strong className="dash-card--name">
+                  <MapWithIcon name={recentKpis.topMap} />
+                </strong>
+              </div>
+              <div className="dash-card">
+                <span>Most used vehicle</span>
+                <strong className="dash-card--name">
+                  <VehicleWithIcon name={recentKpis.topVehicle} />
+                </strong>
+              </div>
+              <div className="dash-card">
+                <span>Most prolific player</span>
+                <strong>{recentKpis.topPlayer}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section className="stats-section">
+            <div className="section-toolbar">
+              <h2>Record History &amp; Progression</h2>
+            </div>
+            <div className="history-controls">
+              <label>
+                Map
+                <select value={activeHistoryMap} onChange={(e) => setHistoryMap(e.target.value)}>
+                  {mapNames.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Vehicle
+                <select value={activeHistoryVehicle} onChange={(e) => setHistoryVehicle(e.target.value)}>
+                  {vehicleNames.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="history-toggle">
+                <input
+                  type="checkbox"
+                  checked={historyMythic === true}
+                  onChange={(e) => setHistoryMythic(e.target.checked ? true : undefined)}
+                />
+                Mythic only
+              </label>
+              <span className="history-note">
+                History is captured from record replacements going forward.
+              </span>
+            </div>
+            {recordHistoryQuery.isLoading && <p className="loading-state">Loading history...</p>}
+            {recordHistoryQuery.isError && (
+              <p className="frontend-error">Error loading record history.</p>
+            )}
+            {recordHistoryQuery.data && historyChartData.length > 0 && (
+              <>
+                <LineChart data={historyChartData} />
+                <TableFrame>
+                  <div className="history-table-scroll">
+                    <table className="stats-usage-table history-table">
+                      <tbody>
+                        <tr>
+                          <th>Status</th>
+                          <th>Date</th>
+                          <th>Player</th>
+                          <th>Distance</th>
+                          <th>Tuning</th>
+                        </tr>
+                        {recordHistoryQuery.data.entries
+                          .slice()
+                          .reverse()
+                          .map((entry) => (
+                            <tr key={entry.idRecord}>
+                              <td>
+                                <span className={`status-pill ${entry.current === 1 ? "status-pill--verified" : ""}`}>
+                                  {entry.current === 1 ? "Current" : "Replaced"}
+                                </span>
+                              </td>
+                              <td>{formatDate(entry.created_at)}</td>
+                              <td>{entry.playerName ?? "?"}</td>
+                              <td>{formatDistance(entry.distance)}</td>
+                              <td>
+                                {asText(entry.tuningParts) ? (
+                                  <TuningPartsIcons parts={entry.tuningParts} />
+                                ) : (
+                                  "-"
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </TableFrame>
+              </>
+            )}
+            {recordHistoryQuery.data && historyChartData.length === 0 && (
+              <p className="empty-state">No record history for this map and vehicle yet.</p>
+            )}
           </section>
 
           {longestActive && (
@@ -670,6 +903,91 @@ export function StatsPage() {
                 </tbody>
               </table>
             </TableFrame>
+          </section>
+
+          <section className="stats-section">
+            <div className="section-toolbar">
+              <h2>Weekly Submission Volume</h2>
+              <select value={volumeWeeks} onChange={(e) => setVolumeWeeks(Number(e.target.value))}>
+                <option value={8}>Last 8 weeks</option>
+                <option value={12}>Last 12 weeks</option>
+                <option value={16}>Last 16 weeks</option>
+                <option value={24}>Last 24 weeks</option>
+              </select>
+            </div>
+            {volumeQuery.isLoading && <p className="loading-state">Loading volume...</p>}
+            {volumeQuery.isError && <p className="frontend-error">Error loading submission volume.</p>}
+            {volumeQuery.data && (
+              <>
+                <BarChart data={volumeChartData} />
+                <TableFrame>
+                  <div className="history-table-scroll">
+                    <table className="stats-usage-table volume-table">
+                      <tbody>
+                        <tr>
+                          <th>Week</th>
+                          <th>Total</th>
+                          <th>Approved</th>
+                          <th>Rejected</th>
+                          <th>Pending</th>
+                        </tr>
+                        {volumeQuery.data.weeks
+                          .slice()
+                          .reverse()
+                          .map((row) => (
+                            <tr key={row.weekStart}>
+                              <td>{row.weekStart}</td>
+                              <td>{row.total === 0 ? "—" : row.total}</td>
+                              <td>{row.approved === 0 ? "—" : row.approved}</td>
+                              <td>{row.rejected === 0 ? "—" : row.rejected}</td>
+                              <td>{row.pending === 0 ? "—" : row.pending}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </TableFrame>
+              </>
+            )}
+          </section>
+
+          <section className="stats-section">
+            <div className="section-toolbar">
+              <h2>Tuning Setup Usage by Map</h2>
+              <select value={activeTuningMap} onChange={(e) => setTuningMap(e.target.value)}>
+                {mapNames.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {tuningByMap.length === 0 ? (
+              <p className="empty-state">No tuning setups recorded for this map yet.</p>
+            ) : (
+              <TableFrame>
+                <table className="stats-usage-table">
+                  <tbody>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Setup</th>
+                      <th>Usage Count</th>
+                    </tr>
+                    {tuningByMap.map(([label, item], index) => (
+                      <tr key={label}>
+                        <td>{index + 1}</td>
+                        <td>
+                          <span className="setup-icons-only" aria-label={item.parts}>
+                            <TuningPartsIcons parts={item.parts} />
+                          </span>
+                        </td>
+                        <td>{item.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableFrame>
+            )}
           </section>
 
           <section className="stats-section">

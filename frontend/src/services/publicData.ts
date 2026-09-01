@@ -4,7 +4,9 @@ import type {
   NewsItem,
   PaginatedRecordsResponse,
   PublicDataView,
-  RecordFilters
+  RecordFilters,
+  RecordHistoryResponse,
+  SubmissionVolumeResponse
 } from "../types/api";
 import { fetchJson } from "./api";
 
@@ -68,4 +70,20 @@ export function getChangelog(limit = 50) {
 
 export function getHcaptchaSitekey() {
   return fetchJson<{ sitekey: string }>("/api/v1/hcaptcha/sitekey");
+}
+
+function buildHistoryParams(map: string, vehicle: string, mythic?: boolean): URLSearchParams {
+  const params = new URLSearchParams();
+  params.set("map", map);
+  params.set("vehicle", vehicle);
+  if (mythic !== undefined) params.set("mythic", mythic ? "true" : "false");
+  return params;
+}
+
+export function getRecordHistory(map: string, vehicle: string, mythic?: boolean) {
+  return fetchJson<RecordHistoryResponse>(`/api/v1/stats/record-history?${buildHistoryParams(map, vehicle, mythic)}`);
+}
+
+export function getSubmissionVolume(weeks = 12) {
+  return fetchJson<SubmissionVolumeResponse>(`/api/v1/stats/submission-volume?weeks=${weeks}`);
 }

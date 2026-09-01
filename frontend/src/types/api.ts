@@ -143,3 +143,34 @@ export type BanEntry = {
   active: boolean;
   expired?: boolean;
 };
+
+export type RecordHistoryEntry = {
+  idRecord: number;
+  distance: number;
+  current: number;
+  isMythic: boolean;
+  questionable: number;
+  questionable_reason?: string | null;
+  playerName?: string | null;
+  playerCountry?: string | null;
+  tuningParts?: string | null;
+  created_at: string;
+};
+
+export type RecordHistoryResponse = {
+  map: string;
+  vehicle: string;
+  entries: RecordHistoryEntry[];
+};
+
+export type SubmissionVolumeEntry = {
+  weekStart: string;
+  pending: number;
+  approved: number;
+  rejected: number;
+  total: number;
+};
+
+export type SubmissionVolumeResponse = {
+  weeks: SubmissionVolumeEntry[];
+};
