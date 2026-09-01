@@ -76,6 +76,8 @@ export function LineChart({ data, height = HEIGHT, width = WIDTH, color }: LineC
     return <p className="empty-state">Not enough data to draw a chart.</p>;
   }
 
+  const geom = geometry;
+
   const gridColor = "rgba(95, 232, 255, 0.18)";
   const labelColor = "var(--muted)";
 
@@ -88,7 +90,7 @@ export function LineChart({ data, height = HEIGHT, width = WIDTH, color }: LineC
     const rawY = (event.clientY - bounds.top) * scaleY;
     let nearest = 0;
     let nearestDist = Infinity;
-    geometry.points.forEach((p, i) => {
+    geom.points.forEach((p, i) => {
       const dist = Math.hypot(p.x - rawX, p.y - rawY);
       if (dist < nearestDist) {
         nearestDist = dist;
@@ -97,8 +99,8 @@ export function LineChart({ data, height = HEIGHT, width = WIDTH, color }: LineC
     });
     setHover({
       index: nearest,
-      x: geometry.points[nearest].x * scaleX,
-      y: geometry.points[nearest].y * scaleY
+      x: geom.points[nearest].x * scaleX,
+      y: geom.points[nearest].y * scaleY
     });
   }
 
