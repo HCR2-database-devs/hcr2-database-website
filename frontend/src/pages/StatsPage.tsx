@@ -645,15 +645,15 @@ export function StatsPage() {
                           .reverse()
                           .map((entry) => (
                             <tr key={entry.idRecord}>
-                              <td>
+                              <td data-label="Status">
                                 <span className={`status-pill ${entry.current === 1 ? "status-pill--verified" : ""}`}>
                                   {entry.current === 1 ? "Current" : "Replaced"}
                                 </span>
                               </td>
-                              <td>{formatDate(entry.created_at)}</td>
-                              <td>{entry.playerName ?? "?"}</td>
-                              <td>{formatDistance(entry.distance)}</td>
-                              <td>
+                              <td data-label="Date">{formatDate(entry.created_at)}</td>
+                              <td data-label="Player">{entry.playerName ?? "?"}</td>
+                              <td data-label="Distance">{formatDistance(entry.distance)}</td>
+                              <td data-label="Tuning">
                                 {asText(entry.tuningParts) ? (
                                   <TuningPartsIcons parts={entry.tuningParts} />
                                 ) : (
@@ -936,11 +936,11 @@ export function StatsPage() {
                           .reverse()
                           .map((row) => (
                             <tr key={row.weekStart}>
-                              <td>{row.weekStart}</td>
-                              <td>{row.total === 0 ? "—" : row.total}</td>
-                              <td>{row.approved === 0 ? "—" : row.approved}</td>
-                              <td>{row.rejected === 0 ? "—" : row.rejected}</td>
-                              <td>{row.pending === 0 ? "—" : row.pending}</td>
+                              <td data-label="Week">{row.weekStart}</td>
+                              <td data-label="Total">{row.total === 0 ? "—" : row.total}</td>
+                              <td data-label="Approved">{row.approved === 0 ? "—" : row.approved}</td>
+                              <td data-label="Rejected">{row.rejected === 0 ? "—" : row.rejected}</td>
+                              <td data-label="Pending">{row.pending === 0 ? "—" : row.pending}</td>
                             </tr>
                           ))}
                       </tbody>
@@ -975,13 +975,13 @@ export function StatsPage() {
                     </tr>
                     {tuningByMap.map(([label, item], index) => (
                       <tr key={label}>
-                        <td>{index + 1}</td>
-                        <td>
+                        <td data-label="Rank">{index + 1}</td>
+                        <td data-label="Setup">
                           <span className="setup-icons-only" aria-label={item.parts}>
                             <TuningPartsIcons parts={item.parts} />
                           </span>
                         </td>
-                        <td>{item.count}</td>
+                        <td data-label="Usage Count">{item.count}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1007,9 +1007,9 @@ export function StatsPage() {
                         const item = mostUsedParts[slot];
                         return (
                           <tr key={item?.[0] ?? `empty-part-${slot}`} className={!item ? "is-empty-row" : undefined}>
-                            <td>{item ? slot + 1 : ""}</td>
-                            <td>{item ? <TuningPartWithIcon name={item[0]} /> : ""}</td>
-                            <td>{item ? item[1] : ""}</td>
+                            <td data-label="Rank">{item ? slot + 1 : ""}</td>
+                            <td data-label="Part">{item ? <TuningPartWithIcon name={item[0]} /> : ""}</td>
+                            <td data-label="Usage Count">{item ? item[1] : ""}</td>
                           </tr>
                         );
                       })}
@@ -1031,8 +1031,8 @@ export function StatsPage() {
                         const item = mostUsedSetups[slot];
                         return (
                           <tr key={item?.[0] ?? `empty-setup-${slot}`} className={!item ? "is-empty-row" : undefined}>
-                            <td>{item ? slot + 1 : ""}</td>
-                            <td>
+                            <td data-label="Rank">{item ? slot + 1 : ""}</td>
+                            <td data-label="Setup">
                               {item ? (
                                 <span className="setup-icons-only" aria-label={item[1].parts}>
                                   <TuningPartsIcons parts={item[1].parts} />
@@ -1041,7 +1041,7 @@ export function StatsPage() {
                                 ""
                               )}
                             </td>
-                            <td>{item ? item[1].count : ""}</td>
+                            <td data-label="Usage Count">{item ? item[1].count : ""}</td>
                           </tr>
                         );
                       })}
@@ -1067,10 +1067,10 @@ export function StatsPage() {
                     </tr>
                     {playerStreaks.map((item, index) => (
                       <tr key={item.player}>
-                        <td>{index + 1}</td>
-                        <td>{item.player}</td>
-                        <td><MapWithIcon name={item.map} /></td>
-                        <td>{item.count}</td>
+                        <td data-label="Rank">{index + 1}</td>
+                        <td data-label="Player">{item.player}</td>
+                        <td data-label="Dominant Map"><MapWithIcon name={item.map} /></td>
+                        <td data-label="Records">{item.count}</td>
                       </tr>
                     ))}
                   </tbody>

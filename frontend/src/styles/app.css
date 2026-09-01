@@ -2543,72 +2543,43 @@ tbody tr:hover {
     background: rgba(4, 10, 38, 0.5);
     border: 1px solid rgba(93, 132, 235, 0.3);
     border-radius: var(--radius-sm);
-    margin-bottom: 8px;
-    padding: 10px 12px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px 12px;
+    margin-bottom: 10px;
+    padding: 10px 14px;
+    display: block;
   }
 
   .stats-usage-table td {
     border-bottom: 0;
-    padding: 0;
+    padding: 6px 0;
     height: auto;
     font-size: 14px;
+    display: block;
+    width: 100%;
   }
 
   .stats-usage-table td::before {
+    content: attr(data-label);
+    display: block;
     color: var(--muted);
     font-size: 11px;
     font-weight: 780;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+    margin-bottom: 2px;
   }
 
-  .stats-usage-table td:nth-child(1)::before {
-    content: "Rank";
-  }
-
-  .stats-usage-table td:nth-child(2)::before {
-    content: "Player";
-    display: block;
-  }
-
-  .stats-usage-table td:nth-child(3)::before {
-    content: "Map";
-    display: block;
-  }
-
-  .stats-usage-table td:nth-child(4)::before {
-    content: "Records";
-  }
-
-  .stats-usage-table td:nth-child(1) {
-    grid-column: 1;
-    grid-row: 1;
+  .stats-usage-table td:first-child {
     color: var(--muted-strong);
     font-weight: 700;
     font-size: 13px;
   }
 
-  .stats-usage-table td:nth-child(2) {
-    grid-column: 2;
-    grid-row: 1;
-    color: var(--text-strong);
-    font-weight: 600;
+  .stats-usage-table .is-empty-row td::before {
+    display: none;
   }
 
-  .stats-usage-table td:nth-child(3) {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-
-  .stats-usage-table td:nth-child(4) {
-    grid-column: 1 / -1;
-    grid-row: 3;
-    color: var(--accent-yellow);
-    font-weight: 700;
-    font-size: 16px;
+  .stats-usage-table .is-empty-row {
+    display: none;
   }
 }
 
