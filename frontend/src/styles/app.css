@@ -2525,61 +2525,8 @@ tbody tr:hover {
     min-width: 0;
   }
 
-  .stats-usage-table,
-  .stats-usage-table thead,
-  .stats-usage-table tbody,
-  .stats-usage-table tr,
-  .stats-usage-table th,
-  .stats-usage-table td {
-    display: block;
-    width: 100%;
-  }
-
-  .stats-usage-table thead {
-    display: none;
-  }
-
-  .stats-usage-table tr {
-    background: rgba(4, 10, 38, 0.5);
-    border: 1px solid rgba(93, 132, 235, 0.3);
-    border-radius: var(--radius-sm);
-    margin-bottom: 10px;
-    padding: 10px 14px;
-    display: block;
-  }
-
-  .stats-usage-table td {
-    border-bottom: 0;
-    padding: 6px 0;
-    height: auto;
-    font-size: 14px;
-    display: block;
-    width: 100%;
-  }
-
-  .stats-usage-table td::before {
-    content: attr(data-label);
-    display: block;
-    color: var(--muted);
-    font-size: 11px;
-    font-weight: 780;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    margin-bottom: 2px;
-  }
-
-  .stats-usage-table td:first-child {
-    color: var(--muted-strong);
-    font-weight: 700;
-    font-size: 13px;
-  }
-
-  .stats-usage-table .is-empty-row td::before {
-    display: none;
-  }
-
-  .stats-usage-table .is-empty-row {
-    display: none;
+  .stats-usage-table {
+    min-width: 680px;
   }
 }
 
