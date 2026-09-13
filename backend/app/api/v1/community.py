@@ -8,6 +8,8 @@ from app.api.dependencies import (
     get_community_account_service,
     get_community_moderation_service,
 )
+from app.core.config import Settings, get_settings
+from app.core.features import can_use_feature
 from app.schemas.community import (
     CommunityAccount,
     CommunityProfileUpdate,
@@ -30,6 +32,7 @@ CommunityModerationServiceDep = Annotated[
     CommunityModerationService,
     Depends(get_community_moderation_service),
 ]
+SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 
 def _require_user(request: Request, auth_service: AuthService) -> dict[str, Any]:
@@ -37,6 +40,18 @@ def _require_user(request: Request, auth_service: AuthService) -> dict[str, Any]
     if not status.get("logged"):
         raise HTTPException(status_code=401, detail="Unauthorized")
     return status
+
+
+def _require_feature(
+    request: Request,
+    auth_service: AuthService,
+    settings: Settings,
+    feature_name: str,
+) -> None:
+    status = auth_service.status_from_cookie(request.cookies.get("WC_TOKEN"))
+    discord_id = str(status["id"]) if status.get("logged") else None
+    if not can_use_feature(discord_id, feature_name, settings):
+        raise HTTPException(status_code=403, detail="This feature is currently in beta")
 
 
 async def _read_upload(upload: UploadFile | None) -> tuple[str | None, str | None, bytes | None]:
@@ -54,8 +69,10 @@ def community_me(
     request: Request,
     auth_service: AuthServiceDep,
     community_service: CommunityAccountServiceDep,
+    settings: SettingsDep,
 ) -> Any:
     status = _require_user(request, auth_service)
+    _require_feature(request, auth_service, settings, "discord_accounts")
 
     account = community_service.get_account(str(status["id"]))
     if account is None:
@@ -66,13 +83,17 @@ def community_me(
 
 @router.get("/members", response_model=None)
 def community_members(
+    request: Request,
     community_service: CommunityAccountServiceDep,
+    auth_service: AuthServiceDep,
+    settings: SettingsDep,
     q: Annotated[str | None, Query()] = None,
     sort: Annotated[str | None, Query()] = None,
     country: Annotated[str | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> Any:
+    _require_feature(request, auth_service, settings, "community_members")
     return community_service.list_members(
         search=q,
         sort=sort or "new",
@@ -88,8 +109,10 @@ def update_own_profile(
     request: Request,
     auth_service: AuthServiceDep,
     community_service: CommunityAccountServiceDep,
+    settings: SettingsDep,
 ) -> Any:
     status = _require_user(request, auth_service)
+    _require_feature(request, auth_service, settings, "profile_customization")
     try:
         account = community_service.update_profile(str(status["id"]), payload)
     except CommunityProfileError as exc:
@@ -104,9 +127,11 @@ async def upload_own_banner(
     request: Request,
     auth_service: AuthServiceDep,
     community_service: CommunityAccountServiceDep,
+    settings: SettingsDep,
     banner: Annotated[UploadFile | None, File()] = None,
 ) -> Any:
     status = _require_user(request, auth_service)
+    _require_feature(request, auth_service, settings, "profile_customization")
     _, _, content = await _read_upload(banner)
     try:
         account = community_service.upload_banner(str(status["id"]), content or b"")
@@ -122,8 +147,10 @@ def remove_own_banner(
     request: Request,
     auth_service: AuthServiceDep,
     community_service: CommunityAccountServiceDep,
+    settings: SettingsDep,
 ) -> Any:
     status = _require_user(request, auth_service)
+    _require_feature(request, auth_service, settings, "profile_customization")
     account = community_service.clear_banner(str(status["id"]))
     if account is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -136,7 +163,9 @@ def community_banner(
     request: Request,
     auth_service: AuthServiceDep,
     community_service: CommunityAccountServiceDep,
+    settings: SettingsDep,
 ) -> Any:
+    _require_feature(request, auth_service, settings, "community_profiles")
     status = auth_service.status_from_cookie(request.cookies.get("WC_TOKEN"))
     viewer_id = str(status["id"]) if status.get("logged") else None
     banner = community_service.get_banner(community_id, viewer_id)
@@ -155,7 +184,9 @@ def community_profile(
     request: Request,
     auth_service: AuthServiceDep,
     community_service: CommunityAccountServiceDep,
+    settings: SettingsDep,
 ) -> Any:
+    _require_feature(request, auth_service, settings, "community_profiles")
     status = auth_service.status_from_cookie(request.cookies.get("WC_TOKEN"))
     viewer_id = str(status["id"]) if status.get("logged") else None
     profile = community_service.get_public_profile(community_id, viewer_id)
@@ -172,8 +203,10 @@ def report_community_profile(
     auth_service: AuthServiceDep,
     community_service: CommunityAccountServiceDep,
     moderation_service: CommunityModerationServiceDep,
+    settings: SettingsDep,
 ) -> Any:
     status = _require_user(request, auth_service)
+    _require_feature(request, auth_service, settings, "profile_reporting")
 
     reporter = community_service.get_account(str(status["id"]))
     if reporter is None:

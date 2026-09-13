@@ -9,12 +9,16 @@ from app.services.community_account_service import CommunityProfileError
 
 
 class FakeAuthService:
+    def __init__(self) -> None:
+        self.beta_ids: set[str] = {"beta-user"}
+
     def status_from_cookie(self, cookie: str | None) -> dict[str, Any]:
         if not cookie or cookie == "bad":
             return {"logged": False, "allowed": False}
         return {
             "logged": True,
             "allowed": cookie == "admin",
+            "beta": cookie in self.beta_ids,
             "id": cookie,
             "username": f"Name {cookie}",
         }
@@ -165,7 +169,29 @@ class FakeCommunityModerationService:
 
 def _client() -> tuple[TestClient, FakeCommunityAccountService]:
     app = create_app()
-    app.dependency_overrides[get_settings] = lambda: Settings(API_KEYS="dev-api-key")
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        API_KEYS="dev-api-key",
+        FEATURE_DISCORD_ACCOUNTS="ENABLED",
+        FEATURE_COMMUNITY_PROFILES="ENABLED",
+        FEATURE_PROFILE_CUSTOMIZATION="ENABLED",
+        FEATURE_COMMUNITY_MEMBERS="ENABLED",
+        FEATURE_PROFILE_REPORTING="ENABLED",
+    )
+    community = FakeCommunityAccountService()
+    moderation = FakeCommunityModerationService(community)
+    app.dependency_overrides[dependencies.get_auth_service] = FakeAuthService
+    app.dependency_overrides[dependencies.get_community_account_service] = lambda: community
+    app.dependency_overrides[dependencies.get_community_moderation_service] = lambda: moderation
+    return TestClient(app), community
+
+
+def _beta_client() -> tuple[TestClient, FakeCommunityAccountService]:
+    app = create_app()
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        API_KEYS="dev-api-key",
+        BETA_DISCORD_IDS="beta-user",
+        ALLOWED_DISCORD_IDS="admin",
+    )
     community = FakeCommunityAccountService()
     moderation = FakeCommunityModerationService(community)
     app.dependency_overrides[dependencies.get_auth_service] = FakeAuthService
@@ -342,3 +368,129 @@ def test_admin_report_resolution() -> None:
     )
     assert resolved.status_code == 200
     assert resolved.json()["status"] == "resolved"
+
+
+def test_beta_members_list_denied_for_anonymous_user() -> None:
+    client, _ = _beta_client()
+    response = client.get("/api/v1/community/members")
+    assert response.status_code == 403
+
+
+def test_beta_members_list_denied_for_non_beta_user() -> None:
+    client, community = _beta_client()
+    community.add_user("user-a")
+    response = client.get("/api/v1/community/members", cookies=_cookie("user-a"))
+    assert response.status_code == 403
+
+
+def test_beta_members_list_allowed_for_beta_user() -> None:
+    client, community = _beta_client()
+    community.add_user("beta-user")
+    response = client.get("/api/v1/community/members", cookies=_cookie("beta-user"))
+    assert response.status_code == 200
+    assert response.json()["count"] == 1
+
+
+def test_beta_members_list_allowed_for_admin_user() -> None:
+    client, community = _beta_client()
+    community.add_user("beta-user")
+    response = client.get("/api/v1/community/members", cookies=_cookie("admin"))
+    assert response.status_code == 200
+
+
+def test_beta_profile_denied_for_non_beta_user() -> None:
+    client, community = _beta_client()
+    community.add_user("user-a")
+    response = client.get("/api/v1/community/1", cookies=_cookie("user-a"))
+    assert response.status_code == 403
+
+
+def test_beta_profile_allowed_for_beta_user() -> None:
+    client, community = _beta_client()
+    community.add_user("beta-user")
+    response = client.get("/api/v1/community/1", cookies=_cookie("beta-user"))
+    assert response.status_code == 200
+
+
+def test_beta_profile_edit_denied_for_non_beta_user() -> None:
+    client, community = _beta_client()
+    community.add_user("user-a")
+    response = client.patch(
+        "/api/v1/community/profile",
+        json={"bio": "hi"},
+        cookies=_cookie("user-a"),
+    )
+    assert response.status_code == 403
+
+
+def test_beta_profile_edit_allowed_for_beta_user() -> None:
+    client, community = _beta_client()
+    community.add_user("beta-user")
+    response = client.patch(
+        "/api/v1/community/profile",
+        json={"bio": "hi"},
+        cookies=_cookie("beta-user"),
+    )
+    assert response.status_code == 200
+    assert response.json()["bio"] == "hi"
+
+
+def test_beta_report_denied_for_non_beta_user() -> None:
+    client, community = _beta_client()
+    community.add_user("user-a")
+    community.add_user("user-b")
+    response = client.post(
+        "/api/v1/community/1/report",
+        json={"category": "spam"},
+        cookies=_cookie("user-b"),
+    )
+    assert response.status_code == 403
+
+
+def test_beta_report_allowed_for_beta_user() -> None:
+    client, community = _beta_client()
+    community.add_user("user-a")
+    community.add_user("beta-user")
+    response = client.post(
+        "/api/v1/community/1/report",
+        json={"category": "spam"},
+        cookies=_cookie("beta-user"),
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "open"
+
+
+def test_auth_status_sends_features_and_no_beta_for_logged_out() -> None:
+    client, _ = _beta_client()
+    response = client.get("/api/v1/auth/status")
+    assert response.status_code == 200
+    assert response.json() == {
+        "logged": False,
+        "allowed": False,
+        "features": {
+            "discord_accounts": "BETA",
+            "community_profiles": "BETA",
+            "profile_customization": "BETA",
+            "community_members": "BETA",
+            "profile_reporting": "BETA",
+        },
+    }
+
+
+def test_auth_status_exposes_beta_flag_and_features_for_beta_user() -> None:
+    client, _ = _beta_client()
+    response = client.get("/api/v1/auth/status", cookies=_cookie("beta-user"))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["logged"] is True
+    assert body["beta"] is True
+    assert body["features"]["community_members"] == "BETA"
+
+
+def test_auth_status_no_beta_flag_for_non_beta_user() -> None:
+    client, _ = _beta_client()
+    response = client.get("/api/v1/auth/status", cookies=_cookie("user-a"))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["logged"] is True
+    assert body["beta"] is False

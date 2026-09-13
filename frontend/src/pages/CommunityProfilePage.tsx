@@ -3,18 +3,30 @@ import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import { BannerImage } from "../components/BannerImage";
+import { BetaBadge } from "../components/BetaBadge";
 import { CountryFlag } from "../components/CountryFlag";
+import { FeatureGate } from "../components/FeatureGate";
 import { ReportProfileModal } from "../components/ReportProfileModal";
 import { UserAvatar } from "../components/UserAvatar";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { countryName } from "../lib/countries";
+import { useCanUseFeature } from "../lib/features";
 import { formatMemberSince } from "../lib/format";
 import { getCommunityProfile } from "../services/community";
 
 export function CommunityProfilePage() {
+  return (
+    <FeatureGate feature="community_profiles">
+      <CommunityProfileContent />
+    </FeatureGate>
+  );
+}
+
+function CommunityProfileContent() {
   const { id } = useParams<{ id: string }>();
   const communityId = Number(id);
   const { data: authStatus } = useAuthStatus();
+  const canReportFeature = useCanUseFeature("profile_reporting");
   const [reportOpen, setReportOpen] = useState(false);
   const [reported, setReported] = useState(false);
 
@@ -57,7 +69,7 @@ export function CommunityProfilePage() {
   const profile = profileQuery.data;
   const memberSince = formatMemberSince(profile.created_at);
   const isOwner = profile.is_owner || authStatus?.community?.id === profile.id;
-  const canReport = authStatus?.logged === true && !isOwner;
+  const canReport = authStatus?.logged === true && !isOwner && canReportFeature;
   const lastUpdated = profile.updated_at ? formatMemberSince(profile.updated_at) : null;
 
   return (
@@ -81,6 +93,7 @@ export function CommunityProfilePage() {
           <div className="community-profile-copy">
             <h1>
               {profile.discord_username}
+              <BetaBadge feature="community_profiles" />
               {isOwner && <span className="profile-owner-badge">You</span>}
             </h1>
             <p className="community-profile-meta">

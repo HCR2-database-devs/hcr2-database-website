@@ -5,13 +5,42 @@ def test_settings_parse_comma_separated_lists() -> None:
     settings = Settings(
         _env_file=None,
         ALLOWED_DISCORD_IDS="111,222\n333",
+        BETA_DISCORD_IDS="beta-1,beta-2",
         API_KEYS="alpha,beta",
         CORS_ORIGINS="http://localhost:5173,http://127.0.0.1:5173",
     )
 
     assert settings.allowed_discord_ids == ["111", "222", "333"]
+    assert settings.beta_discord_ids == ["beta-1", "beta-2"]
     assert settings.api_keys == ["alpha", "beta"]
     assert settings.cors_origins == ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+
+def test_settings_feature_flags_default_to_beta() -> None:
+    settings = Settings(_env_file=None)
+
+    assert settings.feature_discord_accounts == "BETA"
+    assert settings.feature_community_profiles == "BETA"
+    assert settings.feature_profile_customization == "BETA"
+    assert settings.feature_community_members == "BETA"
+    assert settings.feature_profile_reporting == "BETA"
+
+
+def test_settings_feature_flags_accept_valid_and_normalize_invalid_values() -> None:
+    settings = Settings(
+        _env_file=None,
+        FEATURE_DISCORD_ACCOUNTS="enabled",
+        FEATURE_COMMUNITY_PROFILES="DISABLED",
+        FEATURE_PROFILE_CUSTOMIZATION="garbage",
+        FEATURE_COMMUNITY_MEMBERS="beta",
+        FEATURE_PROFILE_REPORTING="",
+    )
+
+    assert settings.feature_discord_accounts == "ENABLED"
+    assert settings.feature_community_profiles == "DISABLED"
+    assert settings.feature_profile_customization == "BETA"
+    assert settings.feature_community_members == "BETA"
+    assert settings.feature_profile_reporting == "BETA"
 
 
 def test_settings_parse_comma_separated_lists_from_environment(monkeypatch) -> None:

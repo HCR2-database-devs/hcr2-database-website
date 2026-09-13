@@ -8,6 +8,7 @@ from app.core.security import is_allowed_admin, verify_wc_token
 class AuthService:
     shared_secret: str | None
     allowed_discord_ids: list[str]
+    beta_discord_ids: list[str]
 
     def status_from_cookie(self, token: str | None) -> dict[str, Any]:
         if not token or not self.shared_secret:
@@ -21,6 +22,7 @@ class AuthService:
         return {
             "logged": True,
             "allowed": is_allowed_admin(discord_id, self.allowed_discord_ids),
+            "beta": str(discord_id) in self.beta_discord_ids,
             "id": discord_id,
             "username": payload.get("username"),
             "avatar": payload.get("avatar"),

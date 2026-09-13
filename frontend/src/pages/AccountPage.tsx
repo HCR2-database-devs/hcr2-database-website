@@ -3,10 +3,13 @@ import { Link } from "react-router-dom";
 import { ProfileSettingsSection } from "../components/ProfileSettingsSection";
 import { UserAvatar } from "../components/UserAvatar";
 import { useAuthStatus } from "../hooks/useAuthStatus";
+import { useCanUseFeature } from "../lib/features";
 import { formatMemberSince } from "../lib/format";
 
 export function AccountPage() {
   const { data: authStatus, isLoading } = useAuthStatus();
+  const canViewProfile = useCanUseFeature("community_profiles");
+  const canCustomizeProfile = useCanUseFeature("profile_customization");
 
   if (isLoading) {
     return (
@@ -77,14 +80,14 @@ export function AccountPage() {
           </div>
         </dl>
 
-        {community && (
+        {community && canViewProfile && (
           <Link className="button account-view-profile" to={`/community/${community.id}`}>
             View my public profile
           </Link>
         )}
       </div>
 
-      {community && <ProfileSettingsSection key={community.id} profile={community} />}
+      {community && canCustomizeProfile && <ProfileSettingsSection key={community.id} profile={community} />}
     </div>
   );
 }

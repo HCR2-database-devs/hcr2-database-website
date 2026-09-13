@@ -3546,6 +3546,46 @@ tbody tr:hover {
   vertical-align: middle;
 }
 
+.beta-badge {
+  background: linear-gradient(180deg, rgba(255, 211, 77, 0.96), rgba(230, 113, 36, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: var(--radius-sm);
+  color: #ffffff;
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 820;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  margin-left: 8px;
+  padding: 3px 6px;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  vertical-align: middle;
+}
+
+.nav-link .beta-badge {
+  margin-left: 6px;
+}
+
+.feature-notice {
+  background: var(--panel-gradient);
+  border: 2px solid var(--outline);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+  color: var(--muted-strong);
+  margin: 0 auto;
+  max-width: 560px;
+  padding: 28px;
+  text-align: center;
+}
+
+.feature-notice h1 {
+  margin: 0 0 10px;
+}
+
+.feature-notice p {
+  margin: 0 0 18px;
+}
+
 .community-profile-meta {
   color: var(--muted-strong);
   font-size: 13px;

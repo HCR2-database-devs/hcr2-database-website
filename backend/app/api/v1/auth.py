@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 
 from app.api.dependencies import get_auth_service, get_community_account_service
+from app.core.config import Settings, get_settings
+from app.core.features import FEATURE_FIELDS, can_use_feature, get_feature_state
 from app.services.auth_service import AuthService
 from app.services.community_account_service import CommunityAccountService
 
@@ -13,6 +15,7 @@ CommunityAccountServiceDep = Annotated[
     CommunityAccountService,
     Depends(get_community_account_service),
 ]
+SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 
 @router.get("/auth/status", response_model=None)
@@ -20,12 +23,18 @@ def auth_status(
     request: Request,
     service: AuthServiceDep,
     community_service: CommunityAccountServiceDep,
+    settings: SettingsDep,
 ) -> dict[str, Any]:
     status = service.status_from_cookie(request.cookies.get("WC_TOKEN"))
+    status["features"] = {
+        feature_name: get_feature_state(feature_name, settings).value
+        for feature_name in FEATURE_FIELDS
+    }
     if not status.get("logged"):
         return status
 
-    status["community"] = _resolve_community(status, community_service)
+    if can_use_feature(str(status["id"]), "discord_accounts", settings):
+        status["community"] = _resolve_community(status, community_service)
     return status
 
 

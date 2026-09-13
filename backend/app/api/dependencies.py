@@ -38,6 +38,7 @@ def get_auth_service(settings: SettingsDep) -> AuthService:
     return AuthService(
         shared_secret=settings.auth_shared_secret,
         allowed_discord_ids=settings.allowed_discord_ids,
+        beta_discord_ids=settings.beta_discord_ids,
     )
 
 

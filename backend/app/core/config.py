@@ -52,6 +52,10 @@ class Settings(BaseSettings):
         default_factory=list,
         validation_alias="ALLOWED_DISCORD_IDS",
     )
+    beta_discord_ids: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        validation_alias="BETA_DISCORD_IDS",
+    )
     api_keys: Annotated[list[str], NoDecode] = Field(
         default_factory=list,
         validation_alias="API_KEYS",
@@ -65,10 +69,53 @@ class Settings(BaseSettings):
         validation_alias="CORS_ORIGINS",
     )
 
-    @field_validator("allowed_discord_ids", "api_keys", "cors_origins", mode="before")
+    # Feature flags. Valid values: DISABLED, BETA, ENABLED (see app/core/features.py).
+    feature_discord_accounts: str = Field(
+        default="BETA",
+        validation_alias="FEATURE_DISCORD_ACCOUNTS",
+    )
+    feature_community_profiles: str = Field(
+        default="BETA",
+        validation_alias="FEATURE_COMMUNITY_PROFILES",
+    )
+    feature_profile_customization: str = Field(
+        default="BETA",
+        validation_alias="FEATURE_PROFILE_CUSTOMIZATION",
+    )
+    feature_community_members: str = Field(
+        default="BETA",
+        validation_alias="FEATURE_COMMUNITY_MEMBERS",
+    )
+    feature_profile_reporting: str = Field(
+        default="BETA",
+        validation_alias="FEATURE_PROFILE_REPORTING",
+    )
+
+    @field_validator(
+        "allowed_discord_ids",
+        "api_keys",
+        "cors_origins",
+        "beta_discord_ids",
+        mode="before",
+    )
     @classmethod
     def parse_env_lists(cls, value: Any) -> list[str]:
         return _split_env_list(value)
+
+    @field_validator(
+        "feature_discord_accounts",
+        "feature_community_profiles",
+        "feature_profile_customization",
+        "feature_community_members",
+        "feature_profile_reporting",
+        mode="before",
+    )
+    @classmethod
+    def normalize_feature_flag(cls, value: Any) -> str:
+        raw = str(value).strip().upper() if value is not None else ""
+        if raw not in ("DISABLED", "BETA", "ENABLED"):
+            return "BETA"
+        return raw
 
     @property
     def postgres_dsn(self) -> str:

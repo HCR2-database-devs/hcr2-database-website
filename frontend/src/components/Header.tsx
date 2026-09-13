@@ -4,15 +4,23 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import { NewsModal } from "./NewsModal";
 import { PublicSubmitModal } from "./PublicSubmitModal";
 import { UserAvatar } from "./UserAvatar";
+import { BetaBadge } from "./BetaBadge";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { useDarkMode } from "../hooks/useDarkMode";
+import { useCanUseFeature } from "../lib/features";
 
-const navItems = [
+type NavItem = {
+  label: string;
+  to: string;
+  feature?: "community_members";
+};
+
+const navItems: NavItem[] = [
   { label: "Maps", to: "/maps" },
   { label: "Vehicles", to: "/vehicles" },
   { label: "Players", to: "/players" },
   { label: "Tuning", to: "/tuning-parts" },
-  { label: "Community", to: "/community" },
+  { label: "Community", to: "/community", feature: "community_members" },
   { label: "Stats", to: "/stats" }
 ];
 
@@ -27,6 +35,7 @@ function canUseHover() {
 export function Header() {
   const { data: authStatus } = useAuthStatus();
   const { isDark, toggleDarkMode } = useDarkMode();
+  const canUseCommunity = useCanUseFeature("community_members");
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [isNewsOpen, setNewsOpen] = useState(false);
   const [isSubmitOpen, setSubmitOpen] = useState(false);
@@ -122,11 +131,19 @@ export function Header() {
             aria-label="Primary navigation"
           >
             <div className="nav-links">
-              {navItems.map((item) => (
-                <NavLink key={item.to} to={item.to} className={navClassName} onClick={closeMobileMenu}>
-                  {item.label}
-                </NavLink>
-              ))}
+              {navItems.map((item) => {
+                if (item.feature === "community_members" && !canUseCommunity) {
+                  return null;
+                }
+                return (
+                  <NavLink key={item.to} to={item.to} className={navClassName} onClick={closeMobileMenu}>
+                    {item.label}
+                    {item.feature === "community_members" && (
+                      <BetaBadge feature="community_members" className="nav-beta-badge" />
+                    )}
+                  </NavLink>
+                );
+              })}
               <div
                 className="nav-dropdown-wrapper"
                 ref={recordsRef}

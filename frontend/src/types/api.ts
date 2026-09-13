@@ -122,13 +122,24 @@ export type AdminProfileDetail = CommunityAccount & {
   open_reports: number;
 };
 
+export type FeatureName =
+  | "discord_accounts"
+  | "community_profiles"
+  | "profile_customization"
+  | "community_members"
+  | "profile_reporting";
+
+export type FeatureState = "DISABLED" | "BETA" | "ENABLED";
+
 export type AuthStatus = {
   logged: boolean;
   allowed: boolean;
+  beta?: boolean;
   id?: string;
   username?: string | null;
   avatar?: string | null;
   community?: CommunityAccount | null;
+  features?: Partial<Record<FeatureName, FeatureState>>;
 };
 
 export type PublicDataView =

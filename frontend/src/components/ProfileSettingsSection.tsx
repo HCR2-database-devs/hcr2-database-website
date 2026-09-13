@@ -6,6 +6,7 @@ import { COUNTRIES } from "../lib/countries";
 import { removeCommunityBanner, updateCommunityProfile, uploadCommunityBanner } from "../services/community";
 import { getPublicData } from "../services/publicData";
 import type { CommunityAccount } from "../types/api";
+import { BetaBadge } from "./BetaBadge";
 
 const MAX_BIO_LENGTH = 500;
 
@@ -111,7 +112,9 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
 
   return (
     <div className="account-card">
-      <h1>Community Profile</h1>
+      <h1>
+        Community Profile <BetaBadge feature="profile_customization" />
+      </h1>
       <form className="profile-settings-form" onSubmit={handleSubmit}>
         <label>
           Bio

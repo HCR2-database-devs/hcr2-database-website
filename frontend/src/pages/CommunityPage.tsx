@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+import { BetaBadge } from "../components/BetaBadge";
+import { FeatureGate } from "../components/FeatureGate";
 import { MemberCard } from "../components/MemberCard";
 import { COUNTRIES } from "../lib/countries";
 import { getCommunityMembers } from "../services/community";
@@ -15,6 +17,14 @@ const SORT_OPTIONS = [
 ];
 
 export function CommunityPage() {
+  return (
+    <FeatureGate feature="community_members">
+      <CommunityPageContent />
+    </FeatureGate>
+  );
+}
+
+function CommunityPageContent() {
   const [search, setSearch] = useState("");
   const [submittedSearch, setSubmittedSearch] = useState("");
   const [sort, setSort] = useState("new");
@@ -56,7 +66,9 @@ export function CommunityPage() {
   return (
     <div className="page-container community-page">
       <div className="section-header">
-        <h1>Community</h1>
+        <h1>
+          Community <BetaBadge feature="community_members" />
+        </h1>
         <p className="section-subtitle">Public profiles of HCR2 players who have joined the database.</p>
       </div>
 
