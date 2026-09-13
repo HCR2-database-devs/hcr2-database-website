@@ -23,4 +23,5 @@ class AuthService:
             "allowed": is_allowed_admin(discord_id, self.allowed_discord_ids),
             "id": discord_id,
             "username": payload.get("username"),
+            "avatar": payload.get("avatar"),
         }

@@ -15,15 +15,17 @@ class ActivityLogService:
         entity_type: str,
         entity_id: int | None = None,
         entity_name: str | None = None,
+        note: str | None = None,
     ) -> None:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    INSERT INTO activity_log (admin_username, action, entity_type, entity_id, entity_name)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO activity_log
+                        (admin_username, action, entity_type, entity_id, entity_name, note)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                     """,
-                    (admin_username, action, entity_type, entity_id, entity_name),
+                    (admin_username, action, entity_type, entity_id, entity_name, note),
                 )
 
     def get_logs(self, filters: ActivityLogFilter) -> ActivityLogListResponse:
@@ -59,7 +61,7 @@ class ActivityLogService:
                 cursor.execute(
                     f"""
                     SELECT id, admin_username, action, entity_type, entity_id,
-                           entity_name, created_at
+                           entity_name, note, created_at
                     FROM activity_log
                     {where_sql}
                     ORDER BY created_at DESC, id DESC
@@ -75,6 +77,7 @@ class ActivityLogService:
                         entity_type=row["entity_type"],
                         entity_id=row["entity_id"],
                         entity_name=row["entity_name"],
+                        note=row["note"],
                         created_at=str(row["created_at"]),
                     )
                     for row in cursor.fetchall()

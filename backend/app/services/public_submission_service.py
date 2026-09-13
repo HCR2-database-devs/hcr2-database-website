@@ -1,10 +1,9 @@
 from dataclasses import dataclass
 from typing import Any
 
-import httpx
-
 from app.core.config import Settings
 from app.db.session import open_connection
+from app.services.hcaptcha import verify_hcaptcha
 
 MAX_PUBLIC_DISTANCE = 1_000_000
 MAX_PUBLIC_PLAYER_NAME_LENGTH = 20
@@ -175,20 +174,7 @@ class PublicSubmissionService:
         )
 
     def _verify_hcaptcha(self, token: str) -> bool:
-        if not token or not self.settings.hcaptcha_secret_key:
-            return False
-        try:
-            response = httpx.post(
-                "https://hcaptcha.com/siteverify",
-                data={"secret": self.settings.hcaptcha_secret_key, "response": token},
-                timeout=5.0,
-            )
-        except httpx.HTTPError:
-            return False
-        if response.status_code != 200:
-            return False
-        payload = response.json()
-        return bool(payload.get("success") is True)
+        return verify_hcaptcha(token, self.settings.hcaptcha_secret_key)
 
     @staticmethod
     def _parts_contain_mythic(value: Any) -> bool:

@@ -9,7 +9,12 @@ const ACTION_LABELS: Record<string, string> = {
   updated: "Updated",
   deleted: "Deleted",
   approved: "Approved",
-  rejected: "Rejected"
+  rejected: "Rejected",
+  disabled: "Disabled",
+  enabled: "Enabled",
+  reset: "Reset",
+  report_resolved: "Report resolved",
+  report_rejected: "Report rejected"
 };
 
 const ENTITY_LABELS: Record<string, string> = {
@@ -21,7 +26,9 @@ const ENTITY_LABELS: Record<string, string> = {
   submission: "Submission",
   news: "News",
   backup: "Backup",
-  maintenance: "Maintenance"
+  maintenance: "Maintenance",
+  community_user: "Community Profile",
+  community_profile_report: "Profile Report"
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -29,7 +36,12 @@ const ACTION_COLORS: Record<string, string> = {
   updated: "var(--accent-cyan)",
   deleted: "var(--danger)",
   approved: "var(--success)",
-  rejected: "var(--accent-orange)"
+  rejected: "var(--accent-orange)",
+  disabled: "var(--danger)",
+  enabled: "var(--success)",
+  reset: "var(--accent-orange)",
+  report_resolved: "var(--success)",
+  report_rejected: "var(--accent-orange)"
 };
 
 function formatTimestamp(ts: string): string {
@@ -140,6 +152,11 @@ export function ActivityLogPanel({ isOpen, onClose }: Props) {
               <option value="deleted">Deleted</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
+              <option value="disabled">Disabled</option>
+              <option value="enabled">Enabled</option>
+              <option value="reset">Reset</option>
+              <option value="report_resolved">Report resolved</option>
+              <option value="report_rejected">Report rejected</option>
             </select>
           </label>
           <label>
@@ -155,6 +172,8 @@ export function ActivityLogPanel({ isOpen, onClose }: Props) {
               <option value="news">News</option>
               <option value="backup">Backup</option>
               <option value="maintenance">Maintenance</option>
+              <option value="community_user">Community Profile</option>
+              <option value="community_profile_report">Profile Report</option>
             </select>
           </label>
           <div className="activity-log-date-row">
@@ -204,6 +223,7 @@ export function ActivityLogPanel({ isOpen, onClose }: Props) {
                 {entry.entity_id != null && (
                   <span className="activity-log-entity-id">#{entry.entity_id}</span>
                 )}
+                {entry.note && <span className="activity-log-note">{entry.note}</span>}
               </div>
             </div>
           ))}

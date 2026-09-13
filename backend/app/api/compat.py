@@ -493,8 +493,22 @@ def compatibility_auth_logout(
         return RedirectResponse(url="/", status_code=302)
 
     response = RedirectResponse(url="/", status_code=302)
-    response.delete_cookie("PHPSESSID", path="/", domain=".hcr2.xyz", secure=True, httponly=True)
-    response.delete_cookie("WC_TOKEN", path="/", domain=".hcr2.xyz", secure=True, httponly=True)
+    response.delete_cookie(
+        "PHPSESSID",
+        path="/",
+        domain=".hcr2.xyz",
+        secure=True,
+        httponly=True,
+        samesite="lax",
+    )
+    response.delete_cookie(
+        "WC_TOKEN",
+        path="/",
+        domain=".hcr2.xyz",
+        secure=True,
+        httponly=True,
+        samesite="lax",
+    )
     return response
 
 

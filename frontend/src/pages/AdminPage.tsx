@@ -2,6 +2,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ActivityLogPanel } from "../components/ActivityLogPanel";
+import { CommunityAdminPanel } from "../components/CommunityAdminPanel";
 import { FormattedText } from "../components/FormattedText";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { formatDate, MapWithIcon, TuningPartWithIcon, VehicleWithIcon } from "../lib/legacyDisplay";
@@ -72,13 +73,14 @@ const emptyRecordForm: RecordFormState = {
 const ECHO_PART_ID = 26;
 const ECHO_EXCLUDED_PART_IDS = new Set([26, 2, 14, 13, 7, 18, 16, 17, 25]);
 
-type AdminTab = "records" | "catalog" | "submissions" | "content" | "system";
+type AdminTab = "records" | "catalog" | "submissions" | "content" | "community" | "system";
 
 const ADMIN_TABS: { id: AdminTab; label: string }[] = [
   { id: "records", label: "Records" },
   { id: "catalog", label: "Catalog" },
   { id: "submissions", label: "Submissions" },
   { id: "content", label: "Content" },
+  { id: "community", label: "Community" },
   { id: "system", label: "System" }
 ];
 
@@ -1567,6 +1569,8 @@ export function AdminPage() {
       </div>
         </>
       )}
+
+      {activeTab === "community" && <CommunityAdminPanel />}
 
       {activeTab === "system" && (
         <>

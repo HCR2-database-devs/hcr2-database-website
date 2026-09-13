@@ -1,10 +1,134 @@
 export type DataRow = Record<string, unknown>;
 
+export type CommunityAccount = {
+  id: number;
+  discord_id: string;
+  discord_username: string;
+  discord_avatar?: string | null;
+  created_at: string;
+  updated_at: string;
+  bio: string;
+  country?: string | null;
+  favorite_vehicle_id?: number | null;
+  favorite_vehicle_name?: string | null;
+  favorite_map_id?: number | null;
+  favorite_map_name?: string | null;
+  profile_public: boolean;
+  show_country: boolean;
+  show_bio: boolean;
+  show_favorite_vehicle: boolean;
+  show_favorite_map: boolean;
+  admin_disabled: boolean;
+  banner_updated_at?: string | null;
+  is_owner?: boolean;
+};
+
+export type CommunityProfileUpdate = {
+  bio?: string;
+  country?: string | null;
+  favorite_vehicle_id?: number | null;
+  favorite_map_id?: number | null;
+  profile_public?: boolean;
+  show_country?: boolean;
+  show_bio?: boolean;
+  show_favorite_vehicle?: boolean;
+  show_favorite_map?: boolean;
+};
+
+export type CommunityMember = {
+  id: number;
+  discord_username: string;
+  discord_avatar?: string | null;
+  created_at: string;
+  updated_at: string;
+  bio?: string | null;
+  country?: string | null;
+  favorite_vehicle_id?: number | null;
+  favorite_vehicle_name?: string | null;
+  favorite_map_id?: number | null;
+  favorite_map_name?: string | null;
+  banner_updated_at?: string | null;
+};
+
+export type CommunityMemberListResponse = {
+  members: CommunityMember[];
+  count: number;
+  limit: number;
+  offset: number;
+  search?: string | null;
+  sort: string;
+  country?: string | null;
+};
+
+export type ReportCategory =
+  | "spam"
+  | "inappropriate_banner"
+  | "inappropriate_bio"
+  | "impersonation"
+  | "harassment"
+  | "other";
+
+export type CommunityReportResult = {
+  id: number;
+  community_user_id: number;
+  category: string;
+  status: string;
+  created_at: string;
+};
+
+export type AdminCommunityProfile = {
+  id: number;
+  discord_username: string;
+  discord_avatar?: string | null;
+  created_at: string;
+  updated_at: string;
+  profile_public: boolean;
+  admin_disabled: boolean;
+  open_reports: number;
+};
+
+export type AdminCommunityProfileListResponse = {
+  profiles: AdminCommunityProfile[];
+  count: number;
+  limit: number;
+  offset: number;
+  search?: string | null;
+};
+
+export type AdminCommunityReport = {
+  id: number;
+  community_user_id: number;
+  target_name: string;
+  reporter_community_user_id: number;
+  reporter_name: string;
+  category: string;
+  reason: string;
+  status: string;
+  created_at: string;
+  resolved_by?: string | null;
+  resolved_at?: string | null;
+  resolution_note?: string | null;
+};
+
+export type AdminCommunityReportListResponse = {
+  reports: AdminCommunityReport[];
+  count: number;
+  limit: number;
+  offset: number;
+  status?: string | null;
+};
+
+export type AdminProfileDetail = CommunityAccount & {
+  open_reports: number;
+};
+
 export type AuthStatus = {
   logged: boolean;
   allowed: boolean;
   id?: string;
   username?: string | null;
+  avatar?: string | null;
+  community?: CommunityAccount | null;
 };
 
 export type PublicDataView =
@@ -126,6 +250,7 @@ export type ActivityLogEntry = {
   entity_id: number | null;
   entity_name: string | null;
   created_at: string;
+  note?: string | null;
 };
 
 export type ActivityLogResponse = {

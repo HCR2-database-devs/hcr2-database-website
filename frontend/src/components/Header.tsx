@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 
 import { NewsModal } from "./NewsModal";
 import { PublicSubmitModal } from "./PublicSubmitModal";
+import { UserAvatar } from "./UserAvatar";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { useDarkMode } from "../hooks/useDarkMode";
 
@@ -11,6 +12,7 @@ const navItems = [
   { label: "Vehicles", to: "/vehicles" },
   { label: "Players", to: "/players" },
   { label: "Tuning", to: "/tuning-parts" },
+  { label: "Community", to: "/community" },
   { label: "Stats", to: "/stats" }
 ];
 
@@ -83,6 +85,10 @@ export function Header() {
     setMenuOpen(false);
     setRecordsOpen(false);
   }
+
+  const displayName =
+    authStatus?.community?.discord_username ?? authStatus?.username ?? authStatus?.id ?? null;
+  const avatarUrl = authStatus?.avatar ?? authStatus?.community?.discord_avatar ?? null;
 
   return (
     <>
@@ -214,6 +220,18 @@ export function Header() {
                   <img className="discord-logo" src="/img/Discord-Symbol-Blurple.png" alt="" />
                   <span>Discord</span>
                 </button>
+              )}
+
+              {authStatus?.logged && (
+                <Link
+                  id="account-btn"
+                  to="/account"
+                  className="nav-action account-chip"
+                  onClick={closeMobileMenu}
+                >
+                  <UserAvatar avatarUrl={avatarUrl} name={displayName} size={20} />
+                  <span>{displayName}</span>
+                </Link>
               )}
 
               {authStatus?.allowed && (

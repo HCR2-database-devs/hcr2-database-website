@@ -8,6 +8,7 @@ class ActivityLogEntry(BaseModel):
     entity_type: str
     entity_id: int | None = None
     entity_name: str | None = None
+    note: str | None = None
     created_at: str
 
 

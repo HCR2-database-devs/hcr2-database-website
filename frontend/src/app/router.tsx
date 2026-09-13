@@ -1,8 +1,11 @@
 import { createBrowserRouter } from "react-router-dom";
 
+import { AccountPage } from "../pages/AccountPage";
 import { AdminPage } from "../pages/AdminPage";
 import { App } from "./App";
 import { ChangelogPage } from "../pages/ChangelogPage";
+import { CommunityPage } from "../pages/CommunityPage";
+import { CommunityProfilePage } from "../pages/CommunityProfilePage";
 import { DataViewPage } from "../pages/DataViewPage";
 import { HomePage } from "../pages/HomePage";
 import { MaintenancePage } from "../pages/MaintenancePage";
@@ -17,6 +20,7 @@ export const router = createBrowserRouter([
     element: <App />,
     children: [
       { index: true, element: <HomePage /> },
+      { path: "account", element: <AccountPage /> },
       { path: "maps", element: <DataViewPage view="maps" /> },
       { path: "vehicles", element: <DataViewPage view="vehicles" /> },
       { path: "players", element: <DataViewPage view="players" /> },
@@ -25,6 +29,8 @@ export const router = createBrowserRouter([
       { path: "records", element: <DataViewPage view="records" /> },
       { path: "records/mythic", element: <DataViewPage view="records" mythic /> },
       { path: "stats", element: <StatsPage /> },
+      { path: "community", element: <CommunityPage /> },
+      { path: "community/:id", element: <CommunityProfilePage /> },
       { path: "changelog", element: <ChangelogPage /> },
       { path: "*", element: <NotFoundPage /> }
     ]
