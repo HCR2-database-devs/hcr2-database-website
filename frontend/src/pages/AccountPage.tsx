@@ -5,6 +5,7 @@ import { UserAvatar } from "../components/UserAvatar";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { useCanUseFeature } from "../lib/features";
 import { formatMemberSince } from "../lib/format";
+import { communityAvatar, communityDisplayName } from "../services/community";
 
 export function AccountPage() {
   const { data: authStatus, isLoading } = useAuthStatus();
@@ -43,9 +44,10 @@ export function AccountPage() {
   }
 
   const community = authStatus.community;
-  const displayName = community?.discord_username || authStatus.username || authStatus.id || "HCR2 user";
-  const avatarUrl = authStatus.avatar ?? community?.discord_avatar ?? null;
+  const displayName = communityDisplayName(community) || authStatus.username || authStatus.id || "HCR2 user";
+  const avatarUrl = authStatus.avatar ?? communityAvatar(community) ?? null;
   const memberSince = formatMemberSince(community?.created_at);
+  const needsOnboarding = community !== undefined && community !== null && !community.username;
 
   return (
     <div className="account-page">
@@ -55,12 +57,27 @@ export function AccountPage() {
           contact the admins if you believe this is a mistake.
         </p>
       )}
+      {needsOnboarding && (
+        <div className="account-card">
+          <h1>Choose a community username</h1>
+          <p className="frontend-message">
+            You need a username before you can take part in the community — the member directory,
+            your public profile and reports are hidden until you choose one.
+          </p>
+          <Link className="button" to="/onboarding">
+            Choose my username
+          </Link>
+        </div>
+      )}
       <div className="account-card">
         <h1>Your Account</h1>
         <div className="account-profile">
           <UserAvatar avatarUrl={avatarUrl} name={displayName} size={88} />
           <div className="account-profile-copy">
             <p className="account-name">{displayName}</p>
+            {community?.username && (
+              <p className="account-username">@{community.username}</p>
+            )}
             <p className="account-status">
               <span className="account-check" aria-hidden="true">
                 ✓
@@ -87,7 +104,9 @@ export function AccountPage() {
         )}
       </div>
 
-      {community && canCustomizeProfile && <ProfileSettingsSection key={community.id} profile={community} />}
+      {community && !needsOnboarding && canCustomizeProfile && (
+        <ProfileSettingsSection key={community.id} profile={community} />
+      )}
     </div>
   );
 }

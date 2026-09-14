@@ -2,6 +2,7 @@ from typing import Any
 
 import pytest
 
+from app.repositories.community_user import UsernameConflictError
 from app.services.community_account_service import CommunityProfileError
 from app.services.community_moderation_service import CommunityModerationService
 
@@ -10,6 +11,8 @@ class FakeModerationRepository:
     def __init__(self) -> None:
         self.profiles: dict[int, dict[str, Any]] = {}
         self.reports: dict[int, dict[str, Any]] = {}
+        self.username_history: dict[int, list[dict[str, Any]]] = {}
+        self.taken_norms: set[str] = set()
         self.next_report_id = 1
         self.next_profile_id = 1
 
@@ -18,10 +21,15 @@ class FakeModerationRepository:
             "id": self.next_profile_id,
             "discord_username": username,
             "discord_avatar": None,
+            "username": None,
+            "username_norm": None,
+            "last_username_change_at": None,
             "created_at": "2026-09-05T10:00:00",
             "updated_at": "2026-09-05T10:00:00",
             "profile_public": True,
             "admin_disabled": False,
+            "show_discord_username": False,
+            "show_discord_avatar": False,
         }
         self.profiles[profile["id"]] = profile
         self.next_profile_id += 1
@@ -30,7 +38,12 @@ class FakeModerationRepository:
     def list_profiles(self, *, search, limit, offset) -> tuple[list[dict[str, Any]], int]:
         rows = [dict(row) for row in self.profiles.values()]
         if search:
-            rows = [row for row in rows if search.lower() in row["discord_username"].lower()]
+            rows = [
+                row
+                for row in rows
+                if search.lower() in row["discord_username"].lower()
+                or search.lower() in (row.get("username_norm") or "").lower()
+            ]
         return rows[offset : offset + limit], len(rows)
 
     def get_profile(self, user_id: int) -> dict[str, Any] | None:
@@ -50,6 +63,8 @@ class FakeModerationRepository:
         row["show_bio"] = fields["show_bio"]
         row["show_favorite_vehicle"] = fields["show_favorite_vehicle"]
         row["show_favorite_map"] = fields["show_favorite_map"]
+        row["show_discord_username"] = fields["show_discord_username"]
+        row["show_discord_avatar"] = fields["show_discord_avatar"]
         row["discord_username"] = "Name " + str(user_id)
         return dict(row)
 
@@ -67,6 +82,47 @@ class FakeModerationRepository:
         row["admin_disabled"] = disabled
         row["discord_username"] = "disabled-name" if disabled else "enabled-name"
         return dict(row)
+
+    def admin_set_username(
+        self,
+        user_id: int,
+        username: str,
+        username_norm: str,
+        admin_username: str,
+    ) -> dict[str, Any]:
+        row = self.profiles.get(user_id)
+        if row is None:
+            return None
+        if username_norm in self.taken_norms or any(
+            p["username_norm"] == username_norm
+            and p["id"] != user_id
+            and p["username"] is not None
+            for p in self.profiles.values()
+        ):
+            raise UsernameConflictError("Username is already taken.")
+        row["username"] = username
+        row["username_norm"] = username_norm
+        row["last_username_change_at"] = None
+        return dict(row)
+
+    def admin_reset_username(
+        self,
+        user_id: int,
+        admin_username: str,
+    ) -> dict[str, Any] | None:
+        row = self.profiles.get(user_id)
+        if row is None:
+            return None
+        row["username"] = None
+        row["username_norm"] = None
+        row["last_username_change_at"] = None
+        return dict(row)
+
+    def list_username_history(self, user_id: int) -> list[dict[str, Any]]:
+        return [
+            dict(entry)
+            for entry in self.username_history.get(user_id, [])
+        ]
 
     def create_report(self, target_id, reporter_id, category, reason) -> dict[str, Any] | None:
         for report in self.reports.values():
@@ -168,6 +224,8 @@ def _payload(**overrides: Any) -> Any:
         "show_bio": False,
         "show_favorite_vehicle": False,
         "show_favorite_map": False,
+        "show_discord_username": False,
+        "show_discord_avatar": False,
         "category": "other",
         "reason": "",
         "h_captcha_response": "captcha-token",
@@ -307,3 +365,83 @@ def test_admin_update_logs_updated() -> None:
 
     assert logging.calls[-1]["action"] == "updated"
     assert logging.calls[-1]["entity_type"] == "community_user"
+
+
+def test_admin_set_username_sets_and_logs() -> None:
+    service, repository, logging = _make_service()
+    repository.add_profile("Nipa")
+
+    updated = service.set_username(1, "Racer One", admin_username="Admin", note="User request")
+
+    assert updated["username"] == "Racer One"
+    assert updated["last_username_change_at"] is None
+    assert logging.calls[-1]["action"] == "username_set"
+    assert logging.calls[-1]["note"] == "User request"
+
+
+def test_admin_set_username_normalizes_and_validates() -> None:
+    service, repository, _ = _make_service()
+    repository.add_profile("Nipa")
+
+    updated = service.set_username(1, "  Racer   One  ", admin_username="Admin")
+
+    assert updated["username"] == "Racer One"
+
+    with pytest.raises(CommunityProfileError):
+        service.set_username(1, "admin", admin_username="Admin")
+    with pytest.raises(CommunityProfileError):
+        service.set_username(1, "https://evil.example", admin_username="Admin")
+
+
+def test_admin_set_username_conflict_returns_generic() -> None:
+    service, repository, _ = _make_service()
+    repository.add_profile("First")
+    service.set_username(1, "Taker", admin_username="Admin")
+    repository.add_profile("Second")
+
+    with pytest.raises(CommunityProfileError) as excinfo:
+        service.set_username(2, "taker", admin_username="Admin")
+    assert excinfo.value.status_code == 409
+    assert "isn't available" in excinfo.value.message
+
+
+def test_admin_reset_username_clears_and_logs() -> None:
+    service, repository, logging = _make_service()
+    repository.add_profile("Nipa")
+    service.set_username(1, "Taker", admin_username="Admin")
+
+    updated = service.reset_username(1, "Admin", note="Name change request")
+
+    assert updated["username"] is None
+    assert logging.calls[-1]["action"] == "username_reset"
+
+
+def test_admin_reset_username_missing_returns_none() -> None:
+    service, repository, _ = _make_service()
+
+    assert service.reset_username(99, "Admin") is None
+
+
+def test_admin_username_history_lists_entries() -> None:
+    service, repository, _ = _make_service()
+    repository.add_profile("Nipa")
+    repository.username_history[1] = [
+        {
+            "id": 1,
+            "community_user_id": 1,
+            "username": "New",
+            "changed_by_admin": "Admin",
+            "changed_at": "2026-09-13T10:00:00",
+        },
+        {
+            "id": 2,
+            "community_user_id": 1,
+            "username": "Old",
+            "changed_by_admin": "",
+            "changed_at": "2026-09-12T10:00:00",
+        },
+    ]
+
+    history = service.get_username_history(1)
+
+    assert [entry["username"] for entry in history] == ["New", "Old"]

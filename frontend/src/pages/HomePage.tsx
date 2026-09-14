@@ -1,37 +1,15 @@
+import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { AdSlot } from "../components/AdSlot";
+import { BetaBadge } from "../components/BetaBadge";
 import { DonatorBanner } from "../components/DonatorBanner";
-
-const principles = [
-  {
-    title: "Verified records",
-    text: "World records are reviewed before publication, with questionable runs clearly separated from standard records."
-  },
-  {
-    title: "Canonical data",
-    text: "Maps, vehicles, players, tuning parts and setups are presented from the same PostgreSQL-backed public API."
-  },
-  {
-    title: "Community submissions",
-    text: "Players can submit runs for admin review without changing the public leaderboard until a decision is made."
-  }
-];
-
-const guidelines = [
-  "Official Adventure leaderboard runs and Adventure challenge runs can be accepted.",
-  "Patched glitches, pre-nerf vehicle exploits and respawn-based records are excluded for consistency.",
-  "If two players reach the same distance, the first known achievement is treated as the record holder.",
-  "Admins may revise or remove records when evidence changes or a rule violation is found.",
-  "Records for newly released vehicles are added once the public event where the vehicle can be obtained for free begins."
-];
-
-const moderationNotes = [
-  "Questionable records include runs from players with a cheating history or records with missing, unclear or insufficient proof.",
-  "A questionable record can be reviewed again when better proof, a clear video or a reliable replay is provided.",
-  "Blacklisted records are removed from the public record set instead of being kept as uncertain entries.",
-  "TAS-assisted records are allowed when disclosed and can be marked verified when the evidence is clear."
-];
+import { useFeatureAccess } from "../lib/features";
+import { asText, formatDistance, iconSlug } from "../lib/legacyDisplay";
+import { getPublicData, getRecordsPaginated } from "../services/publicData";
+import { emptyRecordFilters } from "../types/api";
+import type { DataRow } from "../types/api";
 
 const staff = [
   { name: "Nipatsu", role: "Owner", group: "owner" },
@@ -48,32 +26,404 @@ const partners = [
   {
     icon: "\u{1F916}",
     name: "Adam's HCR2 Bot",
-    subtitle: "Discord Integration \u2022 Real-time Records",
-    description:
-      "Adam's HCR2 Bot brings HCR2 database lookups and community tools into Discord. The site keeps the database canonical, while the bot makes those records easier to access from community servers.",
+    subtitle: "Discord integration and HCR2 database tools",
     invite: "https://discord.gg/PPEEg7BnNS",
   },
   {
     icon: "\u2694\uFE0F",
     name: "Adventure Lovers",
-    subtitle: "Largest adventure clan \u2022 2025\u20132026",
-    description:
-      "Adventure Lovers is the biggest adventure-based clan of 2025 and 2026. Join to meet the best adventure players worldwide and share your records.",
+    subtitle: "The biggest HCR2 adventure community",
     invite: "https://discord.gg/mPEYwGsEEC",
   },
 ];
+
+function AnimatedNumber({ value }: { value: number }) {
+  const [display, setDisplay] = useState(0);
+  const reducedMotion = useRef(
+    typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+
+  useEffect(() => {
+    if (reducedMotion.current || !Number.isFinite(value)) {
+      setDisplay(value);
+      return;
+    }
+    let frame = 0;
+    const start = performance.now();
+    const duration = 900;
+    const tick = (now: number) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(eased * value));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value]);
+
+  return <>{display.toLocaleString()}</>;
+}
+
+function LiveStatsSection() {
+  const mapsQuery = useQuery({
+    queryKey: ["public-data", "maps"],
+    queryFn: () => getPublicData("maps"),
+  });
+  const vehiclesQuery = useQuery({
+    queryKey: ["public-data", "vehicles"],
+    queryFn: () => getPublicData("vehicles"),
+  });
+  const playersQuery = useQuery({
+    queryKey: ["public-data", "players"],
+    queryFn: () => getPublicData("players"),
+  });
+  const recordsQuery = useQuery({
+    queryKey: ["public-data", "records", "home-top"],
+    queryFn: () => getRecordsPaginated({ ...emptyRecordFilters, sort: "dist-desc" }, 0),
+  });
+
+  const mapCount = mapsQuery.data?.length ?? 0;
+  const vehicleCount = vehiclesQuery.data?.length ?? 0;
+  const playerCount = playersQuery.data?.length ?? 0;
+  const recordCount = recordsQuery.data?.total ?? 0;
+
+  const featured = recordsQuery.data?.records?.find((row) => asText(row.current) === "1");
+
+  const tiles = [
+    { label: "Records", value: recordCount },
+    { label: "Players", value: playerCount },
+    { label: "Vehicles", value: vehicleCount },
+    { label: "Maps", value: mapCount },
+  ];
+
+  return (
+    <section className="content-section" aria-labelledby="live-heading">
+      <div className="section-heading">
+        <p className="eyebrow">Live data</p>
+        <h2 id="live-heading">Straight from the database</h2>
+      </div>
+      <div className="live-stats-layout">
+        <div className="live-stats-grid">
+          {tiles.map((tile) => (
+            <div className="live-stat-tile" key={tile.label}>
+              <strong>
+                <AnimatedNumber value={tile.value} />
+              </strong>
+              <span>{tile.label}</span>
+            </div>
+          ))}
+          <Link className="live-stats-link" to="/stats">
+            Full stats →
+          </Link>
+        </div>
+
+        {featured && (
+          <article className="featured-record">
+            <div className="featured-record__head">
+              <p className="featured-record__eyebrow">Current record</p>
+              <span className="status-pill status-pill--verified">Verified</span>
+            </div>
+            <div className="featured-record__main">
+              <img
+                className="featured-record__vehicle"
+                src={`/img/vehicle_icons/${iconSlug(featured.vehicle_name)}.svg`}
+                alt=""
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
+              <div className="featured-record__distance">
+                <strong>{formatDistance(featured.distance)}</strong>
+                <span>meters</span>
+              </div>
+            </div>
+            <div className="featured-record__meta">
+              <span className="map-cell">
+                <img
+                  className="map-icon"
+                  src={`/img/map_icons/${iconSlug(featured.map_name)}.svg`}
+                  alt=""
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
+                />
+                {asText(featured.map_name)}
+              </span>
+              <span className="featured-record__player">{asText(featured.player_name)}</span>
+            </div>
+            <Link className="featured-record__link" to="/records">
+              Browse all records →
+            </Link>
+          </article>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function CommunityHighlight() {
+  const { canUse, isLoading } = useFeatureAccess("community_members");
+
+  if (isLoading) return null;
+
+  return (
+    <section className="content-section" aria-labelledby="community-heading">
+      <div className="community-highlight__card">
+        <div className="community-highlight__copy">
+          <p className="eyebrow">
+            Community <BetaBadge feature="community_members" />
+          </p>
+          <h2 id="community-heading">More than just records</h2>
+          <p>
+            We're building a proper HCR2 community here. Create your own
+            profile, find other players, and connect through Discord.
+          </p>
+        </div>
+        <div className="community-highlight__action">
+          {canUse ? (
+            <Link className="button button--primary" to="/community">
+              Explore Community
+            </Link>
+          ) : (
+            <span className="button button--secondary community-highlight__coming-soon">
+              Coming Soon
+            </span>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BrowseSection() {
+  return (
+    <section className="content-section" aria-labelledby="browse-heading">
+      <div className="section-heading">
+        <p className="eyebrow">Database</p>
+        <h2 id="browse-heading">Browse the records</h2>
+      </div>
+      <div className="browse-grid">
+        <Link to="/maps" className="browse-card feature-card">
+          <img src="/img/map_icons/countryside.svg" alt="" className="browse-card__icon" />
+          <h3 className="browse-card__title">Maps</h3>
+          <p className="browse-card__desc">All adventure maps and their records</p>
+        </Link>
+        <Link to="/vehicles" className="browse-card feature-card">
+          <img src="/img/vehicle_icons/hill_climber.svg" alt="" className="browse-card__icon" />
+          <h3 className="browse-card__title">Vehicles</h3>
+          <p className="browse-card__desc">Browse records by vehicle</p>
+        </Link>
+        <Link to="/players" className="browse-card feature-card">
+          <div className="browse-card__text-icon" aria-hidden="true">P</div>
+          <h3 className="browse-card__title">Players</h3>
+          <p className="browse-card__desc">See who holds the most records</p>
+        </Link>
+        <Link to="/tuning-parts" className="browse-card feature-card">
+          <img src="/img/tuning_parts_icons/nitro.svg" alt="" className="browse-card__icon" />
+          <h3 className="browse-card__title">Tuning</h3>
+          <p className="browse-card__desc">Setups and tuning part usage</p>
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function WhySection() {
+  return (
+    <section className="content-section" aria-labelledby="why-heading">
+      <div className="section-heading">
+        <p className="eyebrow">Why hcr2.xyz?</p>
+        <h2 id="why-heading">Built for the community</h2>
+      </div>
+      <div className="feature-grid">
+        <article className="feature-card">
+          <h3>Verified records</h3>
+          <p>
+            Every record is reviewed by our team before it goes live.
+            Questionable runs are clearly marked so you always know what you're looking at.
+          </p>
+        </article>
+        <article className="feature-card">
+          <h3>Easy to search</h3>
+          <p>
+            Filter by map, vehicle, player, or tuning setup. Find the exact record you're looking for without digging through spreadsheets.
+          </p>
+        </article>
+        <article className="feature-card">
+          <h3>Community built</h3>
+          <p>
+            Made by HCR2 players, for HCR2 players. Anyone can submit runs for review — no account required.
+          </p>
+        </article>
+      </div>
+    </section>
+  );
+}
+
+function HowItWorksSection() {
+  return (
+    <section className="content-section content-section--split" aria-labelledby="how-heading">
+      <div className="section-heading">
+        <p className="eyebrow">How it works</p>
+        <h2 id="how-heading">Three steps</h2>
+      </div>
+      <div className="how-grid">
+        <div className="how-step">
+          <span className="how-step__number">1</span>
+          <div>
+            <h3>Explore</h3>
+            <p>Browse records by map, vehicle, or player. Use the stats page to see the bigger picture.</p>
+          </div>
+        </div>
+        <div className="how-step">
+          <span className="how-step__number">2</span>
+          <div>
+            <h3>Submit</h3>
+            <p>Got a great run? Submit your adventure distance with proof for our team to review.</p>
+          </div>
+        </div>
+        <div className="how-step">
+          <span className="how-step__number">3</span>
+          <div>
+            <h3>Verify</h3>
+            <p>Our team reviews every submission. Approved records go live in the database.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CommunityVisionSection() {
+  return (
+    <section className="content-section content-section--compact" aria-labelledby="vision-heading">
+      <div className="vision-card">
+        <div className="vision-card__copy">
+          <p className="eyebrow">What's next</p>
+          <h2 id="vision-heading">More things are coming</h2>
+          <p>
+            We're working on making hcr2.xyz the go-to place for the HCR2
+            adventure community. Here's what's on the way.
+          </p>
+        </div>
+        <div className="vision-features">
+          <span className="vision-feature">Profiles</span>
+          <span className="vision-feature">Achievements</span>
+          <span className="vision-feature">XP</span>
+          <span className="vision-feature">Community leaderboard</span>
+          <span className="vision-feature">Discord integration</span>
+          <span className="vision-feature vision-feature--soon">More coming soon</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TeamSection() {
+  return (
+    <section className="content-section content-section--compact" aria-labelledby="team-heading">
+      <div className="section-heading">
+        <p className="eyebrow">Team</p>
+        <h2 id="team-heading">The people behind this</h2>
+      </div>
+      <div className="team-grid">
+        {staff.map((member) => (
+          <div className={`team-member team-member--${member.group}`} key={member.name}>
+            <span className="team-member__name">{member.name}</span>
+            <span className="team-member__role">{member.role}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PartnersSection() {
+  return (
+    <section className="content-section content-section--compact" aria-labelledby="partners-heading">
+      <div className="section-heading">
+        <p className="eyebrow">Partners</p>
+        <h2 id="partners-heading">Community partners</h2>
+      </div>
+      <div className="partners-grid">
+        {partners.map((partner) => (
+          <article className="partner-card feature-card" key={partner.name}>
+            <div className="partner-card__header">
+              <span className="partner-card__icon">{partner.icon}</span>
+              <div>
+                <h3>{partner.name}</h3>
+                <p className="partner-card__subtitle">{partner.subtitle}</p>
+              </div>
+            </div>
+            <a
+              className="partner-card__discord-btn"
+              href={partner.invite}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Join server
+            </a>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function LinksSection() {
+  return (
+    <section className="content-section content-section--compact" aria-labelledby="links-heading">
+      <div className="section-heading">
+        <p className="eyebrow">Links</p>
+        <h2 id="links-heading">Stay connected</h2>
+      </div>
+      <div className="links-grid">
+        <a
+          className="link-card feature-card"
+          href="https://github.com/anomalyco/hcr2-database-website"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <h3>GitHub</h3>
+          <p>Source code and issue tracker</p>
+        </a>
+        <a
+          className="link-card feature-card"
+          href="https://www.tipeee.com/hcr2-database"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <h3>Support us</h3>
+          <p>Help keep the site running</p>
+        </a>
+        <Link to="/guidelines" className="link-card feature-card">
+          <h3>Record Guidelines</h3>
+          <p>Full rules and submission details</p>
+        </Link>
+        <Link to="/changelog" className="link-card feature-card">
+          <h3>Changelog</h3>
+          <p>What's been updated recently</p>
+        </Link>
+      </div>
+    </section>
+  );
+}
 
 export function HomePage() {
   return (
     <main className="home-page">
       <section className="home-hero" aria-labelledby="home-title">
         <div className="home-hero__copy">
-          <p className="eyebrow">Unofficial HCR2 adventure database</p>
-          <h1 id="home-title">Community world records, cleaned up and easy to verify.</h1>
+          <p className="eyebrow">Unofficial HCR2 Adventure Database</p>
+          <h1 id="home-title">
+            Hill Climb Racing 2
+            <br />
+            Adventure Records.
+          </h1>
           <p className="hero-copy">
-            Explore the best Hill Climb Racing 2 adventure distances by map, vehicle, player and
-            tuning setup. The site keeps the public experience focused on trusted records while
-            preserving transparent context for uncertain runs.
+            Every verified adventure distance, every map, every vehicle — in one
+            place. Built and maintained by the HCR2 community.
           </p>
           <div className="hero-actions">
             <Link className="button button--primary" to="/records">
@@ -91,141 +441,25 @@ export function HomePage() {
 
       <AdSlot slotId="7228862095" />
 
-      <section className="content-section" id="about-section" aria-labelledby="about-title">
-        <div className="section-heading">
-          <p className="eyebrow">Purpose</p>
-          <h2 id="about-title">About this website</h2>
-        </div>
-        <p id="about-text" className="section-copy">
-          This website is a focused, unofficial reference for Hill Climb Racing 2 Adventure records.
-          It brings together leaderboard records, challenge runs, player context and tuning data so
-          the community can compare results without searching across disconnected sources.
-        </p>
-        <div className="feature-grid">
-          {principles.map((item) => (
-            <article className="feature-card" key={item.title}>
-              <h3>{item.title}</h3>
-              <p>{item.text}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+      <LiveStatsSection />
 
-      <section className="content-section content-section--split" aria-labelledby="guidelines-title">
-        <div className="section-heading">
-          <p className="eyebrow">Rules</p>
-          <h2 id="guidelines-title">Record Guidelines</h2>
-        </div>
-        <ul id="rules-text" className="rule-list">
-          {guidelines.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </section>
+      <CommunityHighlight />
 
-      <section className="content-section content-section--split" aria-labelledby="workflow-title">
-        <div className="section-heading">
-          <p className="eyebrow">Workflow</p>
-          <h2 id="workflow-title">Viewing and submitting records</h2>
-        </div>
-        <div className="workflow-grid">
-          <div>
-            <h3>Explore</h3>
-            <p id="viewing-text">
-              Use the records page to search by player, map or vehicle, filter by distance and
-              status, then sort the result set for faster comparison.
-            </p>
-          </div>
-          <div>
-            <h3>Submit</h3>
-            <p id="viewing-text-2">
-              Submit a record with map, vehicle, distance, player and tuning parts. It remains
-              pending until an admin approves it for publication.
-            </p>
-          </div>
-          <div>
-            <h3>Analyze</h3>
-            <p id="stats-text">
-              The statistics page aggregates records by vehicle, map, player, country and tuning
-              setup so trends are easier to inspect.
-            </p>
-          </div>
-        </div>
-      </section>
+      <BrowseSection />
 
-      <section className="content-section content-section--split" aria-labelledby="moderation-title">
-        <div className="section-heading">
-          <p className="eyebrow">Moderation</p>
-          <h2 id="moderation-title">Questionable records</h2>
-        </div>
-        <ul className="rule-list">
-          {moderationNotes.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </section>
+      <WhySection />
 
-      <section className="content-section" aria-labelledby="staff-title">
-        <div className="section-heading">
-          <p className="eyebrow">Team</p>
-          <h2 id="staff-title">Staff</h2>
-        </div>
-        <div className="feature-grid">
-          {staff.map((member) => (
-            <article className={`feature-card staff-card staff-card--${member.group}`} key={member.name}>
-              <h3>{member.name}</h3>
-              <p>{member.role}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+      <HowItWorksSection />
 
-      <section className="content-section content-section--compact" aria-labelledby="partners-title">
-        <div className="section-heading">
-          <p className="eyebrow">Partners</p>
-          <h2 id="partners-title">Community partners</h2>
-        </div>
-        <div className="feature-grid">
-          {partners.map((partner) => (
-            <article className="feature-card partner-card" key={partner.name}>
-              <div className="partner-card__header">
-                <span className="partner-card__icon">{partner.icon}</span>
-                <div>
-                  <h3>{partner.name}</h3>
-                  <p className="partner-card__subtitle">{partner.subtitle}</p>
-                </div>
-              </div>
-              <p>{partner.description}</p>
-              <a className="partner-card__discord-btn" href={partner.invite} target="_blank" rel="noopener noreferrer">
-                Join server
-              </a>
-            </article>
-          ))}
-        </div>
-      </section>
+      <CommunityVisionSection />
+
+      <TeamSection />
+
+      <PartnersSection />
 
       <DonatorBanner />
 
-      <section className="content-section content-section--compact" aria-labelledby="updates-title">
-        <div className="section-heading">
-          <p className="eyebrow">Updates</p>
-          <h2 id="updates-title">News and community links</h2>
-        </div>
-        <p id="news-text" className="section-copy">
-          Admin news covers site changes, database updates and moderation notes. Community channels:
-          <a rel="noopener noreferrer" href="https://www.youtube.com/@titaniumhcr2" target="_blank">
-            Titanium Gaming HCR2
-          </a>
-          <span aria-hidden="true"> / </span>
-          <a rel="noopener noreferrer" href="https://www.youtube.com/@nipatsu" target="_blank">
-            Nipatsu HCR2
-          </a>
-          <span aria-hidden="true"> / </span>
-          <a rel="noopener noreferrer" href="https://www.youtube.com/@noah2coco" target="_blank">
-            Noya HCR2
-          </a>
-        </p>
-      </section>
+      <LinksSection />
     </main>
   );
 }

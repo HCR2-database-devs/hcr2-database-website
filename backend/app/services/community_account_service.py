@@ -1,11 +1,18 @@
 import io
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 from PIL import Image, ImageOps
 from PIL.Image import DecompressionBombError
 
-from app.repositories.community_user import CommunityUserRepository
+from app.core.username_rules import (
+    UsernameModerationError,
+    UsernameValidationError,
+    username_key,
+    validate_username,
+)
+from app.repositories.community_user import CommunityUserRepository, UsernameConflictError
 
 MAX_BIO_LENGTH = 500
 MAX_BANNER_RAW_BYTES = 10 * 1024 * 1024
@@ -58,6 +65,46 @@ class CommunityAccountService:
             discord_avatar=discord_avatar,
         )
 
+    def set_username(
+        self,
+        discord_id: str,
+        raw_username: str,
+        cooldown_days: int,
+    ) -> dict[str, Any] | None:
+        try:
+            username = validate_username(raw_username)
+        except (UsernameValidationError, UsernameModerationError) as exc:
+            raise CommunityProfileError(exc.message) from None
+
+        account = self.repository.get_by_discord_id(discord_id)
+        if account is None:
+            return None
+
+        if account["username"] is not None:
+            last_change = account["last_username_change_at"]
+            if last_change is not None and cooldown_days > 0:
+                if last_change.tzinfo is None:
+                    last_change = last_change.replace(tzinfo=UTC)
+                cooldown_seconds = cooldown_days * 24 * 60 * 60
+                elapsed = (datetime.now(UTC) - last_change).total_seconds()
+                if elapsed < cooldown_seconds:
+                    raise CommunityProfileError(
+                        f"Your username can only be changed once every {cooldown_days} days.",
+                        409,
+                    )
+
+        try:
+            return self.repository.set_username(
+                int(account["id"]),
+                username,
+                username_key(username),
+            )
+        except UsernameConflictError:
+            raise CommunityProfileError(
+                "This username isn't available. Please choose another one.",
+                409,
+            ) from None
+
     def update_profile(self, discord_id: str, payload: Any) -> dict[str, Any] | None:
         bio = payload.bio or ""
         if len(bio) > MAX_BIO_LENGTH:
@@ -90,6 +137,8 @@ class CommunityAccountService:
             show_bio=bool(payload.show_bio),
             show_favorite_vehicle=bool(payload.show_favorite_vehicle),
             show_favorite_map=bool(payload.show_favorite_map),
+            show_discord_username=bool(payload.show_discord_username),
+            show_discord_avatar=bool(payload.show_discord_avatar),
         )
 
     def upload_banner(self, discord_id: str, content: bytes) -> dict[str, Any] | None:
@@ -119,7 +168,9 @@ class CommunityAccountService:
         is_owner = viewer_discord_id is not None and account["discord_id"] == viewer_discord_id
         if not is_owner and (not account["profile_public"] or account["admin_disabled"]):
             return None
-        return {**account, "is_owner": is_owner}
+        if not is_owner and account["username"] is None:
+            return None
+        return _public_profile(account, is_owner)
 
     def list_members(
         self,
@@ -160,11 +211,44 @@ class CommunityAccountService:
         }
 
 
+def _public_profile(account: dict[str, Any], is_owner: bool) -> dict[str, Any]:
+    profile = {
+        "id": account["id"],
+        "username": account["username"],
+        "created_at": account["created_at"],
+        "updated_at": account["updated_at"],
+        "bio": account["bio"] if is_owner or account["show_bio"] else None,
+        "country": account["country"] if is_owner or account["show_country"] else None,
+        "favorite_vehicle_id": (
+            account["favorite_vehicle_id"]
+            if is_owner or account["show_favorite_vehicle"]
+            else None
+        ),
+        "favorite_vehicle_name": (
+            account["favorite_vehicle_name"]
+            if is_owner or account["show_favorite_vehicle"]
+            else None
+        ),
+        "favorite_map_id": (
+            account["favorite_map_id"] if is_owner or account["show_favorite_map"] else None
+        ),
+        "favorite_map_name": (
+            account["favorite_map_name"] if is_owner or account["show_favorite_map"] else None
+        ),
+        "banner_updated_at": account["banner_updated_at"],
+        "is_owner": is_owner,
+    }
+    if is_owner or account["show_discord_username"]:
+        profile["discord_username"] = account["discord_username"]
+    if is_owner or account["show_discord_avatar"]:
+        profile["discord_avatar"] = account["discord_avatar"]
+    return profile
+
+
 def _trim_member(member: dict[str, Any]) -> dict[str, Any]:
-    return {
+    result = {
         "id": member["id"],
-        "discord_username": member["discord_username"],
-        "discord_avatar": member["discord_avatar"],
+        "username": member["username"],
         "created_at": member["created_at"],
         "updated_at": member["updated_at"],
         "bio": member["bio"] if member["show_bio"] else None,
@@ -179,6 +263,11 @@ def _trim_member(member: dict[str, Any]) -> dict[str, Any]:
         "favorite_map_name": member["favorite_map_name"] if member["show_favorite_map"] else None,
         "banner_updated_at": member["banner_updated_at"],
     }
+    if member["show_discord_username"]:
+        result["discord_username"] = member["discord_username"]
+    if member["show_discord_avatar"]:
+        result["discord_avatar"] = member["discord_avatar"]
+    return result
 
 
 def _normalize_banner(content: bytes) -> tuple[bytes, str]:

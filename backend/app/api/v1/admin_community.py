@@ -61,7 +61,9 @@ def admin_get_profile(
     moderation_service: CommunityModerationServiceDep,
 ) -> Any:
     _admin_status(request, auth_service)
-    return _require_or_404(moderation_service, community_id)
+    profile = _require_or_404(moderation_service, community_id)
+    history = moderation_service.get_username_history(community_id)
+    return {**profile, "username_history": history}
 
 
 @router.patch("/profiles/{community_id}", response_model=None)
@@ -74,14 +76,66 @@ def admin_update_profile(
 ) -> Any:
     admin = _admin_status(request, auth_service)
     _require_or_404(moderation_service, community_id)
+    admin_username = str(admin.get("username") or "")
     try:
+        if payload.username is not None:
+            profile = moderation_service.get_profile(community_id)
+            if profile and profile.get("username") != payload.username:
+                moderation_service.set_username(
+                    community_id,
+                    payload.username,
+                    admin_username,
+                )
         updated = moderation_service.update_profile(
             community_id,
             payload,
+            admin_username,
+        )
+    except CommunityProfileError as exc:
+        return _profile_error_response(exc)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    return updated
+
+
+@router.post("/profiles/{community_id}/username", response_model=None)
+def admin_set_username(
+    community_id: int,
+    payload: AdminProfileUpdate,
+    request: Request,
+    auth_service: AuthServiceDep,
+    moderation_service: CommunityModerationServiceDep,
+) -> Any:
+    admin = _admin_status(request, auth_service)
+    _require_or_404(moderation_service, community_id)
+    try:
+        updated = moderation_service.set_username(
+            community_id,
+            payload.username or "",
             str(admin.get("username") or ""),
         )
     except CommunityProfileError as exc:
         return _profile_error_response(exc)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    return updated
+
+
+@router.post("/profiles/{community_id}/reset-username", response_model=None)
+def admin_reset_username(
+    community_id: int,
+    request: Request,
+    auth_service: AuthServiceDep,
+    moderation_service: CommunityModerationServiceDep,
+    payload: Annotated[AdminNote | None, Body()] = None,
+) -> Any:
+    admin = _admin_status(request, auth_service)
+    _require_or_404(moderation_service, community_id)
+    updated = moderation_service.reset_username(
+        community_id,
+        str(admin.get("username") or ""),
+        note=(payload.note if payload else None) or None,
+    )
     if updated is None:
         raise HTTPException(status_code=404, detail="Not found")
     return updated

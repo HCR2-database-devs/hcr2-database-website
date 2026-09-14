@@ -12,6 +12,7 @@ import { useAuthStatus } from "../hooks/useAuthStatus";
 import { countryName } from "../lib/countries";
 import { useCanUseFeature } from "../lib/features";
 import { formatMemberSince } from "../lib/format";
+import { communityDisplayName } from "../services/community";
 import { getCommunityProfile } from "../services/community";
 
 export function CommunityProfilePage() {
@@ -68,6 +69,7 @@ function CommunityProfileContent() {
 
   const profile = profileQuery.data;
   const memberSince = formatMemberSince(profile.created_at);
+  const displayName = communityDisplayName(profile);
   const isOwner = profile.is_owner || authStatus?.community?.id === profile.id;
   const canReport = authStatus?.logged === true && !isOwner && canReportFeature;
   const lastUpdated = profile.updated_at ? formatMemberSince(profile.updated_at) : null;
@@ -89,16 +91,19 @@ function CommunityProfileContent() {
 
       <div className="community-profile-card">
         <div className="community-profile-head">
-          <UserAvatar avatarUrl={profile.discord_avatar} name={profile.discord_username} size={88} />
+          <UserAvatar avatarUrl={profile.discord_avatar} name={displayName} size={88} />
           <div className="community-profile-copy">
             <h1>
-              {profile.discord_username}
+              {displayName}
               <BetaBadge feature="community_profiles" />
               {isOwner && <span className="profile-owner-badge">You</span>}
             </h1>
             <p className="community-profile-meta">
               hcr2.xyz #{profile.id} · Member since {memberSince ?? "unknown"}
             </p>
+            {profile.discord_username && (
+              <p className="community-profile-discord">Discord: @{profile.discord_username}</p>
+            )}
           </div>
           {canReport && (
             <button className="button-ghost community-report-btn" type="button" onClick={() => setReportOpen(true)}>
@@ -156,7 +161,7 @@ function CommunityProfileContent() {
       {reportOpen && (
         <ReportProfileModal
           profileId={profile.id}
-          profileName={profile.discord_username}
+          profileName={displayName}
           onClose={() => setReportOpen(false)}
           onReported={() => setReported(true)}
         />

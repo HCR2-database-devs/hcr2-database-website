@@ -7,9 +7,11 @@ import { ChangelogPage } from "../pages/ChangelogPage";
 import { CommunityPage } from "../pages/CommunityPage";
 import { CommunityProfilePage } from "../pages/CommunityProfilePage";
 import { DataViewPage } from "../pages/DataViewPage";
+import { GuidelinesPage } from "../pages/GuidelinesPage";
 import { HomePage } from "../pages/HomePage";
 import { MaintenancePage } from "../pages/MaintenancePage";
 import { NotFoundPage } from "../pages/NotFoundPage";
+import { OnboardingPage } from "../pages/OnboardingPage";
 import { PrivacyPage } from "../pages/PrivacyPage";
 import { StatsPage } from "../pages/StatsPage";
 import { TermsOfServicePage } from "../pages/TermsOfServicePage";
@@ -21,6 +23,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: "account", element: <AccountPage /> },
+      { path: "onboarding", element: <OnboardingPage /> },
       { path: "maps", element: <DataViewPage view="maps" /> },
       { path: "vehicles", element: <DataViewPage view="vehicles" /> },
       { path: "players", element: <DataViewPage view="players" /> },
@@ -32,6 +35,7 @@ export const router = createBrowserRouter([
       { path: "community", element: <CommunityPage /> },
       { path: "community/:id", element: <CommunityProfilePage /> },
       { path: "changelog", element: <ChangelogPage /> },
+      { path: "guidelines", element: <GuidelinesPage /> },
       { path: "*", element: <NotFoundPage /> }
     ]
   },

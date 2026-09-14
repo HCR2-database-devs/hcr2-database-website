@@ -1,9 +1,12 @@
 from typing import Any, Protocol
 
+import psycopg
+
 from app.db.session import DatabaseConfig, open_connection
 
 PROFILE_COLUMNS = """
     id, discord_id, discord_username, discord_avatar,
+    username, last_username_change_at,
     created_at, updated_at,
     bio, country,
     favorite_vehicle_id,
@@ -13,14 +16,19 @@ PROFILE_COLUMNS = """
     (SELECT m.name_map FROM map m WHERE m.id_map = community_user.favorite_map_id)
         AS favorite_map_name,
     profile_public, show_country, show_bio, show_favorite_vehicle, show_favorite_map,
+    show_discord_username, show_discord_avatar,
     admin_disabled, banner_content_type, banner_updated_at
 """
 
 _SORT_CLAUSES = {
-    "name": "cu.discord_username ASC, cu.id ASC",
+    "name": "COALESCE(cu.username_norm, '') ASC, cu.id ASC",
     "active": "cu.updated_at DESC, cu.id DESC",
     "new": "cu.created_at DESC, cu.id DESC",
 }
+
+
+class UsernameConflictError(Exception):
+    """Raised when a username uniqueness conflict is detected."""
 
 
 class CommunityUserRepository(Protocol):
@@ -41,6 +49,13 @@ class CommunityUserRepository(Protocol):
         map_id: int | None,
     ) -> tuple[str | None, str | None]: ...
 
+    def set_username(
+        self,
+        user_id: int,
+        username: str,
+        username_norm: str,
+    ) -> dict[str, Any]: ...
+
     def update_profile(
         self,
         discord_id: str,
@@ -54,6 +69,8 @@ class CommunityUserRepository(Protocol):
         show_bio: bool,
         show_favorite_vehicle: bool,
         show_favorite_map: bool,
+        show_discord_username: bool,
+        show_discord_avatar: bool,
     ) -> dict[str, Any] | None: ...
 
     def update_banner(
@@ -84,13 +101,17 @@ def _escape_like(value: str) -> str:
 
 
 def _public_filters(country: str | None, search: str | None) -> tuple[str, dict[str, Any]]:
-    clauses = ["cu.profile_public = TRUE", "cu.admin_disabled = FALSE"]
+    clauses = [
+        "cu.profile_public = TRUE",
+        "cu.admin_disabled = FALSE",
+        "cu.username IS NOT NULL",
+    ]
     params: dict[str, Any] = {}
     if country:
         clauses.append("cu.country = %(country)s")
         params["country"] = country
     if search:
-        clauses.append("cu.discord_username ILIKE %(pattern)s ESCAPE '\\'")
+        clauses.append("cu.username_norm ILIKE %(pattern)s ESCAPE '\\'")
         params["pattern"] = _escape_like(search)
     return " AND ".join(clauses), params
 
@@ -136,7 +157,7 @@ class PostgresCommunityUserRepository:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
-                    """
+                    f"""
                     INSERT INTO community_user (discord_id, discord_username, discord_avatar)
                     VALUES (%(discord_id)s, %(discord_username)s, %(discord_avatar)s)
                     ON CONFLICT (discord_id) DO UPDATE SET
@@ -150,20 +171,7 @@ class PostgresCommunityUserRepository:
                             THEN CURRENT_TIMESTAMP
                             ELSE community_user.updated_at
                         END
-                    RETURNING id, discord_id, discord_username, discord_avatar,
-                              created_at, updated_at,
-                              bio, country,
-                              favorite_vehicle_id,
-                              (SELECT v.name_vehicle FROM vehicle v
-                               WHERE v.id_vehicle = community_user.favorite_vehicle_id)
-                                  AS favorite_vehicle_name,
-                              favorite_map_id,
-                              (SELECT m.name_map FROM map m
-                               WHERE m.id_map = community_user.favorite_map_id)
-                                  AS favorite_map_name,
-                              profile_public, show_country, show_bio,
-                              show_favorite_vehicle, show_favorite_map,
-                              admin_disabled, banner_content_type, banner_updated_at
+                    RETURNING {PROFILE_COLUMNS}
                     """,
                     {
                         "discord_id": discord_id,
@@ -198,6 +206,46 @@ class PostgresCommunityUserRepository:
                     map_name = str(row["name_map"]) if row else None
                 return vehicle_name, map_name
 
+    def set_username(
+        self,
+        user_id: int,
+        username: str,
+        username_norm: str,
+    ) -> dict[str, Any]:
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                try:
+                    cursor.execute(
+                        f"""
+                        UPDATE community_user SET
+                            username = %(username)s,
+                            username_norm = %(username_norm)s,
+                            last_username_change_at = CURRENT_TIMESTAMP,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = %(user_id)s
+                        RETURNING {PROFILE_COLUMNS}
+                        """,
+                        {
+                            "user_id": user_id,
+                            "username": username,
+                            "username_norm": username_norm,
+                        },
+                    )
+                    row = cursor.fetchone()
+                except psycopg.errors.UniqueViolation:
+                    raise UsernameConflictError("Username is already taken.") from None
+                if row is None:
+                    return None
+                cursor.execute(
+                    """
+                    INSERT INTO community_username_history
+                        (community_user_id, username, username_norm, changed_by_admin)
+                    VALUES (%(user_id)s, %(username)s, %(username_norm)s, '')
+                    """,
+                    {"user_id": user_id, "username": username, "username_norm": username_norm},
+                )
+                return dict(row)
+
     def update_profile(
         self,
         discord_id: str,
@@ -211,6 +259,8 @@ class PostgresCommunityUserRepository:
         show_bio: bool,
         show_favorite_vehicle: bool,
         show_favorite_map: bool,
+        show_discord_username: bool,
+        show_discord_avatar: bool,
     ) -> dict[str, Any] | None:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
@@ -226,6 +276,8 @@ class PostgresCommunityUserRepository:
                         show_bio = %(show_bio)s,
                         show_favorite_vehicle = %(show_favorite_vehicle)s,
                         show_favorite_map = %(show_favorite_map)s,
+                        show_discord_username = %(show_discord_username)s,
+                        show_discord_avatar = %(show_discord_avatar)s,
                         updated_at = CASE
                             WHEN community_user.bio IS DISTINCT FROM %(bio)s
                               OR community_user.country IS DISTINCT FROM %(country)s
@@ -240,6 +292,10 @@ class PostgresCommunityUserRepository:
                                  %(show_favorite_vehicle)s
                               OR community_user.show_favorite_map IS DISTINCT FROM
                                  %(show_favorite_map)s
+                              OR community_user.show_discord_username IS DISTINCT FROM
+                                 %(show_discord_username)s
+                              OR community_user.show_discord_avatar IS DISTINCT FROM
+                                 %(show_discord_avatar)s
                             THEN CURRENT_TIMESTAMP
                             ELSE community_user.updated_at
                         END
@@ -257,6 +313,8 @@ class PostgresCommunityUserRepository:
                         "show_bio": show_bio,
                         "show_favorite_vehicle": show_favorite_vehicle,
                         "show_favorite_map": show_favorite_map,
+                        "show_discord_username": show_discord_username,
+                        "show_discord_avatar": show_discord_avatar,
                     },
                 )
                 row = cursor.fetchone()
@@ -344,7 +402,7 @@ class PostgresCommunityUserRepository:
             with connection.cursor() as cursor:
                 cursor.execute(
                     f"""
-                    SELECT cu.id, cu.discord_username, cu.discord_avatar,
+                    SELECT cu.id, cu.username, cu.discord_username, cu.discord_avatar,
                            cu.created_at, cu.updated_at, cu.bio, cu.country,
                            cu.favorite_vehicle_id,
                            (SELECT v.name_vehicle FROM vehicle v
@@ -352,8 +410,9 @@ class PostgresCommunityUserRepository:
                            cu.favorite_map_id,
                            (SELECT m.name_map FROM map m
                             WHERE m.id_map = cu.favorite_map_id) AS favorite_map_name,
-                           cu.profile_public, cu.show_country, cu.show_bio,
+                           cu.show_country, cu.show_bio,
                            cu.show_favorite_vehicle, cu.show_favorite_map,
+                           cu.show_discord_username, cu.show_discord_avatar,
                            cu.banner_updated_at
                     FROM community_user cu
                     WHERE {where_sql}

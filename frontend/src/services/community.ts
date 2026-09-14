@@ -1,11 +1,25 @@
 import type {
   CommunityAccount,
+  CommunityMember,
   CommunityMemberListResponse,
   CommunityProfileUpdate,
   CommunityReportResult,
-  ReportCategory
+  ReportCategory,
+  UsernameUpdate
 } from "../types/api";
 import { fetchJson } from "./api";
+
+export function communityDisplayName(
+  profile: Pick<CommunityAccount | CommunityMember, "username" | "discord_username"> | null | undefined
+): string {
+  return profile?.username || profile?.discord_username || "hcr2 user";
+}
+
+export function communityAvatar(
+  profile: Pick<CommunityAccount | CommunityMember, "discord_avatar"> | null | undefined
+): string | null {
+  return profile?.discord_avatar ?? null;
+}
 
 function jsonRequest<T>(path: string, method: "PATCH" | "POST" | "DELETE", body?: unknown) {
   return fetchJson<T>(path, {
@@ -17,6 +31,11 @@ function jsonRequest<T>(path: string, method: "PATCH" | "POST" | "DELETE", body?
 
 export function getCommunityMe() {
   return fetchJson<CommunityAccount>("/api/v1/community/me");
+}
+
+export function setCommunityUsername(username: string) {
+  const payload: UsernameUpdate = { username };
+  return jsonRequest<CommunityAccount>("/api/v1/community/profile/username", "POST", payload);
 }
 
 export function updateCommunityProfile(payload: CommunityProfileUpdate) {

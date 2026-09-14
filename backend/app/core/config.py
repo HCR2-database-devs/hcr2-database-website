@@ -91,6 +91,11 @@ class Settings(BaseSettings):
         validation_alias="FEATURE_PROFILE_REPORTING",
     )
 
+    username_change_cooldown_days: int = Field(
+        default=30,
+        validation_alias="USERNAME_CHANGE_COOLDOWN_DAYS",
+    )
+
     @field_validator(
         "allowed_discord_ids",
         "api_keys",

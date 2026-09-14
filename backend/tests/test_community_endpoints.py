@@ -4,6 +4,11 @@ from fastapi.testclient import TestClient
 
 from app.api import dependencies
 from app.core.config import Settings, get_settings
+from app.core.username_rules import (
+    UsernameModerationError,
+    UsernameValidationError,
+    validate_username,
+)
 from app.main import create_app
 from app.services.community_account_service import CommunityProfileError
 
@@ -30,12 +35,23 @@ class FakeCommunityAccountService:
         self.next_id = 1
         self.banners: dict[int, dict[str, Any]] = {}
 
-    def add_user(self, discord_id: str, public: bool = True) -> dict[str, Any]:
+    def add_user(
+        self,
+        discord_id: str,
+        public: bool = True,
+        username: str | None = None,
+        onboarded: bool = True,
+    ) -> dict[str, Any]:
+        user_id = self.next_id
+        user_username = username or f"Nick {user_id}"
         user = {
-            "id": self.next_id,
+            "id": user_id,
             "discord_id": discord_id,
             "discord_username": f"Name {discord_id}",
             "discord_avatar": None,
+            "username": user_username if onboarded else None,
+            "username_norm": user_username.lower() if onboarded else None,
+            "last_username_change_at": "2026-09-01T10:00:00" if onboarded else None,
             "created_at": "2026-09-05T10:00:00",
             "updated_at": "2026-09-05T10:00:00",
             "bio": "",
@@ -43,6 +59,8 @@ class FakeCommunityAccountService:
             "profile_public": public,
             "admin_disabled": False,
             "show_country": True,
+            "show_discord_username": False,
+            "show_discord_avatar": False,
             "banner_updated_at": None,
         }
         self.users[user["id"]] = user
@@ -59,14 +77,60 @@ class FakeCommunityAccountService:
         user = self.users.get(user_id)
         return dict(user) if user else None
 
-    def get_public_profile(self, user_id: int, viewer_discord_id: str | None) -> dict[str, Any] | None:
+    def set_username(
+        self,
+        discord_id: str,
+        raw_username: str,
+        cooldown_days: int = 30,
+    ) -> dict[str, Any] | None:
+        user = self.get_account(discord_id)
+        if user is None:
+            return None
+        if user["username"] is not None and user["last_username_change_at"] is not None:
+            raise CommunityProfileError(
+                f"Your username can only be changed once every {cooldown_days} days.",
+                409,
+            )
+        try:
+            username = validate_username(raw_username)
+        except (UsernameValidationError, UsernameModerationError) as exc:
+            raise CommunityProfileError(exc.message) from None
+        if any(
+            other["username_norm"] == username.lower()
+            and other["id"] != user["id"]
+            and other["username"] is not None
+            for other in self.users.values()
+        ):
+            raise CommunityProfileError(
+                "This username isn't available. Please choose another one.",
+                409,
+            )
+        user["username"] = username
+        user["username_norm"] = username.lower()
+        user["last_username_change_at"] = "2026-09-13T10:00:00"
+        return dict(user)
+
+    def get_public_profile(
+        self,
+        user_id: int,
+        viewer_discord_id: str | None,
+    ) -> dict[str, Any] | None:
         user = self.users.get(user_id)
         if user is None:
             return None
         is_owner = viewer_discord_id is not None and user["discord_id"] == viewer_discord_id
         if not is_owner and (not user["profile_public"] or user["admin_disabled"]):
             return None
-        return {**user, "is_owner": is_owner}
+        if not is_owner and user.get("username") is None:
+            return None
+        result = {key: value for key, value in user.items() if key != "discord_id"}
+        if not is_owner:
+            if not user["show_discord_username"]:
+                result.pop("discord_username", None)
+            if not user["show_discord_avatar"]:
+                result.pop("discord_avatar", None)
+        result["is_owner"] = is_owner
+        return result
 
     def get_banner(self, user_id: int, viewer_discord_id: str | None) -> dict[str, Any] | None:
         banner = self.banners.get(user_id)
@@ -108,7 +172,14 @@ class FakeCommunityAccountService:
 
     def list_members(self, **_: Any) -> dict[str, Any]:
         rows = [user for user in self.users.values() if user["profile_public"]]
-        return {"members": rows, "count": len(rows), "limit": 20, "offset": 0, "search": None, "sort": "new"}
+        return {
+            "members": rows,
+            "count": len(rows),
+            "limit": 20,
+            "offset": 0,
+            "search": None,
+            "sort": "new",
+        }
 
 
 class FakeCommunityModerationService:
@@ -129,18 +200,76 @@ class FakeCommunityModerationService:
             "search": None,
         }
 
-    def update_profile(self, user_id: int, payload: Any, admin_username: str = "") -> dict[str, Any] | None:
+    def update_profile(
+        self,
+        user_id: int,
+        payload: Any,
+        admin_username: str = "",
+    ) -> dict[str, Any] | None:
         return self.community.get_account_by_id(user_id)
 
-    def set_disabled(self, user_id: int, disabled: bool, admin_username: str = "", note: str | None = None) -> dict[str, Any] | None:
+    def set_disabled(
+        self,
+        user_id: int,
+        disabled: bool,
+        admin_username: str = "",
+        note: str | None = None,
+    ) -> dict[str, Any] | None:
         user = self.community.users.get(user_id)
         if user is None:
             return None
         user["admin_disabled"] = disabled
         return dict(user)
 
-    def reset_profile(self, user_id: int, admin_username: str = "", note: str | None = None) -> dict[str, Any] | None:
+    def reset_profile(
+        self,
+        user_id: int,
+        admin_username: str = "",
+        note: str | None = None,
+    ) -> dict[str, Any] | None:
         return self.community.get_account_by_id(user_id)
+
+    def set_username(
+        self,
+        user_id: int,
+        raw_username: str,
+        admin_username: str = "",
+        note: str | None = None,
+    ) -> dict[str, Any] | None:
+        user = self.community.users.get(user_id)
+        if user is None:
+            return None
+        if any(
+            other["username_norm"] == raw_username.strip().lower()
+            and other["id"] != user_id
+            and other["username"] is not None
+            for other in self.community.users.values()
+        ):
+            raise CommunityProfileError(
+                "This username isn't available. Please choose another one.",
+                409,
+            )
+        user["username"] = raw_username.strip()
+        user["username_norm"] = raw_username.strip().lower()
+        user["last_username_change_at"] = None
+        return dict(user)
+
+    def reset_username(
+        self,
+        user_id: int,
+        admin_username: str = "",
+        note: str | None = None,
+    ) -> dict[str, Any] | None:
+        user = self.community.users.get(user_id)
+        if user is None:
+            return None
+        user["username"] = None
+        user["username_norm"] = None
+        user["last_username_change_at"] = None
+        return dict(user)
+
+    def get_username_history(self, user_id: int) -> list[dict[str, Any]]:
+        return []
 
     def create_report(self, target_id: int, reporter_id: int, payload: Any) -> dict[str, Any]:
         if reporter_id == target_id:
@@ -157,9 +286,21 @@ class FakeCommunityModerationService:
         return report
 
     def list_reports(self, **_: Any) -> dict[str, Any]:
-        return {"reports": list(self.reports.values()), "count": len(self.reports), "limit": 20, "offset": 0, "status": None}
+        return {
+            "reports": list(self.reports.values()),
+            "count": len(self.reports),
+            "limit": 20,
+            "offset": 0,
+            "status": None,
+        }
 
-    def resolve_report(self, report_id: int, resolved: bool, admin_username: str = "", note: str | None = None) -> dict[str, Any]:
+    def resolve_report(
+        self,
+        report_id: int,
+        resolved: bool,
+        admin_username: str = "",
+        note: str | None = None,
+    ) -> dict[str, Any]:
         report = self.reports.get(report_id)
         if report is None:
             raise CommunityProfileError("Report is not open or does not exist.", status_code=404)
@@ -337,7 +478,13 @@ def test_admin_profiles_require_admin() -> None:
     client, community = _client()
     community.add_user("user-a")
     assert client.get("/api/v1/admin/community/profiles").status_code == 401
-    assert client.get("/api/v1/admin/community/profiles", cookies=_cookie("user-a")).status_code == 403
+    assert (
+        client.get(
+            "/api/v1/admin/community/profiles",
+            cookies=_cookie("user-a"),
+        ).status_code
+        == 403
+    )
     ok = client.get("/api/v1/admin/community/profiles", cookies=_cookie("admin"))
     assert ok.status_code == 200
     assert ok.json()["count"] == 1
@@ -458,6 +605,130 @@ def test_beta_report_allowed_for_beta_user() -> None:
     )
     assert response.status_code == 200
     assert response.json()["status"] == "open"
+
+
+def test_profile_edit_denied_without_username() -> None:
+    client, community = _client()
+    community.add_user("user-a", onboarded=False)
+    response = client.patch(
+        "/api/v1/community/profile",
+        json={"bio": "hi"},
+        cookies=_cookie("user-a"),
+    )
+    assert response.status_code == 403
+
+
+def test_members_denied_for_logged_in_user_without_username() -> None:
+    client, community = _client()
+    community.add_user("user-a", onboarded=False)
+    response = client.get("/api/v1/community/members", cookies=_cookie("user-a"))
+    assert response.status_code == 403
+
+
+def test_members_allowed_anonymously() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+    response = client.get("/api/v1/community/members")
+    assert response.status_code == 200
+
+
+def test_public_profile_denied_for_logged_in_user_without_username() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+    community.add_user("user-b", onboarded=False)
+    response = client.get("/api/v1/community/1", cookies=_cookie("user-b"))
+    assert response.status_code == 403
+
+
+def test_set_username_requires_login() -> None:
+    client, _ = _client()
+    response = client.post("/api/v1/community/profile/username", json={"username": "Racer"})
+    assert response.status_code == 401
+
+
+def test_set_username_succeeds_for_unboarded_user() -> None:
+    client, community = _client()
+    community.add_user("user-a", onboarded=False)
+    response = client.post(
+        "/api/v1/community/profile/username",
+        json={"username": "  Racer   One  "},
+        cookies=_cookie("user-a"),
+    )
+    assert response.status_code == 200
+    assert response.json()["username"] == "Racer One"
+    assert response.json()["last_username_change_at"] is not None
+
+
+def test_set_username_rejects_invalid_format() -> None:
+    client, community = _client()
+    community.add_user("user-a", onboarded=False)
+    response = client.post(
+        "/api/v1/community/profile/username",
+        json={"username": "a"},
+        cookies=_cookie("user-a"),
+    )
+    assert response.status_code == 400
+
+
+def test_set_username_rejects_generic_unavailability() -> None:
+    client, community = _client()
+    community.add_user("user-a", onboarded=False)
+    response = client.post(
+        "/api/v1/community/profile/username",
+        json={"username": "admin"},
+        cookies=_cookie("user-a"),
+    )
+    assert response.status_code == 400
+    assert response.json()["error"] == (
+        "This username isn't available. Please choose another one."
+    )
+
+
+def test_set_username_enforces_cooldown() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+    response = client.post(
+        "/api/v1/community/profile/username",
+        json={"username": "NewName"},
+        cookies=_cookie("user-a"),
+    )
+    assert response.status_code == 409
+
+
+def test_admin_can_set_username_via_patch() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+    response = client.patch(
+        "/api/v1/admin/community/profiles/1",
+        json={"username": "ForcedName"},
+        cookies=_cookie("admin"),
+    )
+    assert response.status_code == 200
+    assert community.users[1]["username"] == "ForcedName"
+
+
+def test_admin_reset_username_endpoint() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+    response = client.post(
+        "/api/v1/admin/community/profiles/1/reset-username",
+        json={"note": "Name change"},
+        cookies=_cookie("admin"),
+    )
+    assert response.status_code == 200
+    assert community.users[1]["username"] is None
+
+
+def test_admin_profile_detail_includes_username_history() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+    response = client.get(
+        "/api/v1/admin/community/profiles/1",
+        cookies=_cookie("admin"),
+    )
+    assert response.status_code == 200
+    assert response.json()["username_history"] == []
+    assert response.json()["username"] == "Nick 1"
 
 
 def test_auth_status_sends_features_and_no_beta_for_logged_out() -> None:

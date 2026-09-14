@@ -1,11 +1,17 @@
 from dataclasses import dataclass
 from typing import Any
 
+from app.core.username_rules import (
+    UsernameModerationError,
+    UsernameValidationError,
+    username_key,
+    validate_username,
+)
 from app.repositories.community_moderation import (
     REPORT_CATEGORIES,
     CommunityModerationRepository,
 )
-from app.repositories.community_user import CommunityUserRepository
+from app.repositories.community_user import CommunityUserRepository, UsernameConflictError
 from app.services.activity_log_service import ActivityLogService
 from app.services.community_account_service import (
     COUNTRY_CODES,
@@ -119,6 +125,8 @@ class CommunityModerationService:
             show_bio=bool(payload.show_bio),
             show_favorite_vehicle=bool(payload.show_favorite_vehicle),
             show_favorite_map=bool(payload.show_favorite_map),
+            show_discord_username=bool(payload.show_discord_username),
+            show_discord_avatar=bool(payload.show_discord_avatar),
         )
         if updated is not None:
             self._log(
@@ -148,6 +156,61 @@ class CommunityModerationService:
                 note=note,
             )
         return updated
+
+    def set_username(
+        self,
+        user_id: int,
+        raw_username: str,
+        admin_username: str,
+        note: str | None = None,
+    ) -> dict[str, Any] | None:
+        try:
+            username = validate_username(raw_username)
+        except (UsernameValidationError, UsernameModerationError) as exc:
+            raise CommunityProfileError(exc.message) from None
+        try:
+            updated = self.moderation_repository.admin_set_username(
+                user_id,
+                username,
+                username_key(username),
+                admin_username,
+            )
+        except UsernameConflictError:
+            raise CommunityProfileError(
+                "This username isn't available. Please choose another one.",
+                409,
+            ) from None
+        if updated is not None:
+            self._log(
+                admin_username,
+                "username_set",
+                "community_user",
+                user_id,
+                updated.get("discord_username"),
+                note=note,
+            )
+        return updated
+
+    def reset_username(
+        self,
+        user_id: int,
+        admin_username: str,
+        note: str | None = None,
+    ) -> dict[str, Any] | None:
+        updated = self.moderation_repository.admin_reset_username(user_id, admin_username)
+        if updated is not None:
+            self._log(
+                admin_username,
+                "username_reset",
+                "community_user",
+                user_id,
+                updated.get("discord_username"),
+                note=note,
+            )
+        return updated
+
+    def get_username_history(self, user_id: int) -> list[dict[str, Any]]:
+        return self.moderation_repository.list_username_history(user_id)
 
     def set_disabled(
         self,

@@ -3,7 +3,12 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { COUNTRIES } from "../lib/countries";
-import { removeCommunityBanner, updateCommunityProfile, uploadCommunityBanner } from "../services/community";
+import {
+  removeCommunityBanner,
+  setCommunityUsername,
+  updateCommunityProfile,
+  uploadCommunityBanner
+} from "../services/community";
 import { getPublicData } from "../services/publicData";
 import type { CommunityAccount } from "../types/api";
 import { BetaBadge } from "./BetaBadge";
@@ -33,6 +38,9 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
   const [showBio, setShowBio] = useState(profile.show_bio);
   const [showFavoriteVehicle, setShowFavoriteVehicle] = useState(profile.show_favorite_vehicle);
   const [showFavoriteMap, setShowFavoriteMap] = useState(profile.show_favorite_map);
+  const [showDiscordUsername, setShowDiscordUsername] = useState(profile.show_discord_username);
+  const [showDiscordAvatar, setShowDiscordAvatar] = useState(profile.show_discord_avatar);
+  const [newUsername, setNewUsername] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -54,6 +62,20 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
     },
     onError: (saveError) => {
       setError(saveError.message);
+      setMessage("");
+    }
+  });
+
+  const usernameMutation = useMutation({
+    mutationFn: setCommunityUsername,
+    onSuccess: () => {
+      setMessage("Username updated. You can change it again in 30 days.");
+      setError("");
+      setNewUsername("");
+      queryClient.invalidateQueries({ queryKey: ["auth-status"] });
+    },
+    onError: (usernameError) => {
+      setError(usernameError.message);
       setMessage("");
     }
   });
@@ -106,8 +128,16 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
       show_country: showCountry,
       show_bio: showBio,
       show_favorite_vehicle: showFavoriteVehicle,
-      show_favorite_map: showFavoriteMap
+      show_favorite_map: showFavoriteMap,
+      show_discord_username: showDiscordUsername,
+      show_discord_avatar: showDiscordAvatar
     });
+  }
+
+  function handleUsernameSubmit() {
+    setMessage("");
+    setError("");
+    usernameMutation.mutate(newUsername);
   }
 
   return (
@@ -116,6 +146,41 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
         Community Profile <BetaBadge feature="profile_customization" />
       </h1>
       <form className="profile-settings-form" onSubmit={handleSubmit}>
+        <fieldset className="frontend-fieldset profile-settings-toggles">
+          <legend>Community username</legend>
+          <p className="profile-settings-hint">
+            This is how you appear across the community. Changing it is limited to once every 30 days.
+          </p>
+          <label>
+            Current username
+            <input type="text" name="current_username" value={profile.username ?? ""} readOnly disabled />
+          </label>
+          <label>
+            New username
+            <input
+              type="text"
+              name="new_username"
+              value={newUsername}
+              maxLength={20}
+              placeholder="3-20 characters: letters, numbers, spaces, '-' and '_'"
+              onChange={(event) => {
+                setNewUsername(event.target.value);
+                setError("");
+              }}
+            />
+          </label>
+          <div className="frontend-modal-actions">
+            <button
+              type="button"
+              className="button-ghost"
+              disabled={newUsername.trim().length < 3 || usernameMutation.isPending}
+              onClick={handleUsernameSubmit}
+            >
+              {usernameMutation.isPending ? "Saving..." : "Change username"}
+            </button>
+          </div>
+        </fieldset>
+
         <label>
           Bio
           <textarea
@@ -213,6 +278,22 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
               onChange={(event) => setShowFavoriteMap(event.target.checked)}
             />
             Show my favorite map
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={showDiscordUsername}
+              onChange={(event) => setShowDiscordUsername(event.target.checked)}
+            />
+            Show my Discord username
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={showDiscordAvatar}
+              onChange={(event) => setShowDiscordAvatar(event.target.checked)}
+            />
+            Show my Discord avatar
           </label>
         </fieldset>
 

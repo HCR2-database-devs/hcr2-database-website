@@ -96,7 +96,11 @@ export function Header() {
   }
 
   const displayName =
-    authStatus?.community?.discord_username ?? authStatus?.username ?? authStatus?.id ?? null;
+    authStatus?.community?.username ??
+    authStatus?.community?.discord_username ??
+    authStatus?.username ??
+    authStatus?.id ??
+    null;
   const avatarUrl = authStatus?.avatar ?? authStatus?.community?.discord_avatar ?? null;
 
   return (

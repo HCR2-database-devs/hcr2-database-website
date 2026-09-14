@@ -5,6 +5,8 @@ export type CommunityAccount = {
   discord_id: string;
   discord_username: string;
   discord_avatar?: string | null;
+  username?: string | null;
+  last_username_change_at?: string | null;
   created_at: string;
   updated_at: string;
   bio: string;
@@ -18,6 +20,8 @@ export type CommunityAccount = {
   show_bio: boolean;
   show_favorite_vehicle: boolean;
   show_favorite_map: boolean;
+  show_discord_username: boolean;
+  show_discord_avatar: boolean;
   admin_disabled: boolean;
   banner_updated_at?: string | null;
   is_owner?: boolean;
@@ -33,11 +37,18 @@ export type CommunityProfileUpdate = {
   show_bio?: boolean;
   show_favorite_vehicle?: boolean;
   show_favorite_map?: boolean;
+  show_discord_username?: boolean;
+  show_discord_avatar?: boolean;
+};
+
+export type UsernameUpdate = {
+  username: string;
 };
 
 export type CommunityMember = {
   id: number;
-  discord_username: string;
+  username?: string | null;
+  discord_username?: string | null;
   discord_avatar?: string | null;
   created_at: string;
   updated_at: string;
@@ -120,6 +131,15 @@ export type AdminCommunityReportListResponse = {
 
 export type AdminProfileDetail = CommunityAccount & {
   open_reports: number;
+  username_history?: UsernameHistoryEntry[];
+};
+
+export type UsernameHistoryEntry = {
+  id: number;
+  community_user_id: number;
+  username: string;
+  changed_by_admin: string;
+  changed_at: string;
 };
 
 export type FeatureName =

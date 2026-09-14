@@ -8,6 +8,8 @@ class CommunityAccount(BaseModel):
     discord_id: str
     discord_username: str
     discord_avatar: str | None = None
+    username: str | None = None
+    last_username_change_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
     bio: str = ""
@@ -21,6 +23,8 @@ class CommunityAccount(BaseModel):
     show_bio: bool = False
     show_favorite_vehicle: bool = False
     show_favorite_map: bool = False
+    show_discord_username: bool = False
+    show_discord_avatar: bool = False
     admin_disabled: bool = False
     banner_updated_at: datetime | None = None
 
@@ -35,11 +39,18 @@ class CommunityProfileUpdate(BaseModel):
     show_bio: bool = False
     show_favorite_vehicle: bool = False
     show_favorite_map: bool = False
+    show_discord_username: bool = False
+    show_discord_avatar: bool = False
+
+
+class UsernameUpdate(BaseModel):
+    username: str = ""
 
 
 class MemberSummary(BaseModel):
     id: int
-    discord_username: str
+    username: str | None = None
+    discord_username: str | None = None
     discord_avatar: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -85,6 +96,17 @@ class AdminProfileUpdate(BaseModel):
     show_bio: bool = False
     show_favorite_vehicle: bool = False
     show_favorite_map: bool = False
+    show_discord_username: bool = False
+    show_discord_avatar: bool = False
+    username: str | None = None
+
+
+class UsernameHistoryEntry(BaseModel):
+    id: int
+    community_user_id: int
+    username: str
+    changed_by_admin: str
+    changed_at: datetime
 
 
 class AdminNote(BaseModel):
