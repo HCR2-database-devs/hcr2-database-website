@@ -7,6 +7,7 @@ import { BetaBadge } from "../components/BetaBadge";
 import { CountryFlag } from "../components/CountryFlag";
 import { FeatureGate } from "../components/FeatureGate";
 import { ReportProfileModal } from "../components/ReportProfileModal";
+import { RequireAuth } from "../components/RequireAuth";
 import { UserAvatar } from "../components/UserAvatar";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { countryName } from "../lib/countries";
@@ -17,9 +18,11 @@ import { getCommunityProfile } from "../services/community";
 
 export function CommunityProfilePage() {
   return (
-    <FeatureGate feature="community_profiles">
-      <CommunityProfileContent />
-    </FeatureGate>
+    <RequireAuth>
+      <FeatureGate feature="community_profiles">
+        <CommunityProfileContent />
+      </FeatureGate>
+    </RequireAuth>
   );
 }
 
@@ -37,6 +40,30 @@ function CommunityProfileContent() {
     enabled: Number.isInteger(communityId) && communityId > 0,
     retry: false
   });
+
+  const needsOnboarding =
+    authStatus?.logged === true &&
+    authStatus.community !== undefined &&
+    authStatus.community !== null &&
+    !authStatus.community.username;
+
+  if (needsOnboarding) {
+    return (
+      <div className="page-container">
+        <div className="account-card">
+          <h1>Choose a community username</h1>
+          <p className="frontend-message">
+            You need a username before you can view community profiles.
+          </p>
+          <div className="frontend-modal-actions">
+            <Link className="button" to="/onboarding">
+              Choose my username
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!Number.isInteger(communityId) || communityId <= 0) {
     return (
@@ -101,7 +128,7 @@ function CommunityProfileContent() {
             <p className="community-profile-meta">
               hcr2.xyz #{profile.id} · Member since {memberSince ?? "unknown"}
             </p>
-            {profile.discord_username && (
+            {profile.show_discord_username && profile.discord_username && (
               <p className="community-profile-discord">Discord: @{profile.discord_username}</p>
             )}
           </div>

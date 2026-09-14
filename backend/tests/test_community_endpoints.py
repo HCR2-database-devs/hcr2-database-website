@@ -407,18 +407,18 @@ def test_banner_upload_rejects_invalid_image() -> None:
     assert response.status_code == 400
 
 
-def test_members_list_is_public() -> None:
+def test_members_list_requires_login() -> None:
     client, community = _client()
     community.add_user("user-a")
     response = client.get("/api/v1/community/members")
-    assert response.status_code == 200
-    assert response.json()["count"] == 1
+    assert response.status_code == 401
 
 
 def test_public_profile_returns_404_for_private_profile() -> None:
     client, community = _client()
     community.add_user("user-a", public=False)
-    response = client.get("/api/v1/community/1")
+    community.add_user("viewer-a")
+    response = client.get("/api/v1/community/1", cookies=_cookie("viewer-a"))
     assert response.status_code == 404
 
 
@@ -434,9 +434,14 @@ def test_public_profile_visible_and_owner_can_view_private() -> None:
 def test_banner_endpoint_respects_privacy() -> None:
     client, community = _client()
     community.add_user("user-a", public=False)
+    community.add_user("viewer-a")
     community.banners[1] = {"content": b"image-bytes", "content_type": "image/webp"}
 
-    assert client.get("/api/v1/community/1/banner").status_code == 404
+    assert client.get("/api/v1/community/1/banner").status_code == 401
+    assert (
+        client.get("/api/v1/community/1/banner", cookies=_cookie("viewer-a")).status_code
+        == 404
+    )
     owner = client.get("/api/v1/community/1/banner", cookies=_cookie("user-a"))
     assert owner.status_code == 200
     assert owner.headers["content-type"] == "image/webp"
@@ -625,11 +630,12 @@ def test_members_denied_for_logged_in_user_without_username() -> None:
     assert response.status_code == 403
 
 
-def test_members_allowed_anonymously() -> None:
+def test_members_allowed_for_logged_in_user() -> None:
     client, community = _client()
     community.add_user("user-a")
-    response = client.get("/api/v1/community/members")
+    response = client.get("/api/v1/community/members", cookies=_cookie("user-a"))
     assert response.status_code == 200
+    assert response.json()["count"] == 1
 
 
 def test_public_profile_denied_for_logged_in_user_without_username() -> None:

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
@@ -80,15 +80,27 @@ function LiveStatsSection() {
   });
   const recordsQuery = useQuery({
     queryKey: ["public-data", "records", "home-top"],
-    queryFn: () => getRecordsPaginated({ ...emptyRecordFilters, sort: "dist-desc" }, 0),
+    queryFn: () => getRecordsPaginated({ ...emptyRecordFilters, sort: "dist-desc" }, 0, 20),
   });
+
+  const featuredIndex = useRef<number | null>(null);
 
   const mapCount = mapsQuery.data?.length ?? 0;
   const vehicleCount = vehiclesQuery.data?.length ?? 0;
   const playerCount = playersQuery.data?.length ?? 0;
   const recordCount = recordsQuery.data?.total ?? 0;
 
-  const featured = recordsQuery.data?.records?.find((row) => asText(row.current) === "1");
+  const currentRecords = useMemo(
+    () => (recordsQuery.data?.records ?? []).filter((row) => asText(row.current) === "1"),
+    [recordsQuery.data],
+  );
+  const featured = useMemo(() => {
+    if (currentRecords.length === 0) return undefined;
+    if (featuredIndex.current === null) {
+      featuredIndex.current = Math.floor(Math.random() * currentRecords.length);
+    }
+    return currentRecords[featuredIndex.current % currentRecords.length];
+  }, [currentRecords]);
 
   const tiles = [
     { label: "Records", value: recordCount },
@@ -201,7 +213,7 @@ function BrowseSection() {
     <section className="content-section" aria-labelledby="browse-heading">
       <div className="section-heading">
         <p className="eyebrow">Database</p>
-        <h2 id="browse-heading">Browse the records</h2>
+        <h2 id="browse-heading">Browse the world records</h2>
       </div>
       <div className="browse-grid">
         <Link to="/maps" className="browse-card feature-card">
@@ -238,22 +250,22 @@ function WhySection() {
       </div>
       <div className="feature-grid">
         <article className="feature-card">
-          <h3>Verified records</h3>
+          <h3>Verified world records</h3>
           <p>
-            Every record is reviewed by our team before it goes live.
+            Every world record is reviewed by our team before it goes live.
             Questionable runs are clearly marked so you always know what you're looking at.
           </p>
         </article>
         <article className="feature-card">
           <h3>Easy to search</h3>
           <p>
-            Filter by map, vehicle, player, or tuning setup. Find the exact record you're looking for without digging through spreadsheets.
+            Filter by map, vehicle, player, or tuning setup. Find the exact record you're looking for without digging through spreadsheets or in-game leaderboards.
           </p>
         </article>
         <article className="feature-card">
           <h3>Community built</h3>
           <p>
-            Made by HCR2 players, for HCR2 players. Anyone can submit runs for review — no account required.
+            Made by HCR2 players, for HCR2 players. Anyone can submit world record runs for review. No account required.
           </p>
         </article>
       </div>
@@ -280,7 +292,7 @@ function HowItWorksSection() {
           <span className="how-step__number">2</span>
           <div>
             <h3>Submit</h3>
-            <p>Got a great run? Submit your adventure distance with proof for our team to review.</p>
+            <p>Got a world record run? Submit your adventure distance for our team to review.</p>
           </div>
         </div>
         <div className="how-step">
@@ -308,9 +320,9 @@ function CommunityVisionSection() {
           </p>
         </div>
         <div className="vision-features">
-          <span className="vision-feature">Profiles</span>
+          <span className="vision-feature">Notifications</span>
           <span className="vision-feature">Achievements</span>
-          <span className="vision-feature">XP</span>
+          <span className="vision-feature">XP system</span>
           <span className="vision-feature">Community leaderboard</span>
           <span className="vision-feature">Discord integration</span>
           <span className="vision-feature vision-feature--soon">More coming soon</span>
@@ -422,7 +434,7 @@ export function HomePage() {
             Adventure Records.
           </h1>
           <p className="hero-copy">
-            Every verified adventure distance, every map, every vehicle — in one
+            Every verified adventure world record, every map, every vehicle, in one
             place. Built and maintained by the HCR2 community.
           </p>
           <div className="hero-actions">

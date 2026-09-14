@@ -1,10 +1,13 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 
 import { BetaBadge } from "../components/BetaBadge";
 import { FeatureGate } from "../components/FeatureGate";
 import { MemberCard } from "../components/MemberCard";
+import { RequireAuth } from "../components/RequireAuth";
+import { useAuthStatus } from "../hooks/useAuthStatus";
 import { COUNTRIES } from "../lib/countries";
 import { getCommunityMembers } from "../services/community";
 
@@ -18,18 +21,46 @@ const SORT_OPTIONS = [
 
 export function CommunityPage() {
   return (
-    <FeatureGate feature="community_members">
-      <CommunityPageContent />
-    </FeatureGate>
+    <RequireAuth>
+      <FeatureGate feature="community_members">
+        <CommunityPageContent />
+      </FeatureGate>
+    </RequireAuth>
   );
 }
 
 function CommunityPageContent() {
+  const { data: authStatus } = useAuthStatus();
   const [search, setSearch] = useState("");
   const [submittedSearch, setSubmittedSearch] = useState("");
   const [sort, setSort] = useState("new");
   const [country, setCountry] = useState("");
   const [offset, setOffset] = useState(0);
+
+  const needsOnboarding =
+    authStatus?.logged === true &&
+    authStatus.community !== undefined &&
+    authStatus.community !== null &&
+    !authStatus.community.username;
+
+  if (needsOnboarding) {
+    return (
+      <div className="page-container">
+        <div className="account-card">
+          <h1>Choose a community username</h1>
+          <p className="frontend-message">
+            You need a username before you can take part in the community — the
+            member directory and player profiles are hidden until you choose one.
+          </p>
+          <div className="frontend-modal-actions">
+            <Link className="button" to="/onboarding">
+              Choose my username
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const membersQuery = useQuery({
     queryKey: ["community", "members", submittedSearch, sort, country, offset],

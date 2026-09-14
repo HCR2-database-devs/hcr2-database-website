@@ -59,6 +59,7 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
       setMessage("Profile updated.");
       setError("");
       queryClient.invalidateQueries({ queryKey: ["auth-status"] });
+      queryClient.invalidateQueries({ queryKey: ["community"] });
     },
     onError: (saveError) => {
       setError(saveError.message);
@@ -73,6 +74,7 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
       setError("");
       setNewUsername("");
       queryClient.invalidateQueries({ queryKey: ["auth-status"] });
+      queryClient.invalidateQueries({ queryKey: ["community"] });
     },
     onError: (usernameError) => {
       setError(usernameError.message);

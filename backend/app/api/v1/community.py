@@ -69,14 +69,13 @@ def _require_onboarded(
         )
 
 
-def _current_account(
+def _require_community_access(
     request: Request,
     auth_service: AuthService,
     community_service: CommunityAccountService,
 ) -> dict[str, Any] | None:
-    status = auth_service.status_from_cookie(request.cookies.get("WC_TOKEN"))
-    if not status.get("logged"):
-        return None
+    """Require a signed-in user and return their community account (if any)."""
+    status = _require_user(request, auth_service)
     return community_service.get_account(str(status["id"]))
 
 
@@ -120,7 +119,7 @@ def community_members(
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> Any:
     _require_feature(request, auth_service, settings, "community_members")
-    account = _current_account(request, auth_service, community_service)
+    account = _require_community_access(request, auth_service, community_service)
     if account is not None:
         _require_onboarded(request, auth_service, account)
     return community_service.list_members(
@@ -233,11 +232,10 @@ def community_banner(
     settings: SettingsDep,
 ) -> Any:
     _require_feature(request, auth_service, settings, "community_profiles")
-    account = _current_account(request, auth_service, community_service)
+    account = _require_community_access(request, auth_service, community_service)
     if account is not None:
         _require_onboarded(request, auth_service, account)
-    status = auth_service.status_from_cookie(request.cookies.get("WC_TOKEN"))
-    viewer_id = str(status["id"]) if status.get("logged") else None
+    viewer_id = account["discord_id"] if account is not None else None
     banner = community_service.get_banner(community_id, viewer_id)
     if banner is None:
         raise HTTPException(status_code=404, detail="Not found")
@@ -257,11 +255,10 @@ def community_profile(
     settings: SettingsDep,
 ) -> Any:
     _require_feature(request, auth_service, settings, "community_profiles")
-    account = _current_account(request, auth_service, community_service)
+    account = _require_community_access(request, auth_service, community_service)
     if account is not None:
         _require_onboarded(request, auth_service, account)
-    status = auth_service.status_from_cookie(request.cookies.get("WC_TOKEN"))
-    viewer_id = str(status["id"]) if status.get("logged") else None
+    viewer_id = account["discord_id"] if account is not None else None
     profile = community_service.get_public_profile(community_id, viewer_id)
     if profile is None:
         raise HTTPException(status_code=404, detail="Not found")

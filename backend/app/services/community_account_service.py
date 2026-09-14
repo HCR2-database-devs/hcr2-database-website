@@ -236,6 +236,13 @@ def _public_profile(account: dict[str, Any], is_owner: bool) -> dict[str, Any]:
             account["favorite_map_name"] if is_owner or account["show_favorite_map"] else None
         ),
         "banner_updated_at": account["banner_updated_at"],
+        "show_country": account["show_country"],
+        "show_bio": account["show_bio"],
+        "show_favorite_vehicle": account["show_favorite_vehicle"],
+        "show_favorite_map": account["show_favorite_map"],
+        "show_discord_username": account["show_discord_username"],
+        "show_discord_avatar": account["show_discord_avatar"],
+        "admin_disabled": account["admin_disabled"],
         "is_owner": is_owner,
     }
     if is_owner or account["show_discord_username"]:

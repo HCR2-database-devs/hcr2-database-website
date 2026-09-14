@@ -27,9 +27,13 @@ function addMythicParam(params: URLSearchParams, mythic: boolean | undefined) {
   params.set("mythic", mythic ? "true" : "false");
 }
 
-export function getRecordsPaginated(filters: RecordFilters, pageParam: number): Promise<PaginatedRecordsResponse> {
+export function getRecordsPaginated(
+  filters: RecordFilters,
+  pageParam: number,
+  limit = 50,
+): Promise<PaginatedRecordsResponse> {
   const params = new URLSearchParams();
-  params.set("limit", "50");
+  params.set("limit", String(limit));
   params.set("offset", String(pageParam));
   if (filters.search) params.set("q", filters.search);
   filters.maps.forEach((m) => params.append("map", m));
