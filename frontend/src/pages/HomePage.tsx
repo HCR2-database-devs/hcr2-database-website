@@ -133,7 +133,7 @@ function LiveStatsSection() {
         {featured && (
           <article className="featured-record">
             <div className="featured-record__head">
-              <p className="featured-record__eyebrow">Current record</p>
+              <p className="featured-record__eyebrow">Random world record</p>
               <span className="status-pill status-pill--verified">Verified</span>
             </div>
             <div className="featured-record__main">
