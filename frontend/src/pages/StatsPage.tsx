@@ -166,7 +166,7 @@ export function StatsPage() {
 
   const [historyMap, setHistoryMap] = useState("");
   const [historyVehicle, setHistoryVehicle] = useState("");
-  const [historyMythic, setHistoryMythic] = useState<boolean | undefined>(undefined);
+  const [historyMythic, setHistoryMythic] = useState<"all" | "normal" | "mythic">("normal");
   const [volumeWeeks, setVolumeWeeks] = useState(12);
   const [tuningMap, setTuningMap] = useState("");
 
@@ -177,7 +177,12 @@ export function StatsPage() {
 
   const recordHistoryQuery = useQuery({
     queryKey: ["stats", "record-history", activeHistoryMap, activeHistoryVehicle, historyMythic],
-    queryFn: () => getRecordHistory(activeHistoryMap, activeHistoryVehicle, historyMythic),
+    queryFn: () =>
+      getRecordHistory(
+        activeHistoryMap,
+        activeHistoryVehicle,
+        historyMythic === "normal" ? false : historyMythic === "mythic" ? true : undefined
+      ),
     enabled: canFetchHistory
   });
   const volumeQuery = useQuery({
@@ -610,14 +615,30 @@ export function StatsPage() {
                   ))}
                 </select>
               </label>
-              <label className="history-toggle">
-                <input
-                  type="checkbox"
-                  checked={historyMythic === true}
-                  onChange={(e) => setHistoryMythic(e.target.checked ? true : undefined)}
-                />
-                Mythic only
-              </label>
+              <div className="history-mode-toggle" role="group" aria-label="Record type">
+                <span className="history-mode-toggle__label">Type</span>
+                <button
+                  type="button"
+                  className={historyMythic === "normal" ? "is-active" : ""}
+                  onClick={() => setHistoryMythic("normal")}
+                >
+                  Normal
+                </button>
+                <button
+                  type="button"
+                  className={historyMythic === "mythic" ? "is-active" : ""}
+                  onClick={() => setHistoryMythic("mythic")}
+                >
+                  Mythic
+                </button>
+                <button
+                  type="button"
+                  className={historyMythic === "all" ? "is-active" : ""}
+                  onClick={() => setHistoryMythic("all")}
+                >
+                  All
+                </button>
+              </div>
               <span className="history-note">
                 History is captured from record replacements going forward.
               </span>

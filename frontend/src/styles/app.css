@@ -3943,19 +3943,53 @@ tbody tr:hover {
   padding: 8px 10px;
 }
 
-.history-controls .history-toggle {
+.history-mode-toggle {
   align-items: center;
-  display: flex;
-  flex-direction: row;
-  gap: 8px;
-  justify-content: center;
-  min-height: 40px;
+  display: inline-flex;
 }
 
-.history-controls .history-toggle input {
-  accent-color: var(--accent);
-  height: 16px;
-  width: 16px;
+.history-mode-toggle__label {
+  color: var(--muted-strong);
+  font-size: 13px;
+  font-weight: 680;
+  margin-right: 8px;
+}
+
+.history-mode-toggle button {
+  background: transparent;
+  border: 2px solid rgba(93, 132, 235, 0.45);
+  border-radius: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 680;
+  min-height: 40px;
+  padding: 8px 14px;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.history-mode-toggle button:first-of-type {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.history-mode-toggle button:last-of-type {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.history-mode-toggle button + button {
+  border-left-width: 1px;
+}
+
+.history-mode-toggle button:hover {
+  border-color: rgba(93, 132, 235, 0.78);
+  color: var(--text);
+}
+
+.history-mode-toggle button.is-active {
+  background: rgba(94, 232, 255, 0.14);
+  border-color: rgba(94, 232, 255, 0.55);
+  color: var(--accent);
 }
 
 .history-note {

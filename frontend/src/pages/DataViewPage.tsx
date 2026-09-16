@@ -145,7 +145,17 @@ function MultiDropdown({ id, buttonLabel, title, options, selected, onToggle, on
 }
 
 function buildCsv(rows: DataRow[]) {
-  const headers = ["Distance", "Map Name", "Vehicle Name", "Player Name", "Country"];
+  const headers = [
+    "Distance",
+    "Map Name",
+    "Vehicle Name",
+    "Player Name",
+    "Country",
+    "Notes",
+    "Tuning Parts",
+    "Echo Affected Part",
+    "Is Mythic"
+  ];
   const escapeCell = (value: unknown) => {
     const text = asText(value);
     if (text.includes(",") || text.includes('"') || text.includes("\n")) {
@@ -154,7 +164,17 @@ function buildCsv(rows: DataRow[]) {
     return text;
   };
   const csvRows = rows.map((row) =>
-    [row.distance, row.map_name, row.vehicle_name, row.player_name, row.player_country].map(escapeCell).join(",")
+    [
+      row.distance,
+      row.map_name,
+      row.vehicle_name,
+      row.player_name,
+      row.player_country,
+      row.questionable_reason,
+      row.tuning_parts,
+      row.echoAffectedPart,
+      row.isMythic
+    ].map(escapeCell).join(",")
   );
   return [headers.join(","), ...csvRows].join("\n");
 }

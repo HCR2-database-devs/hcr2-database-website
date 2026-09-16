@@ -46,6 +46,15 @@ import type {
   NewsItem
 } from "../types/api";
 
+function formatBytes(bytes: number): string {
+  if (!bytes) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / 1024 ** index;
+  const digits = value >= 100 || index === 0 ? 0 : 1;
+  return `${value.toFixed(digits)} ${units[index]}`;
+}
+
 type RecordFormState = {
   mapId: string;
   vehicleId: string;
@@ -1615,7 +1624,7 @@ export function AdminPage() {
                 {(backupsQuery.data?.backups ?? []).map((backup) => (
                   <tr key={backup.name}>
                     <td>{backup.name}</td>
-                    <td>{backup.size}</td>
+                    <td>{formatBytes(backup.size)}</td>
                     <td>{backup.mtime}</td>
                     <td className="admin-table-actions">
                       <a className="admin-button-link" href={backupDownloadUrl(backup.name)}>
