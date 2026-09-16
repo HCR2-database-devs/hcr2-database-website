@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 
 import { NewsModal } from "./NewsModal";
+import { NotificationBell } from "./NotificationBell";
 import { PublicSubmitModal } from "./PublicSubmitModal";
 import { UserAvatar } from "./UserAvatar";
 import { BetaBadge } from "./BetaBadge";
@@ -241,6 +242,10 @@ export function Header() {
                   <img className="discord-logo" src="/img/Discord-Symbol-Blurple.png" alt="" />
                   <span>Discord</span>
                 </button>
+              )}
+
+              {authStatus?.logged && (
+                <NotificationBell />
               )}
 
               {authStatus?.logged && (

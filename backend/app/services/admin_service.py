@@ -70,7 +70,9 @@ def _parse_expiry(value: str | None):
             try:
                 return datetime.strptime(candidate, "%Y-%m-%d %H:%M:%S").replace(tzinfo=None)
             except ValueError:
-                raise AdminServiceError("Invalid expiry date format. Use YYYY-MM-DD.")
+                raise AdminServiceError(
+                    "Invalid expiry date format. Use YYYY-MM-DD."
+                ) from None
 
 
 class AdminService:
@@ -157,7 +159,8 @@ class AdminService:
                         ON wr.id_tuning_setup = tsp.id_tuning_setup
                     LEFT JOIN tuning_part tp ON tsp.id_tuning_part = tp.id_tuning_part
                     LEFT JOIN tuning_setup ts ON wr.id_tuning_setup = ts.id_tuning_setup
-                    LEFT JOIN tuning_part echo_part ON ts.echo_affected_part_id = echo_part.id_tuning_part
+                    LEFT JOIN tuning_part echo_part
+                        ON ts.echo_affected_part_id = echo_part.id_tuning_part
                     WHERE wr.current = 1
                     GROUP BY wr.id_record, wr.id_map, wr.id_vehicle, wr.id_player,
                         wr.id_tuning_setup, wr.distance, wr.current, wr.questionable,
@@ -213,7 +216,9 @@ class AdminService:
         )
         return cursor.fetchone() is not None
 
-    def submit_record(self, payload: SubmitRecordRequest, admin_username: str = "") -> dict[str, Any]:
+    def submit_record(
+        self, payload: SubmitRecordRequest, admin_username: str = ""
+    ) -> dict[str, Any]:
         if payload.distance <= 0:
             raise AdminServiceError("Distance must be a positive number.")
         if payload.questionable not in (0, 1):
@@ -299,7 +304,9 @@ class AdminService:
             "distance": payload.distance,
         }
 
-    def delete_record(self, payload: DeleteRecordRequest, admin_username: str = "") -> dict[str, Any]:
+    def delete_record(
+        self, payload: DeleteRecordRequest, admin_username: str = ""
+    ) -> dict[str, Any]:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
@@ -310,7 +317,9 @@ class AdminService:
         self._log(admin_username, "deleted", "record", payload.record_id)
         return {"success": True, "deleted": deleted}
 
-    def set_questionable(self, payload: SetQuestionableRequest, admin_username: str = "") -> dict[str, Any]:
+    def set_questionable(
+        self, payload: SetQuestionableRequest, admin_username: str = ""
+    ) -> dict[str, Any]:
         if payload.questionable not in (0, 1):
             raise AdminServiceError("Invalid questionable value (must be 0 or 1)")
 
@@ -333,7 +342,9 @@ class AdminService:
         self._log(admin_username, "updated", "record", payload.record_id)
         return {"success": True, "message": "Record status updated successfully"}
 
-    def assign_setup(self, payload: AssignSetupRequest, admin_username: str = "") -> dict[str, bool]:
+    def assign_setup(
+        self, payload: AssignSetupRequest, admin_username: str = ""
+    ) -> dict[str, bool]:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
@@ -415,7 +426,9 @@ class AdminService:
         self._log(admin_username, "created", "vehicle", new_id, name)
         return {"success": True, "idVehicle": new_id, "nameVehicle": name, "iconMessage": ""}
 
-    def add_tuning_part(self, payload: AddTuningPartRequest, admin_username: str = "") -> dict[str, Any]:
+    def add_tuning_part(
+        self, payload: AddTuningPartRequest, admin_username: str = ""
+    ) -> dict[str, Any]:
         name = _clean_text(payload.part_name)
         if not name:
             raise AdminServiceError("Tuning part name is required.")
@@ -467,7 +480,9 @@ class AdminService:
         if content:
             self._validate_svg_icon(filename, content_type, content)
 
-    def add_tuning_setup(self, payload: AddTuningSetupRequest, admin_username: str = "") -> dict[str, Any]:
+    def add_tuning_setup(
+        self, payload: AddTuningSetupRequest, admin_username: str = ""
+    ) -> dict[str, Any]:
         part_ids = sorted(set(int(part_id) for part_id in payload.part_ids))
         if len(part_ids) < 3 or len(part_ids) > 4:
             raise AdminServiceError("Must select 3 or 4 tuning parts.")
@@ -481,7 +496,8 @@ class AdminService:
                 setup_id = self._create_setup(cursor, part_ids)
                 if payload.echo_affected_part_id is not None:
                     cursor.execute(
-                        "UPDATE tuning_setup SET echo_affected_part_id = %s WHERE id_tuning_setup = %s",
+                        "UPDATE tuning_setup SET echo_affected_part_id = %s "
+                        "WHERE id_tuning_setup = %s",
                         (payload.echo_affected_part_id, setup_id),
                     )
         self._log(admin_username, "created", "tuning_setup", setup_id)
@@ -515,7 +531,8 @@ class AdminService:
                 )
                 cursor.execute(
                     """
-                    INSERT INTO world_record (id_map, id_vehicle, id_player, distance, current, is_mythic)
+                    INSERT INTO world_record
+                        (id_map, id_vehicle, id_player, distance, current, is_mythic)
                     VALUES (%s, %s, %s, %s, 1, %s)
                     RETURNING id_record
                     """,
@@ -536,7 +553,8 @@ class AdminService:
                         echo_part_id = submission.get("echo_affected_part_id")
                         if echo_part_id:
                             cursor.execute(
-                                "UPDATE tuning_setup SET echo_affected_part_id = %s WHERE id_tuning_setup = %s",
+                                "UPDATE tuning_setup SET echo_affected_part_id = %s "
+                        "WHERE id_tuning_setup = %s",
                                 (int(echo_part_id), setup_id),
                             )
                         cursor.execute(
@@ -562,7 +580,12 @@ class AdminService:
         self._log(admin_username, "rejected", "submission", submission_id)
         return {"success": True}
 
-    def post_news(self, payload: PostNewsRequest, author: str | None, admin_username: str = "") -> dict[str, Any]:
+    def post_news(
+        self,
+        payload: PostNewsRequest,
+        author: str | None,
+        admin_username: str = "",
+    ) -> dict[str, Any]:
         title = _strip_tags(payload.title)
         content = _strip_tags(payload.content)
         if not title or not content:
@@ -581,7 +604,12 @@ class AdminService:
         self._log(admin_username, "created", "news", news_id, title)
         return {"success": True, "id": news_id}
 
-    def update_news(self, news_id: int, payload: UpdateNewsRequest, admin_username: str = "") -> dict[str, Any]:
+    def update_news(
+        self,
+        news_id: int,
+        payload: UpdateNewsRequest,
+        admin_username: str = "",
+    ) -> dict[str, Any]:
         title = _strip_tags(payload.title)
         content = _strip_tags(payload.content)
         if news_id <= 0 or not title or not content:
@@ -677,7 +705,9 @@ class AdminService:
         self._log(admin_username, "updated", "changelog", changelog_id, version)
         return {"success": True, "dryRun": False}
 
-    def delete_changelog(self, payload: DeleteChangelogRequest, admin_username: str = "") -> dict[str, Any]:
+    def delete_changelog(
+        self, payload: DeleteChangelogRequest, admin_username: str = ""
+    ) -> dict[str, Any]:
         if payload.id <= 0:
             raise AdminServiceError("Invalid changelog ID.")
         with open_connection(self._config) as connection:
@@ -754,7 +784,8 @@ class AdminService:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "SELECT banned_ip AS \"bannedIp\" FROM ip_ban WHERE id = %s AND active = TRUE LIMIT 1",
+                    "SELECT banned_ip AS \"bannedIp\" "
+                    "FROM ip_ban WHERE id = %s AND active = TRUE LIMIT 1",
                     (ban_id,),
                 )
                 row = cursor.fetchone()
@@ -791,7 +822,13 @@ class AdminService:
             self._maintenance_flag.write_text("1", encoding="utf-8")
         elif self._maintenance_flag.exists():
             self._maintenance_flag.unlink()
-        self._log(admin_username, "updated", "maintenance", None, "enabled" if target else "disabled")
+        self._log(
+            admin_username,
+            "updated",
+            "maintenance",
+            None,
+            "enabled" if target else "disabled",
+        )
         return {"success": True, "maintenance": bool(target)}
 
     def integrity_check(self) -> dict[str, Any]:

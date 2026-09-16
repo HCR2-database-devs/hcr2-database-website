@@ -128,7 +128,8 @@ class PostgresPublicDataRepository:
             WHERE wr.current = 1
             GROUP BY wr.id_record, wr.id_map, wr.id_vehicle, wr.id_player,
                 wr.distance, wr.current, wr.id_tuning_setup, wr.questionable,
-                wr.is_mythic, wr.questionable_reason, m.name_map, v.name_vehicle, p.name_player, p.country,
+                wr.is_mythic, wr.questionable_reason,
+                m.name_map, v.name_vehicle, p.name_player, p.country,
                 echo_part.name_tuning_part, wr.created_at
             ORDER BY wr.id_map DESC
             """
@@ -199,13 +200,18 @@ class PostgresPublicDataRepository:
             "most-recent": "wr.id_record DESC",
         }.get(sort, "wr.id_map DESC, wr.id_vehicle ASC")
 
-        is_export = filters.get("export") in {True, "true", "1", 1}
+        is_export = filters.get("export") in {True, "true", "1"}
         if is_export:
             limit = 50_000
             offset = 0
         else:
             limit = self._bounded_int(filters.get("limit"), default=50, minimum=1, maximum=200)
-            offset = self._bounded_int(filters.get("offset"), default=0, minimum=0, maximum=10_000_000)
+            offset = self._bounded_int(
+                filters.get("offset"),
+                default=0,
+                minimum=0,
+                maximum=10_000_000,
+            )
 
         params["limit"] = limit
         params["offset"] = offset
@@ -256,7 +262,8 @@ class PostgresPublicDataRepository:
             WHERE {where_clause}
             GROUP BY wr.id_record, wr.id_map, wr.id_vehicle, wr.id_player,
                 wr.distance, wr.current, wr.id_tuning_setup, wr.questionable,
-                wr.is_mythic, wr.questionable_reason, m.name_map, v.name_vehicle, p.name_player, p.country,
+                wr.is_mythic, wr.questionable_reason,
+                m.name_map, v.name_vehicle, p.name_player, p.country,
                 echo_part.name_tuning_part, wr.created_at
             ORDER BY {order_by}
             LIMIT %(limit)s OFFSET %(offset)s
@@ -356,7 +363,8 @@ class PostgresPublicDataRepository:
             WHERE {' AND '.join(where)}
             GROUP BY wr.id_record, wr.id_map, wr.id_vehicle, wr.id_player,
                 wr.distance, wr.current, wr.id_tuning_setup, wr.questionable,
-                wr.is_mythic, wr.questionable_reason, m.name_map, v.name_vehicle, p.name_player, p.country,
+                wr.is_mythic, wr.questionable_reason,
+                m.name_map, v.name_vehicle, p.name_player, p.country,
                 echo_part.name_tuning_part, wr.created_at
             ORDER BY wr.id_map DESC
             LIMIT %(limit)s OFFSET %(offset)s

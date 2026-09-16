@@ -71,7 +71,8 @@ class PublicSubmissionService:
         has_echo = "Echo" in tuning_parts
         if has_echo and not echo_affected_part_id:
             return self._error(
-                'Echo requires selecting an affected part. Please select a part from the "Echo Affected Part" dropdown.',
+                'Echo requires selecting an affected part. Please select a part from '
+                'the "Echo Affected Part" dropdown.',
                 400,
             )
         if not has_echo and echo_affected_part_id:

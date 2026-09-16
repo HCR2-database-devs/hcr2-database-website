@@ -125,7 +125,11 @@ def compatibility_get_news(
         return database_error_response(exc)
 
 
-@router.get("/php/get_hcaptcha_sitekey.php", response_model=None, dependencies=[Depends(_check_maintenance)])
+@router.get(
+    "/php/get_hcaptcha_sitekey.php",
+    response_model=None,
+    dependencies=[Depends(_check_maintenance)],
+)
 def compatibility_get_hcaptcha_sitekey(settings: SettingsDep) -> Any:
     if not settings.hcaptcha_site_key:
         return error_response("hCaptcha is not configured", status_code=500)
@@ -142,7 +146,11 @@ def compatibility_maintenance_status(
     return admin_service.maintenance_status(bool(status.get("allowed")))
 
 
-@router.post("/php/public_submit.php", response_model=None, dependencies=[Depends(_check_maintenance)])
+@router.post(
+    "/php/public_submit.php",
+    response_model=None,
+    dependencies=[Depends(_check_maintenance)],
+)
 async def compatibility_public_submit(
     request: Request,
     service: PublicSubmissionServiceDep,

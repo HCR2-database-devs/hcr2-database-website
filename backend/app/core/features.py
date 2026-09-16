@@ -18,6 +18,7 @@ class Feature:
     PROFILE_CUSTOMIZATION = "profile_customization"
     COMMUNITY_MEMBERS = "community_members"
     PROFILE_REPORTING = "profile_reporting"
+    COMMUNITY_NOTIFICATIONS = "community_notifications"
 
 
 FEATURE_FIELDS: dict[str, str] = {
@@ -26,6 +27,7 @@ FEATURE_FIELDS: dict[str, str] = {
     Feature.PROFILE_CUSTOMIZATION: "feature_profile_customization",
     Feature.COMMUNITY_MEMBERS: "feature_community_members",
     Feature.PROFILE_REPORTING: "feature_profile_reporting",
+    Feature.COMMUNITY_NOTIFICATIONS: "feature_community_notifications",
 }
 
 

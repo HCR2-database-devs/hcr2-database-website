@@ -14,6 +14,7 @@ Current Phase 1/2 community features all start out as `BETA`:
 | Profile Customization | `FEATURE_PROFILE_CUSTOMIZATION` | BETA |
 | Community Members  | `FEATURE_COMMUNITY_MEMBERS`   | BETA    |
 | Profile Reporting  | `FEATURE_PROFILE_REPORTING`   | BETA    |
+| Community Notifications | `FEATURE_COMMUNITY_NOTIFICATIONS` | BETA |
 
 ## The three feature states
 
@@ -103,6 +104,7 @@ FEATURE_DISCORD_ACCOUNTS=ENABLED
 FEATURE_PROFILE_CUSTOMIZATION=ENABLED
 FEATURE_COMMUNITY_MEMBERS=ENABLED
 FEATURE_PROFILE_REPORTING=ENABLED
+FEATURE_COMMUNITY_NOTIFICATIONS=ENABLED
 ```
 
 Everyone gets access, and the BETA badges disappear automatically because they

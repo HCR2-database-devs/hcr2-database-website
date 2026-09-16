@@ -36,9 +36,10 @@ export function TermsOfServicePage() {
         <p>When using this website, you agree not to:</p>
         <ul>
           <li>Submit false, inaccurate, or misleading record information</li>
-          <li>Impersonate other players or members of the HCR2 Database team</li>
-          <li>Use offensive, inappropriate, or misleading player names or country labels</li>
+          <li>Impersonate other players, community members, or members of the HCR2 Database team</li>
+          <li>Use offensive, inappropriate, or misleading player names, usernames, or country labels</li>
           <li>Submit spam, automated, or bot-generated content</li>
+          <li>Abuse the profile reporting feature to submit false or malicious reports</li>
           <li>Attempt to circumvent rate limits, spam protections, or security measures</li>
           <li>Attempt to access, modify, or interfere with data that is not your own</li>
           <li>Use the website in any way that violates applicable law</li>
@@ -70,12 +71,50 @@ export function TermsOfServicePage() {
           remove associated records.
         </p>
 
+        <h2>Community Accounts, Usernames, and Moderation</h2>
+        <p>
+          The community feature lets you create a community account and public profile (for example,
+          in the member directory) and use the leaderboard notify system. Community accounts are
+          separate from record submissions: a record submitter is not required to create a community
+          account. When you create a community account you may be asked to authenticate with Discord
+          to verify your identity.
+        </p>
+        <p>Community usernames must follow these rules:</p>
+        <ul>
+          <li>Between 3 and 20 characters</li>
+          <li>
+            May only contain letters, numbers, spaces, and a limited set of punctuation
+          </li>
+          <li>
+            May not impersonate other users, community members, Fingersoft, or any of its employees
+          </li>
+          <li>May not be offensive, abusive, or misleading</li>
+        </ul>
+        <p>
+          You may change your username at most once every 30 days (the username change cooldown). A
+          record of previous usernames is kept to enforce this cooldown and to let administrators
+          restore a previous username if needed.
+        </p>
+        <p>
+          Administrators may disable, edit, or reset community profiles and usernames, or restore a
+          previous username, when they violate these Terms or are reported by other users. When an
+          administrator takes such an action on your community profile, you will receive a
+          notification in the website&apos;s notification system explaining the change and the reason.
+        </p>
+        <p>
+          We may temporarily or permanently suspend your community account for repeated or serious
+          violations, including harassment, impersonation, or abuse of the reporting system.
+        </p>
+
         <h2>Third-Party Services</h2>
         <p>This website uses third-party services, including:</p>
         <ul>
           <li>Google Ads for advertising</li>
           <li>hCaptcha for spam prevention</li>
-          <li>Discord OAuth for administrator authentication</li>
+          <li>
+            Discord OAuth for administrator authentication and for optional community account
+            sign-in
+          </li>
           <li>Openwidget for info widget in the right bottom corner</li>
         </ul>
         <p>

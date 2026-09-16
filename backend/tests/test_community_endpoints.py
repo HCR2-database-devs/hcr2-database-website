@@ -308,6 +308,59 @@ class FakeCommunityModerationService:
         return report
 
 
+class FakeCommunityNotificationService:
+    def __init__(self) -> None:
+        self.notifications: dict[int, list[dict[str, Any]]] = {}
+        self.next_id = 1
+
+    def add(self, community_user_id: int, note_type: str, message: str) -> None:
+        note = {
+            "id": self.next_id,
+            "community_user_id": community_user_id,
+            "type": note_type,
+            "message": message,
+            "created_at": "2026-09-15T10:00:00",
+            "read_at": None,
+        }
+        self.notifications.setdefault(community_user_id, []).append(note)
+        self.next_id += 1
+
+    def list_for_user(
+        self,
+        community_user_id: int,
+        *,
+        limit: int,
+        offset: int,
+    ) -> dict[str, Any]:
+        rows = list(reversed(self.notifications.get(community_user_id, [])))
+        return {
+            "notifications": rows[offset : offset + limit],
+            "count": len(rows),
+            "unread": sum(1 for row in rows if row["read_at"] is None),
+            "limit": limit,
+            "offset": offset,
+        }
+
+    def mark_read(
+        self,
+        notification_id: int,
+        community_user_id: int,
+    ) -> dict[str, Any] | None:
+        for row in self.notifications.get(community_user_id, []):
+            if row["id"] == notification_id and row["read_at"] is None:
+                row["read_at"] = "2026-09-15T11:00:00"
+                return dict(row)
+        return None
+
+    def mark_all_read(self, community_user_id: int) -> int:
+        updated = 0
+        for row in self.notifications.get(community_user_id, []):
+            if row["read_at"] is None:
+                row["read_at"] = "2026-09-15T11:00:00"
+                updated += 1
+        return updated
+
+
 def _client() -> tuple[TestClient, FakeCommunityAccountService]:
     app = create_app()
     app.dependency_overrides[get_settings] = lambda: Settings(
@@ -317,12 +370,18 @@ def _client() -> tuple[TestClient, FakeCommunityAccountService]:
         FEATURE_PROFILE_CUSTOMIZATION="ENABLED",
         FEATURE_COMMUNITY_MEMBERS="ENABLED",
         FEATURE_PROFILE_REPORTING="ENABLED",
+        FEATURE_COMMUNITY_NOTIFICATIONS="ENABLED",
     )
     community = FakeCommunityAccountService()
     moderation = FakeCommunityModerationService(community)
+    notifications = FakeCommunityNotificationService()
+    community.notifications = notifications
     app.dependency_overrides[dependencies.get_auth_service] = FakeAuthService
     app.dependency_overrides[dependencies.get_community_account_service] = lambda: community
     app.dependency_overrides[dependencies.get_community_moderation_service] = lambda: moderation
+    app.dependency_overrides[
+        dependencies.get_community_notification_service
+    ] = lambda: notifications
     return TestClient(app), community
 
 
@@ -335,9 +394,14 @@ def _beta_client() -> tuple[TestClient, FakeCommunityAccountService]:
     )
     community = FakeCommunityAccountService()
     moderation = FakeCommunityModerationService(community)
+    notifications = FakeCommunityNotificationService()
+    community.notifications = notifications
     app.dependency_overrides[dependencies.get_auth_service] = FakeAuthService
     app.dependency_overrides[dependencies.get_community_account_service] = lambda: community
     app.dependency_overrides[dependencies.get_community_moderation_service] = lambda: moderation
+    app.dependency_overrides[
+        dependencies.get_community_notification_service
+    ] = lambda: notifications
     return TestClient(app), community
 
 
@@ -750,6 +814,7 @@ def test_auth_status_sends_features_and_no_beta_for_logged_out() -> None:
             "profile_customization": "BETA",
             "community_members": "BETA",
             "profile_reporting": "BETA",
+            "community_notifications": "BETA",
         },
     }
 
@@ -771,3 +836,109 @@ def test_auth_status_no_beta_flag_for_non_beta_user() -> None:
     body = response.json()
     assert body["logged"] is True
     assert body["beta"] is False
+
+
+def test_notifications_list_requires_login() -> None:
+    client, _ = _client()
+    response = client.get("/api/v1/community/notifications")
+    assert response.status_code == 401
+
+
+def test_notifications_list_empty() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+    response = client.get("/api/v1/community/notifications", cookies=_cookie("user-a"))
+    assert response.status_code == 200
+    assert response.json() == {
+        "notifications": [],
+        "count": 0,
+        "unread": 0,
+        "limit": 20,
+        "offset": 0,
+    }
+
+
+def test_notifications_list_returns_unread_and_count() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+    community.notifications.add(1, "profile_updated", "Profile changed")
+    community.notifications.add(1, "username_set", "Username changed")
+    community.notifications.add(2, "profile_reset", "Someone else")
+
+    response = client.get("/api/v1/community/notifications", cookies=_cookie("user-a"))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["count"] == 2
+    assert body["unread"] == 2
+    assert [note["type"] for note in body["notifications"]] == ["username_set", "profile_updated"]
+    assert all(note["community_user_id"] == 1 for note in body["notifications"])
+
+
+def test_notifications_read_marks_all_when_ids_empty() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+    community.notifications.add(1, "profile_updated", "msg")
+    community.notifications.add(1, "profile_reset", "msg2")
+
+    response = client.post(
+        "/api/v1/community/notifications/read",
+        json={},
+        cookies=_cookie("user-a"),
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"updated": 2}
+
+
+def test_notifications_read_marks_selected_ids() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+    community.notifications.add(1, "profile_updated", "msg")
+
+    response = client.post(
+        "/api/v1/community/notifications/read",
+        json={"notification_ids": [1]},
+        cookies=_cookie("user-a"),
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"updated": 1}
+
+
+def test_notifications_read_ignores_other_users_notifications() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+    community.add_user("user-b")
+    community.notifications.add(1, "profile_updated", "msg")
+    community.notifications.add(2, "profile_updated", "other")
+
+    response = client.post(
+        "/api/v1/community/notifications/read",
+        json={"notification_ids": [1, 2]},
+        cookies=_cookie("user-b"),
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"updated": 1}
+    assert community.notifications.notifications[1][0]["read_at"] is None
+
+
+def test_notifications_read_requires_login() -> None:
+    client, _ = _client()
+    response = client.post("/api/v1/community/notifications/read", json={})
+    assert response.status_code == 401
+
+
+def test_beta_notifications_denied_for_non_beta_user() -> None:
+    client, community = _beta_client()
+    community.add_user("user-a")
+    response = client.get("/api/v1/community/notifications", cookies=_cookie("user-a"))
+    assert response.status_code == 403
+
+
+def test_beta_notifications_allowed_for_beta_user() -> None:
+    client, community = _beta_client()
+    community.add_user("beta-user")
+    response = client.get("/api/v1/community/notifications", cookies=_cookie("beta-user"))
+    assert response.status_code == 200

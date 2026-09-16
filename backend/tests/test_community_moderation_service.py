@@ -202,6 +202,25 @@ class FakeActivityLog:
         )
 
 
+class FakeNotificationService:
+    def __init__(self) -> None:
+        self.notifications: list[dict[str, Any]] = []
+
+    def notify(
+        self,
+        community_user_id: int,
+        notification_type: str,
+        message: str,
+    ) -> None:
+        self.notifications.append(
+            {
+                "community_user_id": community_user_id,
+                "type": notification_type,
+                "message": message,
+            }
+        )
+
+
 def _make_service() -> tuple[
     CommunityModerationService,
     FakeModerationRepository,
@@ -209,7 +228,12 @@ def _make_service() -> tuple[
 ]:
     repository = FakeModerationRepository()
     logging = FakeActivityLog()
-    service = CommunityModerationService(repository, FakeCommunityRepository(), logging)
+    service = CommunityModerationService(
+        repository,
+        FakeCommunityRepository(),
+        logging,
+        notification_service=FakeNotificationService(),
+    )
     return service, repository, logging
 
 
@@ -445,3 +469,95 @@ def test_admin_username_history_lists_entries() -> None:
     history = service.get_username_history(1)
 
     assert [entry["username"] for entry in history] == ["New", "Old"]
+
+
+def _notifications(service: CommunityModerationService) -> list[dict[str, Any]]:
+    if service.notification_service is None:
+        return []
+    return service.notification_service.notifications  # type: ignore[union-attr]
+
+
+def test_update_profile_notifies_user() -> None:
+    service, repository, _ = _make_service()
+    repository.add_profile("Nipa")
+
+    service.update_profile(1, _payload(bio="Edited"), admin_username="Admin", note="Rules")
+
+    notes = _notifications(service)
+    assert len(notes) == 1
+    assert notes[0]["community_user_id"] == 1
+    assert notes[0]["type"] == "profile_updated"
+    assert "Reason: Rules" in notes[0]["message"]
+
+
+def test_reset_profile_notifies_user() -> None:
+    service, repository, _ = _make_service()
+    repository.add_profile("Nipa")
+
+    service.reset_profile(1, "Admin", note="Reset requested")
+
+    notes = _notifications(service)
+    assert len(notes) == 1
+    assert notes[0]["type"] == "profile_reset"
+    assert "Reason: Reset requested" in notes[0]["message"]
+
+
+def test_set_username_notifies_user() -> None:
+    service, repository, _ = _make_service()
+    repository.add_profile("Nipa")
+
+    service.set_username(1, "New Name", admin_username="Admin", note="User request")
+
+    notes = _notifications(service)
+    assert len(notes) == 1
+    assert notes[0]["type"] == "username_set"
+    assert '"New Name"' in notes[0]["message"]
+
+
+def test_reset_username_notifies_user() -> None:
+    service, repository, _ = _make_service()
+    repository.add_profile("Nipa")
+    service.set_username(1, "Taker", admin_username="Admin")
+
+    service.reset_username(1, "Admin", note="Name change request")
+
+    notes = _notifications(service)
+    assert len(notes) == 2
+    assert notes[1]["type"] == "username_reset"
+    assert "removed" in notes[1]["message"]
+
+
+def test_set_disabled_notifies_user() -> None:
+    service, repository, _ = _make_service()
+    repository.add_profile("Nipa")
+
+    service.set_disabled(1, True, "Admin", note="Rule break")
+
+    notes = _notifications(service)
+    assert len(notes) == 1
+    assert notes[0]["type"] == "profile_disabled"
+    assert "disabled" in notes[0]["message"]
+    assert "Reason: Rule break" in notes[0]["message"]
+
+
+def test_enable_notifies_user() -> None:
+    service, repository, _ = _make_service()
+    repository.add_profile("Nipa")
+
+    service.set_disabled(1, False, "Admin")
+
+    notes = _notifications(service)
+    assert len(notes) == 1
+    assert notes[0]["type"] == "profile_enabled"
+    assert "enabled" in notes[0]["message"]
+
+
+def test_no_notification_when_no_service() -> None:
+    repository = FakeModerationRepository()
+    logging = FakeActivityLog()
+    service = CommunityModerationService(repository, FakeCommunityRepository(), logging)
+    repository.add_profile("Nipa")
+
+    service.update_profile(1, _payload(bio="Edited"), admin_username="Admin")
+
+    assert _notifications(service) == []

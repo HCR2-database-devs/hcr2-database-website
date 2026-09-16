@@ -1,7 +1,12 @@
 import pytest
 
 from app.core.config import Settings
-from app.db.session import DatabaseConfig, DatabaseNotConfigured, get_database_config, open_connection
+from app.db.session import (
+    DatabaseConfig,
+    DatabaseNotConfigured,
+    get_database_config,
+    open_connection,
+)
 
 
 def test_open_connection_requires_database_configuration() -> None:

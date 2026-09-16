@@ -90,7 +90,10 @@ def delete_record_by_path(
     auth_service: AuthServiceDep,
 ) -> Any:
     admin = _admin_status(request, auth_service)
-    return service.delete_record(DeleteRecordRequest(recordId=record_id), str(admin.get("username") or ""))
+    return service.delete_record(
+        DeleteRecordRequest(recordId=record_id),
+        str(admin.get("username") or ""),
+    )
 
 
 @router.post("/records/delete", response_model=None)
@@ -484,7 +487,10 @@ def delete_changelog_by_path(
 ) -> Any:
     admin = _admin_status(request, auth_service)
     try:
-        return service.delete_changelog(DeleteChangelogRequest(id=changelog_id), str(admin.get("username") or ""))
+        return service.delete_changelog(
+            DeleteChangelogRequest(id=changelog_id),
+            str(admin.get("username") or ""),
+        )
     except AdminServiceError as exc:
         return _error_response(exc)
 
@@ -521,7 +527,11 @@ def set_maintenance(
     auth_service: AuthServiceDep,
 ) -> Any:
     admin = _admin_status(request, auth_service)
-    return service.set_maintenance(payload.action, payload.maintenance, str(admin.get("username") or ""))
+    return service.set_maintenance(
+        payload.action,
+        payload.maintenance,
+        str(admin.get("username") or ""),
+    )
 
 
 @router.get("/bans", response_model=None)

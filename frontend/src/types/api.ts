@@ -89,6 +89,7 @@ export type CommunityReportResult = {
 
 export type AdminCommunityProfile = {
   id: number;
+  username?: string | null;
   discord_username: string;
   discord_avatar?: string | null;
   created_at: string;
@@ -104,6 +105,27 @@ export type AdminCommunityProfileListResponse = {
   limit: number;
   offset: number;
   search?: string | null;
+};
+
+export type CommunityNotification = {
+  id: number;
+  community_user_id: number;
+  type: string;
+  message: string;
+  created_at: string;
+  read_at?: string | null;
+};
+
+export type CommunityNotificationListResponse = {
+  notifications: CommunityNotification[];
+  count: number;
+  unread: number;
+  limit: number;
+  offset: number;
+};
+
+export type NotificationReadResult = {
+  updated: number;
 };
 
 export type AdminCommunityReport = {
@@ -147,7 +169,8 @@ export type FeatureName =
   | "community_profiles"
   | "profile_customization"
   | "community_members"
-  | "profile_reporting";
+  | "profile_reporting"
+  | "community_notifications";
 
 export type FeatureState = "DISABLED" | "BETA" | "ENABLED";
 

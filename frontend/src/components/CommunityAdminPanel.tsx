@@ -137,8 +137,17 @@ export function CommunityAdminPanel() {
                     className="admin-profile-row"
                     onClick={() => setSelectedProfileId(profile.id)}
                   >
-                    <UserAvatar avatarUrl={profile.discord_avatar} name={profile.discord_username} size={32} />
-                    <span className="admin-profile-row-name">{profile.discord_username}</span>
+                    <UserAvatar
+                      avatarUrl={profile.discord_avatar}
+                      name={profile.username ?? profile.discord_username}
+                      size={32}
+                    />
+                    <span className="admin-profile-row-name">
+                      {profile.username ?? profile.discord_username}
+                      {profile.username != null && profile.username !== profile.discord_username && (
+                        <span className="admin-profile-row-sub"> ({profile.discord_username})</span>
+                      )}
+                    </span>
                     <span className="admin-profile-row-meta">#{profile.id}</span>
                     <span className="admin-profile-row-meta">
                       {profile.admin_disabled ? "Disabled" : profile.profile_public ? "Public" : "Private"}
@@ -283,7 +292,7 @@ export function CommunityAdminPanel() {
       {selectedProfileId != null && (
         <AdminProfileModal
           profileId={selectedProfileId}
-          onChanged={() => undefined}
+          onChanged={() => invalidate()}
           onClose={() => setSelectedProfileId(null)}
         />
       )}

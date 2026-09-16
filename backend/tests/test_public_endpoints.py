@@ -51,7 +51,9 @@ class FakeAdminService:
     ) -> dict[str, Any]:
         return {"success": True, "id": 7, "title": payload.title, "author": author}
 
-    def update_news(self, news_id: int, payload: Any, admin_username: str | None = None) -> dict[str, Any]:
+    def update_news(
+        self, news_id: int, payload: Any, admin_username: str | None = None
+    ) -> dict[str, Any]:
         return {"success": True, "dryRun": False, "id": news_id, "title": payload.title}
 
     def delete_news(self, payload: Any, admin_username: str | None = None) -> dict[str, Any]:

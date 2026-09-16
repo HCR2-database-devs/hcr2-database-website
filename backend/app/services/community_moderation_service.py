@@ -18,6 +18,7 @@ from app.services.community_account_service import (
     MAX_BIO_LENGTH,
     CommunityProfileError,
 )
+from app.services.community_notification_service import CommunityNotificationService
 from app.services.hcaptcha import verify_hcaptcha
 
 VALID_REPORT_STATUSES = ("open", "resolved", "rejected")
@@ -29,6 +30,7 @@ class CommunityModerationService:
     community_repository: CommunityUserRepository
     activity_log: ActivityLogService | None = None
     hcaptcha_secret_key: str | None = None
+    notification_service: CommunityNotificationService | None = None
 
     def _log(
         self,
@@ -48,6 +50,45 @@ class CommunityModerationService:
                 entity_name,
                 note=note,
             )
+
+    def _notify(
+        self,
+        community_user_id: int,
+        notification_type: str,
+        message: str,
+    ) -> None:
+        if self.notification_service:
+            self.notification_service.notify(
+                community_user_id,
+                notification_type,
+                message,
+            )
+
+    @staticmethod
+    def _reason_suffix(note: str | None) -> str:
+        return f" Reason: {note}" if note else ""
+
+    @staticmethod
+    def _changed_labels(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
+        """Return human-readable labels for profile fields that differ."""
+        labels: list[str] = []
+
+        def field(key: str, label: str) -> None:
+            if old.get(key) != new.get(key):
+                labels.append(label)
+
+        field("bio", "bio")
+        field("country", "country")
+        field("favorite_vehicle_id", "favorite vehicle")
+        field("favorite_map_id", "favorite map")
+        field("profile_public", "profile visibility")
+        field("show_country", "country visibility")
+        field("show_bio", "bio visibility")
+        field("show_favorite_vehicle", "favorite vehicle visibility")
+        field("show_favorite_map", "favorite map visibility")
+        field("show_discord_username", "Discord username visibility")
+        field("show_discord_avatar", "Discord avatar visibility")
+        return labels
 
     def _validate_fields(
         self,
@@ -114,19 +155,23 @@ class CommunityModerationService:
             favorite_vehicle_id=payload.favorite_vehicle_id,
             favorite_map_id=payload.favorite_map_id,
         )
+        old = self.get_profile(user_id)
+        new_fields = {
+            "bio": bio,
+            "country": country,
+            "favorite_vehicle_id": vehicle_id,
+            "favorite_map_id": map_id,
+            "profile_public": bool(payload.profile_public),
+            "show_country": bool(payload.show_country),
+            "show_bio": bool(payload.show_bio),
+            "show_favorite_vehicle": bool(payload.show_favorite_vehicle),
+            "show_favorite_map": bool(payload.show_favorite_map),
+            "show_discord_username": bool(payload.show_discord_username),
+            "show_discord_avatar": bool(payload.show_discord_avatar),
+        }
         updated = self.moderation_repository.admin_update_profile(
             user_id,
-            bio=bio,
-            country=country,
-            favorite_vehicle_id=vehicle_id,
-            favorite_map_id=map_id,
-            profile_public=bool(payload.profile_public),
-            show_country=bool(payload.show_country),
-            show_bio=bool(payload.show_bio),
-            show_favorite_vehicle=bool(payload.show_favorite_vehicle),
-            show_favorite_map=bool(payload.show_favorite_map),
-            show_discord_username=bool(payload.show_discord_username),
-            show_discord_avatar=bool(payload.show_discord_avatar),
+            **new_fields,
         )
         if updated is not None:
             self._log(
@@ -137,6 +182,20 @@ class CommunityModerationService:
                 updated.get("discord_username"),
                 note=note,
             )
+            changed = self._changed_labels(old or {}, new_fields)
+            if changed:
+                message = (
+                    "An administrator updated your community profile: "
+                    + ", ".join(changed)
+                    + "."
+                    + self._reason_suffix(note)
+                )
+            else:
+                message = (
+                    "An administrator updated your community profile."
+                    + self._reason_suffix(note)
+                )
+            self._notify(user_id, "profile_updated", message)
         return updated
 
     def reset_profile(
@@ -154,6 +213,12 @@ class CommunityModerationService:
                 user_id,
                 updated.get("discord_username"),
                 note=note,
+            )
+            self._notify(
+                user_id,
+                "profile_reset",
+                "An administrator reset your community profile."
+                + self._reason_suffix(note),
             )
         return updated
 
@@ -189,6 +254,12 @@ class CommunityModerationService:
                 updated.get("discord_username"),
                 note=note,
             )
+            self._notify(
+                user_id,
+                "username_set",
+                f'An administrator set your community username to "{username}".'
+                + self._reason_suffix(note),
+            )
         return updated
 
     def reset_username(
@@ -206,6 +277,12 @@ class CommunityModerationService:
                 user_id,
                 updated.get("discord_username"),
                 note=note,
+            )
+            self._notify(
+                user_id,
+                "username_reset",
+                "An administrator removed your community username."
+                + self._reason_suffix(note),
             )
         return updated
 
@@ -229,6 +306,20 @@ class CommunityModerationService:
                 updated.get("discord_username"),
                 note=note,
             )
+            if disabled:
+                self._notify(
+                    user_id,
+                    "profile_disabled",
+                    "Your community profile has been disabled."
+                    + self._reason_suffix(note),
+                )
+            else:
+                self._notify(
+                    user_id,
+                    "profile_enabled",
+                    "Your community profile has been enabled."
+                    + self._reason_suffix(note),
+                )
         return updated
 
     def create_report(

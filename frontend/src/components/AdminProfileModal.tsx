@@ -22,11 +22,23 @@ function textValue(row: Record<string, unknown>, camel: string, lower: string): 
 
 type AdminProfileFormProps = {
   profile: AdminProfileDetail;
+  message: string;
+  error: string;
   onChanged: () => void;
   onClose: () => void;
+  setMessage: (message: string) => void;
+  setError: (error: string) => void;
 };
 
-function AdminProfileForm({ profile, onChanged, onClose }: AdminProfileFormProps) {
+function AdminProfileForm({
+  profile,
+  message,
+  error,
+  onChanged,
+  onClose,
+  setMessage,
+  setError
+}: AdminProfileFormProps) {
   const queryClient = useQueryClient();
   const [bio, setBio] = useState(profile.bio ?? "");
   const [country, setCountry] = useState(profile.country ?? "");
@@ -41,8 +53,8 @@ function AdminProfileForm({ profile, onChanged, onClose }: AdminProfileFormProps
   const [showBio, setShowBio] = useState(profile.show_bio);
   const [showFavoriteVehicle, setShowFavoriteVehicle] = useState(profile.show_favorite_vehicle);
   const [showFavoriteMap, setShowFavoriteMap] = useState(profile.show_favorite_map);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [showDiscordUsername, setShowDiscordUsername] = useState(profile.show_discord_username);
+  const [showDiscordAvatar, setShowDiscordAvatar] = useState(profile.show_discord_avatar);
 
   const vehiclesQuery = useQuery({
     queryKey: ["public-data", "vehicles"],
@@ -105,7 +117,9 @@ function AdminProfileForm({ profile, onChanged, onClose }: AdminProfileFormProps
       show_country: showCountry,
       show_bio: showBio,
       show_favorite_vehicle: showFavoriteVehicle,
-      show_favorite_map: showFavoriteMap
+      show_favorite_map: showFavoriteMap,
+      show_discord_username: showDiscordUsername,
+      show_discord_avatar: showDiscordAvatar
     });
   }
 
@@ -114,9 +128,18 @@ function AdminProfileForm({ profile, onChanged, onClose }: AdminProfileFormProps
       <div className="modal-panel form-container" role="dialog" aria-modal="true" aria-labelledby="admin-profile-title">
         <h2 id="admin-profile-title">Edit Community Profile</h2>
         <div className="admin-profile-summary">
-          <UserAvatar avatarUrl={profile.discord_avatar} name={profile.discord_username} size={36} />
+          <UserAvatar
+            avatarUrl={profile.discord_avatar}
+            name={profile.username ?? profile.discord_username}
+            size={36}
+          />
           <div>
-            <p className="admin-profile-name">{profile.discord_username}</p>
+            <p className="admin-profile-name">
+              {profile.username ?? profile.discord_username}
+              {profile.username != null && profile.username !== profile.discord_username && (
+                <span className="admin-profile-name-sub"> ({profile.discord_username})</span>
+              )}
+            </p>
             <p className="admin-profile-meta">
               hcr2.xyz #{profile.id} · {profile.admin_disabled ? "Disabled" : "Active"} · {profile.open_reports} open
               report{profile.open_reports === 1 ? "" : "s"}
@@ -220,6 +243,22 @@ function AdminProfileForm({ profile, onChanged, onClose }: AdminProfileFormProps
               />
               Show favorite map
             </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={showDiscordUsername}
+                onChange={(event) => setShowDiscordUsername(event.target.checked)}
+              />
+              Show Discord username
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={showDiscordAvatar}
+                onChange={(event) => setShowDiscordAvatar(event.target.checked)}
+              />
+              Show Discord avatar
+            </label>
           </fieldset>
 
           <div className="frontend-modal-actions">
@@ -272,9 +311,12 @@ type AdminProfileModalProps = {
 
 export function AdminProfileModal({ profileId, onChanged, onClose }: AdminProfileModalProps) {
   useBodyScrollLock();
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
   const detailQuery = useQuery({
     queryKey: ["admin", "community", "profile", profileId],
-    queryFn: () => getAdminCommunityProfile(profileId)
+    queryFn: () => getAdminCommunityProfile(profileId),
+    refetchOnWindowFocus: false
   });
 
   if (detailQuery.isLoading) {
@@ -302,5 +344,16 @@ export function AdminProfileModal({ profileId, onChanged, onClose }: AdminProfil
     );
   }
 
-  return <AdminProfileForm key={detailQuery.data.id} profile={detailQuery.data} onChanged={onChanged} onClose={onClose} />;
+  return (
+    <AdminProfileForm
+      key={`${detailQuery.data.id}-${detailQuery.dataUpdatedAt}`}
+      profile={detailQuery.data}
+      message={message}
+      error={error}
+      onChanged={onChanged}
+      onClose={onClose}
+      setMessage={setMessage}
+      setError={setError}
+    />
+  );
 }

@@ -32,6 +32,32 @@ export function PrivacyPage() {
         </ul>
         <p>This information may be displayed publicly if a submission is approved.</p>
 
+        <h3>Community Profile Information</h3>
+        <p>
+          If you create a community account (for example, a public community profile in the member
+          directory), we collect the information you choose to provide, including:
+        </p>
+        <ul>
+          <li>
+            Your chosen community username, plus a record of previous usernames to enforce the
+            30-day username change cooldown
+          </li>
+          <li>Your profile bio, if provided</li>
+          <li>Your country, if provided</li>
+          <li>Your favorite vehicle and favorite map selections, if provided</li>
+          <li>Your Discord username and Discord avatar, only if you choose to display them publicly</li>
+          <li>A custom profile banner image, if you upload one</li>
+        </ul>
+        <p>
+          Your username and the information you choose to make visible are displayed publicly on your
+          community profile. Which fields are shown is controlled entirely by your visibility
+          toggles.
+        </p>
+        <p>
+          When another user reports your community profile, we also store the reporter&apos;s
+          information and the reason for the report so administrators can review it.
+        </p>
+
         <h3>IP Addresses</h3>
         <p>
           To protect the website from spam, automated submissions, and abuse, the IP address of every

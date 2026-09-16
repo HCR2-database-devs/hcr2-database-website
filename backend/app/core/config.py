@@ -90,6 +90,10 @@ class Settings(BaseSettings):
         default="BETA",
         validation_alias="FEATURE_PROFILE_REPORTING",
     )
+    feature_community_notifications: str = Field(
+        default="BETA",
+        validation_alias="FEATURE_COMMUNITY_NOTIFICATIONS",
+    )
 
     username_change_cooldown_days: int = Field(
         default=30,
@@ -113,6 +117,7 @@ class Settings(BaseSettings):
         "feature_profile_customization",
         "feature_community_members",
         "feature_profile_reporting",
+        "feature_community_notifications",
         mode="before",
     )
     @classmethod
