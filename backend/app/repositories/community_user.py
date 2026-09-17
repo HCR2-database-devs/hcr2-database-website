@@ -402,7 +402,8 @@ class PostgresCommunityUserRepository:
             with connection.cursor() as cursor:
                 cursor.execute(
                     f"""
-                    SELECT cu.id, cu.username, cu.discord_username, cu.discord_avatar,
+                    SELECT cu.id, cu.discord_id, cu.username, cu.discord_username,
+                           cu.discord_avatar,
                            cu.created_at, cu.updated_at, cu.bio, cu.country,
                            cu.favorite_vehicle_id,
                            (SELECT v.name_vehicle FROM vehicle v

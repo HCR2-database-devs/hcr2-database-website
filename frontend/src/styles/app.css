@@ -3108,6 +3108,13 @@ tbody tr:hover {
 
   .header-inner .header-nav {
     flex: 1 1 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .header-inner .nav-links,
+  .header-inner .header-actions {
+    flex-wrap: wrap;
     justify-content: flex-end;
   }
 }
@@ -4169,12 +4176,6 @@ tbody tr:hover {
   border-bottom: 2px solid var(--outline);
   object-fit: cover;
   width: 100%;
-}
-
-.community-banner-placeholder {
-  aspect-ratio: 3 / 1;
-  background: linear-gradient(135deg, rgba(62, 232, 255, 0.04), rgba(94, 232, 255, 0.02));
-  border-bottom: 2px solid var(--outline);
 }
 
 .member-card-body {

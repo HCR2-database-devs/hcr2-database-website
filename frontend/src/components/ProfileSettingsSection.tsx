@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { COUNTRIES } from "../lib/countries";
 import {
+  compressBannerFile,
   removeCommunityBanner,
   setCommunityUsername,
   updateCommunityProfile,
@@ -108,13 +109,18 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
     }
   });
 
-  function handleBannerChange(event: ChangeEvent<HTMLInputElement>) {
+  async function handleBannerChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
     setMessage("");
     setError("");
-    bannerMutation.mutate(file);
+    try {
+      const prepared = await compressBannerFile(file);
+      bannerMutation.mutate(prepared);
+    } catch {
+      bannerMutation.mutate(file);
+    }
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -303,7 +309,7 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
           <legend>Banner</legend>
           <div className="profile-settings-row">
             <label>
-              Profile banner (PNG/JPG/WebP, max 2048px)
+              Profile banner (PNG/JPG/WebP, max 2048px, ~3:1 ratio)
               <input
                 type="file"
                 name="banner"

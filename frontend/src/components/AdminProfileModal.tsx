@@ -14,6 +14,7 @@ import {
   updateAdminCommunityProfile
 } from "../services/adminCommunity";
 import { getPublicData } from "../services/publicData";
+import { discordAvatarUrl } from "../services/community";
 import type { AdminProfileDetail, CommunityProfileUpdate } from "../types/api";
 
 function textValue(row: Record<string, unknown>, camel: string, lower: string): string {
@@ -129,7 +130,7 @@ function AdminProfileForm({
         <h2 id="admin-profile-title">Edit Community Profile</h2>
         <div className="admin-profile-summary">
           <UserAvatar
-            avatarUrl={profile.discord_avatar}
+            avatarUrl={discordAvatarUrl(profile.discord_avatar)}
             name={profile.username ?? profile.discord_username}
             size={36}
           />

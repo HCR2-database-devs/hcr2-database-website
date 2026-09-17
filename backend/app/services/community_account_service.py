@@ -20,6 +20,25 @@ MAX_BANNER_DIMENSION = 2048
 MAX_BANNER_PIXELS = 50_000_000
 MAX_SEARCH_LENGTH = 50
 
+DISCORD_AVATAR_CDN = "https://cdn.discordapp.com/avatars/{discord_id}/{hash}.{ext}"
+
+
+def discord_avatar_url(discord_id: str | None, avatar: str | None) -> str | None:
+    """Build a full Discord CDN avatar URL from an avatar hash.
+
+    Discord OAuth exposes ``avatar`` as a bare hash (e.g. ``a_1f2e3a...``),
+    not a URL. This normalizes it into the CDN URL used by ``<img>`` while
+    leaving already-absolute URLs untouched.
+    """
+    if not avatar:
+        return None
+    if avatar.startswith(("http://", "https://")):
+        return avatar
+    if not discord_id:
+        return None
+    ext = "gif" if avatar.startswith("a_") else "png"
+    return DISCORD_AVATAR_CDN.format(discord_id=discord_id, hash=avatar, ext=ext)
+
 COUNTRY_CODES = frozenset(
     """
     ad ae af ag ai al am ao aq ar as at au aw ax az ba bb bd be bf bg bh bi bj bl
@@ -62,7 +81,7 @@ class CommunityAccountService:
         return self.repository.ensure_account(
             discord_id=discord_id,
             discord_username=discord_username or "",
-            discord_avatar=discord_avatar,
+            discord_avatar=discord_avatar_url(discord_id, discord_avatar),
         )
 
     def set_username(
@@ -248,7 +267,9 @@ def _public_profile(account: dict[str, Any], is_owner: bool) -> dict[str, Any]:
     if is_owner or account["show_discord_username"]:
         profile["discord_username"] = account["discord_username"]
     if is_owner or account["show_discord_avatar"]:
-        profile["discord_avatar"] = account["discord_avatar"]
+        profile["discord_avatar"] = discord_avatar_url(
+            account["discord_id"], account["discord_avatar"]
+        )
     return profile
 
 
@@ -273,7 +294,9 @@ def _trim_member(member: dict[str, Any]) -> dict[str, Any]:
     if member["show_discord_username"]:
         result["discord_username"] = member["discord_username"]
     if member["show_discord_avatar"]:
-        result["discord_avatar"] = member["discord_avatar"]
+        result["discord_avatar"] = discord_avatar_url(
+            member["discord_id"], member["discord_avatar"]
+        )
     return result
 
 

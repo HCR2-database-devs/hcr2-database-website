@@ -111,7 +111,8 @@ class PostgresCommunityModerationRepository:
             with connection.cursor() as cursor:
                 cursor.execute(
                     f"""
-                    SELECT cu.id, cu.username, cu.discord_username, cu.discord_avatar,
+                    SELECT cu.id, cu.discord_id, cu.username, cu.discord_username,
+                           cu.discord_avatar,
                            cu.last_username_change_at, cu.created_at, cu.updated_at,
                            cu.profile_public, cu.admin_disabled,
                            cu.show_discord_username, cu.show_discord_avatar,

@@ -382,7 +382,7 @@ def test_public_profile_shows_discord_username_when_toggled() -> None:
     profile = service.get_public_profile(1, viewer_discord_id="other")
 
     assert profile["discord_username"] == "Nipa#1234"
-    assert profile["discord_avatar"] == "abc"
+    assert profile["discord_avatar"] == "https://cdn.discordapp.com/avatars/123/abc.png"
 
 
 def test_list_members_trims_hidden_fields() -> None:

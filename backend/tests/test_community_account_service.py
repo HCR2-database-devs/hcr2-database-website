@@ -1,6 +1,9 @@
 from typing import Any
 
-from app.services.community_account_service import CommunityAccountService
+from app.services.community_account_service import (
+    CommunityAccountService,
+    discord_avatar_url,
+)
 
 ACCOUNT_FIELDS = (
     "id",
@@ -91,7 +94,7 @@ def test_get_or_create_updates_username_and_avatar_when_changed() -> None:
 
     assert first["id"] == updated["id"]
     assert updated["discord_username"] == "Nipa2"
-    assert updated["discord_avatar"] == "a1b2c3"
+    assert updated["discord_avatar"] == "https://cdn.discordapp.com/avatars/123/a1b2c3.png"
     assert updated["updated_at"] == "2026-09-05T11:00:00"
     assert len(repository.rows) == 1
 
@@ -118,3 +121,23 @@ def test_account_fields_are_extensible_safe() -> None:
 
     for field in ACCOUNT_FIELDS:
         assert field in account
+
+
+def test_discord_avatar_url_builds_static_cdn_url() -> None:
+    assert discord_avatar_url("123", "a1b2c3") == "https://cdn.discordapp.com/avatars/123/a1b2c3.png"
+
+
+def test_discord_avatar_url_builds_animated_gif_url() -> None:
+    assert discord_avatar_url("123", "a_a1b2c3") == "https://cdn.discordapp.com/avatars/123/a_a1b2c3.gif"
+
+
+def test_discord_avatar_url_keeps_absolute_url() -> None:
+    url = "https://cdn.discordapp.com/avatars/123/a1b2c3.png?size=256"
+    assert discord_avatar_url("123", url) == url
+
+
+def test_discord_avatar_url_returns_none_for_missing_values() -> None:
+    assert discord_avatar_url(None, None) is None
+    assert discord_avatar_url("123", None) is None
+    assert discord_avatar_url(None, "a1b2c3") is None
+    assert discord_avatar_url("123", "") is None

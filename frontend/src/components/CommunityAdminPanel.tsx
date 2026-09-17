@@ -11,6 +11,7 @@ import {
   getAdminCommunityReports
 } from "../services/adminCommunity";
 import { formatMemberSince } from "../lib/format";
+import { discordAvatarUrl } from "../services/community";
 
 const PAGE_SIZE = 20;
 
@@ -138,7 +139,7 @@ export function CommunityAdminPanel() {
                     onClick={() => setSelectedProfileId(profile.id)}
                   >
                     <UserAvatar
-                      avatarUrl={profile.discord_avatar}
+                      avatarUrl={discordAvatarUrl(profile.discord_avatar)}
                       name={profile.username ?? profile.discord_username}
                       size={32}
                     />
@@ -170,8 +171,9 @@ export function CommunityAdminPanel() {
                   Previous
                 </button>
                 <span className="community-pagination-info">
-                  {profileCount === 0 ? 0 : profilesOffset + 1}-{Math.min(profilesOffset + profiles.length, profileCount)} of{" "}
-                  {profileCount}
+                  {profileCount === 0
+                    ? "0 profiles"
+                    : `${profilesOffset + 1}-${Math.min(profilesOffset + profiles.length, profileCount)} of ${profileCount} profiles`}
                 </span>
                 <button
                   className="button-ghost"

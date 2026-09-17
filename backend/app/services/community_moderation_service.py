@@ -17,6 +17,7 @@ from app.services.community_account_service import (
     COUNTRY_CODES,
     MAX_BIO_LENGTH,
     CommunityProfileError,
+    discord_avatar_url,
 )
 from app.services.community_notification_service import CommunityNotificationService
 from app.services.hcaptcha import verify_hcaptcha
@@ -131,6 +132,16 @@ class CommunityModerationService:
             limit=limit,
             offset=offset,
         )
+        profiles = [
+            {
+                **profile,
+                "discord_avatar": discord_avatar_url(
+                    profile.get("discord_id"),
+                    profile.get("discord_avatar"),
+                ),
+            }
+            for profile in profiles
+        ]
         return {
             "profiles": profiles,
             "count": total,
@@ -140,7 +151,14 @@ class CommunityModerationService:
         }
 
     def get_profile(self, user_id: int) -> dict[str, Any] | None:
-        return self.moderation_repository.get_profile(user_id)
+        profile = self.moderation_repository.get_profile(user_id)
+        if profile is None:
+            return None
+        profile["discord_avatar"] = discord_avatar_url(
+            profile.get("discord_id"),
+            profile.get("discord_avatar"),
+        )
+        return profile
 
     def update_profile(
         self,

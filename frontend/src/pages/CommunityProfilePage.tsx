@@ -13,7 +13,7 @@ import { useAuthStatus } from "../hooks/useAuthStatus";
 import { countryName } from "../lib/countries";
 import { useCanUseFeature } from "../lib/features";
 import { formatMemberSince } from "../lib/format";
-import { communityDisplayName } from "../services/community";
+import { communityDisplayName, discordAvatarUrl } from "../services/community";
 import { getCommunityProfile } from "../services/community";
 
 export function CommunityProfilePage() {
@@ -118,7 +118,7 @@ function CommunityProfileContent() {
 
       <div className="community-profile-card">
         <div className="community-profile-head">
-          <UserAvatar avatarUrl={profile.discord_avatar} name={displayName} size={88} />
+          <UserAvatar avatarUrl={discordAvatarUrl(profile.discord_avatar)} name={displayName} size={88} />
           <div className="community-profile-copy">
             <h1>
               {displayName}

@@ -5,7 +5,7 @@ import { CountryFlag } from "./CountryFlag";
 import { UserAvatar } from "./UserAvatar";
 import { countryName } from "../lib/countries";
 import { formatMemberSince } from "../lib/format";
-import { communityDisplayName } from "../services/community";
+import { communityDisplayName, discordAvatarUrl } from "../services/community";
 import type { CommunityMember } from "../types/api";
 
 export function MemberCard({ member }: { member: CommunityMember }) {
@@ -18,7 +18,7 @@ export function MemberCard({ member }: { member: CommunityMember }) {
         className="member-card-banner"
       />
       <div className="member-card-body">
-        <UserAvatar avatarUrl={member.discord_avatar} name={displayName} size={48} />
+        <UserAvatar avatarUrl={discordAvatarUrl(member.discord_avatar)} name={displayName} size={48} />
         <div className="member-card-copy">
           <span className="member-card-name">{displayName}</span>
           <span className="member-card-meta">
