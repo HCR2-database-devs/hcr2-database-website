@@ -21,7 +21,7 @@ _SYSTEM_FONT_FALLBACKS = (
 )
 
 _CANVAS_WIDTH = 1200
-_CANVAS_HEIGHT = 630
+_CANVAS_HEIGHT = 700
 
 _BG_TOP = (13, 17, 27)
 _BG_BOTTOM = (7, 10, 16)
@@ -152,7 +152,7 @@ class ShareService:
 <meta property="og:url" content="{safe_url}">
 <meta property="og:image" content="{safe_image}">
 <meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
+<meta property="og:image:height" content="700">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{safe_title}">
 <meta name="twitter:description" content="{safe_description}">
@@ -194,8 +194,8 @@ class ShareService:
     @staticmethod
     def _fingerprint(row: dict[str, Any]) -> str:
         values = (
+            "v2-700px-canvas",
             str(row.get("distance")),
-            str(row.get("map_name") or ""),
             str(row.get("vehicle_name") or ""),
             str(row.get("player_name") or ""),
             str(row.get("player_country") or ""),
