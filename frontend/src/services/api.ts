@@ -1,5 +1,9 @@
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
 
+export function shareCardImageUrl(recordId: number | string): string {
+  return `${apiBaseUrl}/api/v1/share/records/${encodeURIComponent(String(recordId))}.png`;
+}
+
 export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const { headers, ...rest } = init ?? {};
   const response = await fetch(`${apiBaseUrl}${path}`, {

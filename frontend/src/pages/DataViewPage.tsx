@@ -464,18 +464,54 @@ function useMediaQuery(query: string): boolean {
   return matches;
 }
 
-function ShareButton({ shareUrl }: { shareUrl: string }) {
-  const [copied, setCopied] = useState(false);
+import { shareCardImageUrl } from "../services/api";
 
-  const handleCopy = useCallback(() => {
-    navigator.clipboard?.writeText(shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }, [shareUrl]);
+function DownloadBtn({ label, href }: { label: string; href?: string }) {
+  return href ? (
+    <a className="share-btn share-btn--download" href={href} download>
+      {label}
+    </a>
+  ) : null;
+}
+
+function ShareButton({ recordId, shareUrl }: { recordId: string; shareUrl: string }) {
+  const [state, setState] = useState<"idle" | "loading" | "copied" | "done">("idle");
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+
+  const pngUrl = shareCardImageUrl(recordId);
+
+  const handleDownload = useCallback(async () => {
+    if (blobUrl) {
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `hcr2-record-${recordId}.png`;
+      a.click();
+      return;
+    }
+    setState("loading");
+    try {
+      const response = await fetch(pngUrl, { credentials: "include" });
+      if (!response.ok) {
+        throw new Error(`Failed to load share image (${response.status})`);
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      setBlobUrl(url);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `hcr2-record-${recordId}.png`;
+      a.click();
+      setState("done");
+    } catch {
+      setState("copied");
+      navigator.clipboard?.writeText(shareUrl);
+    }
+    setTimeout(() => setState("idle"), 2500);
+  }, [blobUrl, pngUrl, recordId, shareUrl]);
 
   return (
-    <button className="share-btn" type="button" onClick={handleCopy}>
-      {copied ? "Copied!" : "Copy"}
+    <button className="share-btn" type="button" onClick={handleDownload}>
+      {state === "loading" ? "Generating…" : state === "done" ? "Saved!" : state === "copied" ? "Link copied" : "Share"}
     </button>
   );
 }
@@ -517,7 +553,7 @@ function recordRow(item: DataRow, index: number, onNote: (note: string) => void,
         <CountryWithFlag country={item.player_country} />
       </td>
       <td data-label="Share">
-        <ShareButton shareUrl={shareUrl} />
+        <ShareButton recordId={recordId} shareUrl={shareUrl} />
       </td>
     </tr>
   );
