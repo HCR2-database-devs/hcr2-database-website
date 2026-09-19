@@ -23,6 +23,16 @@ class FakePublicDataService:
     def search_records(self, filters: dict[str, Any]) -> dict[str, Any]:
         return {"records": [{"idRecord": 1, "limit": filters.get("limit")}], "count": 1}
 
+    def get_home_summary(self, limit: str | int | None = None) -> dict[str, Any]:
+        return {
+            "records": 100,
+            "mythic_records": 5,
+            "players": 42,
+            "maps": 20,
+            "vehicles": 30,
+            "random_records": [{"idRecord": 7, "distance": 9876}],
+        }
+
 
 class FakeNewsService:
     def list_news(self, raw_limit: str | int | None = None) -> dict[str, list[dict[str, Any]]]:
@@ -82,6 +92,19 @@ def test_public_maps_endpoint_uses_data_service() -> None:
 
     assert response.status_code == 200
     assert response.json() == [{"idMap": 1, "nameMap": "Countryside", "special": 0}]
+
+
+def test_home_summary_endpoint_returns_counts_and_random_records() -> None:
+    response = _client().get("/api/v1/home/summary?limit=20")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["records"] == 100
+    assert body["mythic_records"] == 5
+    assert body["players"] == 42
+    assert body["maps"] == 20
+    assert body["vehicles"] == 30
+    assert body["random_records"][0]["idRecord"] == 7
 
 
 def test_compat_load_data_maps_preserves_php_contract() -> None:

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { COUNTRIES } from "../lib/countries";
 import {
+  communityBannerUrl,
   compressBannerFile,
   removeCommunityBanner,
   setCommunityUsername,
@@ -12,6 +13,7 @@ import {
 } from "../services/community";
 import { getPublicData } from "../services/publicData";
 import type { CommunityAccount } from "../types/api";
+import { BannerCropModal } from "./BannerCropModal";
 import { BetaBadge } from "./BetaBadge";
 
 const MAX_BIO_LENGTH = 500;
@@ -42,6 +44,7 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
   const [showDiscordUsername, setShowDiscordUsername] = useState(profile.show_discord_username);
   const [showDiscordAvatar, setShowDiscordAvatar] = useState(profile.show_discord_avatar);
   const [newUsername, setNewUsername] = useState("");
+  const [pendingBanner, setPendingBanner] = useState<File | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -109,17 +112,24 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
     }
   });
 
-  async function handleBannerChange(event: ChangeEvent<HTMLInputElement>) {
+  function handleBannerChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
     setMessage("");
     setError("");
+    setPendingBanner(file);
+  }
+
+  async function handleBannerConfirm(selectedFile: File) {
+    setPendingBanner(null);
+    setMessage("");
+    setError("");
     try {
-      const prepared = await compressBannerFile(file);
+      const prepared = await compressBannerFile(selectedFile);
       bannerMutation.mutate(prepared);
     } catch {
-      bannerMutation.mutate(file);
+      bannerMutation.mutate(selectedFile);
     }
   }
 
@@ -307,9 +317,16 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
 
         <fieldset className="frontend-fieldset profile-settings-toggles">
           <legend>Banner</legend>
+          {profile.banner_updated_at && (
+            <img
+              className="profile-banner-preview"
+              src={communityBannerUrl(profile.id, profile.banner_updated_at) ?? undefined}
+              alt="Current profile banner"
+            />
+          )}
           <div className="profile-settings-row">
             <label>
-              Profile banner (PNG/JPG/WebP, max 2048px, ~3:1 ratio)
+              Profile banner (PNG/JPG/WebP, max 2048px, ~3.6:1 ratio after cropping)
               <input
                 type="file"
                 name="banner"
@@ -339,6 +356,13 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
       </form>
       {message && <p className="frontend-message">{message}</p>}
       {error && <p className="frontend-error">{error}</p>}
+      {pendingBanner && (
+        <BannerCropModal
+          file={pendingBanner}
+          onCancel={() => setPendingBanner(null)}
+          onConfirm={handleBannerConfirm}
+        />
+      )}
     </div>
   );
 }

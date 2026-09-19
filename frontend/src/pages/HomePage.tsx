@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
@@ -6,9 +6,8 @@ import { AdSlot } from "../components/AdSlot";
 import { BetaBadge } from "../components/BetaBadge";
 import { DonatorBanner } from "../components/DonatorBanner";
 import { useFeatureAccess } from "../lib/features";
-import { asText, formatDistance, iconSlug } from "../lib/legacyDisplay";
-import { getPublicData, getRecordsPaginated } from "../services/publicData";
-import { emptyRecordFilters } from "../types/api";
+import { asText, formatDistance, iconSlug, TuningPartsIcons } from "../lib/legacyDisplay";
+import { getHomeSummary } from "../services/publicData";
 import type { DataRow } from "../types/api";
 
 const staff = [
@@ -65,48 +64,66 @@ function AnimatedNumber({ value }: { value: number }) {
   return <>{display.toLocaleString()}</>;
 }
 
+function FeaturedRecordStatus({ row }: { row: DataRow }) {
+  if (String(row.questionable) === "1") {
+    return (
+      <span
+        className="status-pill status-pill--questionable"
+        title={asText(row.questionable_reason) || "Questionable: unverified run"}
+      >
+        Questionable
+      </span>
+    );
+  }
+  if (row.isMythic === true) {
+    return (
+      <span className="status-pill status-pill--mythic" title="Mythic record (Echo or Amplifier part)">
+        Mythic
+      </span>
+    );
+  }
+  return <span className="status-pill status-pill--verified">Verified</span>;
+}
+
 function LiveStatsSection() {
-  const mapsQuery = useQuery({
-    queryKey: ["public-data", "maps"],
-    queryFn: () => getPublicData("maps"),
-  });
-  const vehiclesQuery = useQuery({
-    queryKey: ["public-data", "vehicles"],
-    queryFn: () => getPublicData("vehicles"),
-  });
-  const playersQuery = useQuery({
-    queryKey: ["public-data", "players"],
-    queryFn: () => getPublicData("players"),
-  });
-  const recordsQuery = useQuery({
-    queryKey: ["public-data", "records", "home-top"],
-    queryFn: () => getRecordsPaginated({ ...emptyRecordFilters, sort: "dist-desc" }, 0, 20),
+  const summaryQuery = useQuery({
+    queryKey: ["home-summary"],
+    queryFn: () => getHomeSummary(8),
   });
 
-  const featuredIndex = useRef<number | null>(null);
-
-  const mapCount = mapsQuery.data?.length ?? 0;
-  const vehicleCount = vehiclesQuery.data?.length ?? 0;
-  const playerCount = playersQuery.data?.length ?? 0;
-  const recordCount = recordsQuery.data?.total ?? 0;
-
-  const currentRecords = useMemo(
-    () => (recordsQuery.data?.records ?? []).filter((row) => asText(row.current) === "1"),
-    [recordsQuery.data],
+  const reducedMotion = useRef(
+    typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
-  const featured = useMemo(() => {
-    if (currentRecords.length === 0) return undefined;
-    if (featuredIndex.current === null) {
-      featuredIndex.current = Math.floor(Math.random() * currentRecords.length);
-    }
-    return currentRecords[featuredIndex.current % currentRecords.length];
-  }, [currentRecords]);
+  const [featuredIndex, setFeaturedIndex] = useState(0);
+
+  const summary = summaryQuery.data;
+  const randomRecords = summary?.random_records ?? [];
+
+  useEffect(() => {
+    if (reducedMotion.current || randomRecords.length <= 1) return;
+    const interval = window.setInterval(() => {
+      setFeaturedIndex((prev) => prev + 1);
+    }, 5000);
+    return () => window.clearInterval(interval);
+  }, [reducedMotion.current, randomRecords.length]);
+
+  useEffect(() => {
+    if (reducedMotion.current || randomRecords.length === 0) return;
+    if (featuredIndex < randomRecords.length) return;
+    summaryQuery.refetch();
+  }, [featuredIndex, randomRecords.length, summaryQuery]);
+
+  const featured =
+    randomRecords.length > 0
+      ? randomRecords[featuredIndex % randomRecords.length]
+      : undefined;
 
   const tiles = [
-    { label: "Records", value: recordCount },
-    { label: "Players", value: playerCount },
-    { label: "Vehicles", value: vehicleCount },
-    { label: "Maps", value: mapCount },
+    { label: "Records", value: summary?.records ?? 0 },
+    { label: "Players", value: summary?.players ?? 0 },
+    { label: "Vehicles", value: summary?.vehicles ?? 0 },
+    { label: "Maps", value: summary?.maps ?? 0 },
   ];
 
   return (
@@ -131,10 +148,10 @@ function LiveStatsSection() {
         </div>
 
         {featured && (
-          <article className="featured-record">
+          <article key={featuredIndex} className="featured-record featured-record--swap">
             <div className="featured-record__head">
               <p className="featured-record__eyebrow">Random world record</p>
-              <span className="status-pill status-pill--verified">Verified</span>
+              <FeaturedRecordStatus row={featured} />
             </div>
             <div className="featured-record__main">
               <img
@@ -163,6 +180,14 @@ function LiveStatsSection() {
                 {asText(featured.map_name)}
               </span>
               <span className="featured-record__player">{asText(featured.player_name)}</span>
+            </div>
+            <div className="featured-record__tuning">
+              <TuningPartsIcons parts={featured.tuning_parts} />
+              {asText(featured.echoAffectedPart) && (
+                <span className="echo-affected-badge">
+                  Echo → {asText(featured.echoAffectedPart)}
+                </span>
+              )}
             </div>
             <Link className="featured-record__link" to="/records">
               Browse all records →

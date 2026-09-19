@@ -4,8 +4,8 @@ import type {
   AdminCommunityReport,
   AdminCommunityReportListResponse,
   AdminProfileDetail,
-  CommunityAccount,
-  CommunityProfileUpdate
+  AdminProfileUpdate,
+  CommunityAccount
 } from "../types/api";
 import { fetchJson } from "./api";
 
@@ -29,7 +29,7 @@ export function getAdminCommunityProfile(id: number) {
   return fetchJson<AdminProfileDetail>(`/api/v1/admin/community/profiles/${id}`);
 }
 
-export function updateAdminCommunityProfile(id: number, payload: CommunityProfileUpdate) {
+export function updateAdminCommunityProfile(id: number, payload: AdminProfileUpdate) {
   return jsonRequest<CommunityAccount>(`/api/v1/admin/community/profiles/${id}`, "PATCH", payload);
 }
 
@@ -49,6 +49,10 @@ export function adminEnableProfile(id: number, note?: string) {
 
 export function adminResetProfile(id: number, note?: string) {
   return adminProfileAction(id, "reset", note);
+}
+
+export function adminResetBanner(id: number, note?: string) {
+  return adminProfileAction(id, "reset-banner", note);
 }
 
 export function getAdminCommunityReports(params: { status?: string; limit?: number; offset?: number }) {

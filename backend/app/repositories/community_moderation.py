@@ -45,6 +45,8 @@ class CommunityModerationRepository(Protocol):
 
     def admin_clear_customization(self, user_id: int) -> dict[str, Any] | None: ...
 
+    def admin_clear_banner(self, user_id: int) -> dict[str, Any] | None: ...
+
     def set_admin_disabled(self, user_id: int, disabled: bool) -> dict[str, Any] | None: ...
 
     def admin_set_username(
@@ -219,6 +221,24 @@ class PostgresCommunityModerationRepository:
                         country = NULL,
                         favorite_vehicle_id = NULL,
                         favorite_map_id = NULL,
+                        banner_content = NULL,
+                        banner_content_type = NULL,
+                        banner_updated_at = NULL,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %(user_id)s
+                    RETURNING {PROFILE_COLUMNS}
+                    """,
+                    {"user_id": user_id},
+                )
+                row = cursor.fetchone()
+                return dict(row) if row is not None else None
+
+    def admin_clear_banner(self, user_id: int) -> dict[str, Any] | None:
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    f"""
+                    UPDATE community_user SET
                         banner_content = NULL,
                         banner_content_type = NULL,
                         banner_updated_at = NULL,

@@ -1,6 +1,7 @@
 import type {
   ChangelogItem,
   DataRow,
+  HomeSummary,
   NewsItem,
   PaginatedRecordsResponse,
   PublicDataView,
@@ -20,6 +21,10 @@ const dataEndpoints: Record<Exclude<PublicDataView, "records">, string> = {
 
 export function getPublicData(view: Exclude<PublicDataView, "records">) {
   return fetchJson<DataRow[]>(dataEndpoints[view]);
+}
+
+export function getHomeSummary(limit = 8) {
+  return fetchJson<HomeSummary>(`/api/v1/home/summary?limit=${limit}`);
 }
 
 function addMythicParam(params: URLSearchParams, mythic: boolean | undefined) {

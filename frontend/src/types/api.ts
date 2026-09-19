@@ -41,6 +41,10 @@ export type CommunityProfileUpdate = {
   show_discord_avatar?: boolean;
 };
 
+export type AdminProfileUpdate = CommunityProfileUpdate & {
+  username?: string | null;
+};
+
 export type UsernameUpdate = {
   username: string;
 };
@@ -294,6 +298,15 @@ export type PaginatedRecordsResponse = {
   total: number;
   limit: number;
   offset: number;
+};
+
+export type HomeSummary = {
+  records: number;
+  mythic_records: number;
+  players: number;
+  maps: number;
+  vehicles: number;
+  random_records: DataRow[];
 };
 
 export type ActivityLogEntry = {

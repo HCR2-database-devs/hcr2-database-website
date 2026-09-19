@@ -240,6 +240,30 @@ class CommunityModerationService:
             )
         return updated
 
+    def reset_banner(
+        self,
+        user_id: int,
+        admin_username: str,
+        note: str | None = None,
+    ) -> dict[str, Any] | None:
+        updated = self.moderation_repository.admin_clear_banner(user_id)
+        if updated is not None:
+            self._log(
+                admin_username,
+                "banner_reset",
+                "community_user",
+                user_id,
+                updated.get("discord_username"),
+                note=note,
+            )
+            self._notify(
+                user_id,
+                "banner_reset",
+                "An administrator removed your profile banner."
+                + self._reason_suffix(note),
+            )
+        return updated
+
     def set_username(
         self,
         user_id: int,

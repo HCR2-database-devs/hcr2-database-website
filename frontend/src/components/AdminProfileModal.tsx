@@ -9,13 +9,14 @@ import { COUNTRIES } from "../lib/countries";
 import {
   adminDisableProfile,
   adminEnableProfile,
+  adminResetBanner,
   adminResetProfile,
   getAdminCommunityProfile,
   updateAdminCommunityProfile
 } from "../services/adminCommunity";
 import { getPublicData } from "../services/publicData";
 import { discordAvatarUrl } from "../services/community";
-import type { AdminProfileDetail, CommunityProfileUpdate } from "../types/api";
+import type { AdminProfileDetail, AdminProfileUpdate } from "../types/api";
 
 function textValue(row: Record<string, unknown>, camel: string, lower: string): string {
   return String(row[camel] ?? row[lower] ?? "");
@@ -41,6 +42,7 @@ function AdminProfileForm({
   setError
 }: AdminProfileFormProps) {
   const queryClient = useQueryClient();
+  const [username, setUsername] = useState(profile.username ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
   const [country, setCountry] = useState(profile.country ?? "");
   const [favoriteVehicleId, setFavoriteVehicleId] = useState(
@@ -73,7 +75,7 @@ function AdminProfileForm({
   }
 
   const saveMutation = useMutation({
-    mutationFn: (payload: CommunityProfileUpdate) => updateAdminCommunityProfile(profile.id, payload),
+    mutationFn: (payload: AdminProfileUpdate) => updateAdminCommunityProfile(profile.id, payload),
     onSuccess: () => {
       setMessage("Profile changes saved.");
       setError("");
@@ -87,14 +89,22 @@ function AdminProfileForm({
   });
 
   const actionMutation = useMutation({
-    mutationFn: (action: "disable" | "enable" | "reset") => {
+    mutationFn: (action: "disable" | "enable" | "reset" | "resetBanner") => {
       if (action === "disable") return adminDisableProfile(profile.id);
       if (action === "enable") return adminEnableProfile(profile.id);
+      if (action === "resetBanner") return adminResetBanner(profile.id);
       return adminResetProfile(profile.id);
     },
     onSuccess: (result, action) => {
-      const label = action === "disable" ? "disabled" : action === "enable" ? "enabled" : "reset";
-      setMessage(`Profile ${label}.`);
+      const label =
+        action === "disable"
+          ? "disabled"
+          : action === "enable"
+            ? "enabled"
+            : action === "resetBanner"
+              ? "banner reset."
+              : "reset.";
+      setMessage(`Profile ${label}`);
       setError("");
       invalidate();
       onChanged();
@@ -110,6 +120,7 @@ function AdminProfileForm({
     setMessage("");
     setError("");
     saveMutation.mutate({
+      username: username.trim() || null,
       bio: bio.trim(),
       country: country || null,
       favorite_vehicle_id: favoriteVehicleId ? Number(favoriteVehicleId) : null,
@@ -154,8 +165,34 @@ function AdminProfileForm({
           className="admin-profile-banner"
           alt="Profile banner"
         />
+        <div className="admin-profile-actions">
+          {profile.banner_updated_at && (
+            <button
+              type="button"
+              className="button-ghost"
+              disabled={actionMutation.isPending}
+              onClick={() => {
+                if (window.confirm("Remove this member's banner? This cannot be undone.")) {
+                  actionMutation.mutate("resetBanner");
+                }
+              }}
+            >
+              Reset Banner
+            </button>
+          )}
+        </div>
 
         <form onSubmit={handleSubmit}>
+          <label>
+            Community username
+            <input
+              type="text"
+              placeholder={profile.discord_username || "Username"}
+              value={username}
+              onChange={(event) => setUsername(event.target.value.slice(0, 32))}
+              maxLength={32}
+            />
+          </label>
           <label>
             Bio
             <textarea

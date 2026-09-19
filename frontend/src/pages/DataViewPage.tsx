@@ -10,6 +10,7 @@ import {
   CountryWithFlag,
   formatDistance,
   MapWithIcon,
+  normalizeCountryDisplay,
   setupPartsLabel,
   TuningPartWithIcon,
   TuningPartsIcons,
@@ -205,7 +206,19 @@ function RecordsFilters({
   onExport: () => void;
   isExporting: boolean;
 }) {
+  const [tuningLimitNotice, setTuningLimitNotice] = useState(false);
+
+  useEffect(() => {
+    if (!tuningLimitNotice) return;
+    const timer = window.setTimeout(() => setTuningLimitNotice(false), 2500);
+    return () => window.clearTimeout(timer);
+  }, [tuningLimitNotice]);
+
   function toggleList(current: string[], value: string, key: keyof RecordFilters) {
+    if (key === "tuningParts" && !current.includes(value) && current.length >= 4) {
+      setTuningLimitNotice(true);
+      return;
+    }
     const next = current.includes(value) ? current.filter((i) => i !== value) : [...current, value];
     onChange({ [key]: next });
   }
@@ -255,13 +268,20 @@ function RecordsFilters({
           />
           <MultiDropdown
             id="tuning"
-            buttonLabel="Tuning"
+            buttonLabel={
+              filters.tuningParts.length > 0 ? `Tuning (${filters.tuningParts.length}/4)` : "Tuning"
+            }
             title="Tuning Parts"
             options={tuningOptions.map((item) => ({ value: item, label: <TuningPartWithIcon name={item} /> }))}
             selected={filters.tuningParts}
             onToggle={(value) => toggleList(filters.tuningParts, value, "tuningParts")}
             onClear={() => onChange({ tuningParts: [] })}
           />
+          {tuningLimitNotice && (
+            <span role="status" className="filter-hint">
+              You can select up to 4 tuning parts.
+            </span>
+          )}
         </div>
 
         <select
@@ -336,7 +356,11 @@ function PlayerFilters({
   const [countries, setCountries] = useState<string[]>([]);
   const [recordCountOp, setRecordCountOp] = useState("");
   const [recordCountValue, setRecordCountValue] = useState("");
-  const countryOptions = useMemo(() => [...new Set(rows.map((row) => asText(row.country)).filter(Boolean))].sort(), [rows]);
+  const countryOptions = useMemo(
+    () =>
+      [...new Set(rows.map((row) => normalizeCountryDisplay(row.country)).filter((item): item is string => Boolean(item)))].sort(),
+    [rows],
+  );
 
   const filteredRows = useMemo(() => {
     const countValue = Number(recordCountValue);
@@ -344,7 +368,9 @@ function PlayerFilters({
       const name = asText(row.namePlayer);
       const count = recordCounts[name] ?? 0;
       const matchesSearch = !search || name.toLowerCase().includes(search.toLowerCase());
-      const matchesCountry = countries.length === 0 || countries.includes(asText(row.country));
+      const rowCountry = normalizeCountryDisplay(row.country);
+      const matchesCountry =
+        countries.length === 0 || (rowCountry !== null && countries.includes(rowCountry));
       let matchesCount = true;
       if (recordCountOp === "gte" && !Number.isNaN(countValue)) {
         matchesCount = count >= countValue;
@@ -375,7 +401,10 @@ function PlayerFilters({
         id="country"
         buttonLabel="Countries"
         title="Countries"
-        options={countryOptions.map((country) => ({ value: country, label: country }))}
+        options={countryOptions.map((country) => ({
+          value: country,
+          label: <CountryWithFlag country={country} />
+        }))}
         selected={countries}
         onToggle={(value) =>
           setCountries((current) =>

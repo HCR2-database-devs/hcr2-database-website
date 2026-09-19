@@ -203,6 +203,26 @@ def admin_reset_profile(
     return updated
 
 
+@router.post("/profiles/{community_id}/reset-banner", response_model=None)
+def admin_reset_banner(
+    community_id: int,
+    request: Request,
+    auth_service: AuthServiceDep,
+    moderation_service: CommunityModerationServiceDep,
+    payload: Annotated[AdminNote | None, Body()] = None,
+) -> Any:
+    admin = _admin_status(request, auth_service)
+    _require_or_404(moderation_service, community_id)
+    updated = moderation_service.reset_banner(
+        community_id,
+        str(admin.get("username") or ""),
+        note=(payload.note if payload else None) or None,
+    )
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    return updated
+
+
 @router.get("/reports", response_model=None)
 def admin_list_reports(
     request: Request,

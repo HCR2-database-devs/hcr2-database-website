@@ -106,6 +106,17 @@ def list_records(
         return database_error_response(exc)  # type: ignore[return-value]
 
 
+@router.get("/home/summary", response_model=None)
+def get_home_summary(
+    service: PublicDataServiceDep,
+    limit: Annotated[str | None, Query()] = None,
+) -> Any:
+    try:
+        return service.get_home_summary(limit)
+    except DATABASE_ERROR_TYPES as exc:
+        return database_error_response(exc)  # type: ignore[return-value]
+
+
 @router.get("/records/search", response_model=None)
 def search_records(
     request: Request,

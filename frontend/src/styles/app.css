@@ -1172,6 +1172,42 @@ h3 {
   color: var(--accent-strong);
 }
 
+.featured-record--swap {
+  animation: featured-swap 0.55s ease-out;
+}
+
+@keyframes featured-swap {
+  from {
+    opacity: 0.1;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.status-pill--mythic {
+  background: linear-gradient(180deg, rgba(255, 215, 0, 0.22), rgba(196, 138, 0, 0.22));
+  border-color: rgba(255, 215, 0, 0.45);
+  color: gold;
+}
+
+.featured-record__tuning {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 20px;
+  position: relative;
+}
+
+.filter-hint {
+  color: var(--accent-yellow, #f7c948);
+  font-size: 13px;
+  font-weight: 650;
+}
+
 /* Browse the database */
 
 .browse-grid {
@@ -1535,6 +1571,12 @@ h3 {
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.donator-banner--static .donator-banner__names {
+  animation: none;
+  white-space: normal;
+  width: 100%;
 }
 
 @keyframes marquee {
@@ -2108,6 +2150,86 @@ tbody tr:hover {
 .form-container textarea {
   min-height: 92px;
   resize: vertical;
+}
+
+.banner-crop-modal .banner-crop-hint {
+  color: var(--muted-strong);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: -6px 0 14px;
+}
+
+.banner-crop-stage {
+  background: var(--bg, #05070f);
+  border: 2px solid var(--outline);
+  border-radius: var(--radius);
+  cursor: grab;
+  height: min(52vh, 360px);
+  overflow: hidden;
+  position: relative;
+  touch-action: none;
+  user-select: none;
+}
+
+.banner-crop-stage:active {
+  cursor: grabbing;
+}
+
+.banner-crop-image {
+  will-change: transform;
+}
+
+.banner-crop-window {
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 0 0 9999px rgba(2, 4, 16, 0.58),
+    0 0 0 1px rgba(0, 0, 0, 0.9);
+  left: 50%;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.banner-crop-window--active {
+  border-color: var(--accent-yellow);
+}
+
+.banner-crop-window::before,
+.banner-crop-window::after {
+  background: var(--accent-yellow);
+  content: "";
+  height: 22px;
+  position: absolute;
+  width: 3px;
+}
+
+.banner-crop-window::before {
+  left: 50%;
+  top: -2px;
+  transform: translateX(-50%);
+}
+
+.banner-crop-window::after {
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.banner-crop-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.profile-banner-preview {
+  aspect-ratio: 3.6 / 1;
+  border: 2px solid var(--outline);
+  border-radius: var(--radius);
+  display: block;
+  margin-bottom: 4px;
+  object-fit: cover;
+  width: 100%;
 }
 
 .frontend-fieldset {

@@ -1,0 +1,3 @@
+-- Irreversible data cleanup: legacy player.country values were trimmed,
+-- junk entries blanked, and lowercase names title-cased. The original
+-- values cannot be restored, so the down migration intentionally no-ops.

@@ -1,5 +1,11 @@
 import type { ReactNode, SyntheticEvent } from "react";
 
+import { COUNTRIES } from "./countries";
+
+const countryDisplayNames: Record<string, string> = Object.fromEntries(
+  COUNTRIES.map((country) => [country.code, country.name])
+);
+
 const countryCodes: Record<string, string> = {
   andorra: "ad",
   "united arab emirates": "ae",
@@ -466,6 +472,28 @@ export function getCountryCode(country: unknown): string | null {
   }
   const lastToken = normalized.split(/[,\s]+/).pop() ?? "";
   return countryCodes[lastToken] ?? null;
+}
+
+export function normalizeCountryDisplay(country: unknown): string | null {
+  const raw = asText(country).trim();
+  if (!raw) {
+    return null;
+  }
+  const code = getCountryCode(raw);
+  if (!code || code === "question") {
+    return null;
+  }
+  const display = countryDisplayNames[code];
+  if (display) {
+    return display;
+  }
+  if (/^(gb|us)-[a-z]{2}$/.test(code)) {
+    return raw
+      .split(/[\s-]+/)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
+  }
+  return raw;
 }
 
 export function CountryWithFlag({ country }: { country: unknown }) {
