@@ -96,6 +96,7 @@ function LiveStatsSection() {
       window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const [featuredIndex, setFeaturedIndex] = useState(0);
+  const lastCycleRef = useRef(-1);
 
   const summary = summaryQuery.data;
   const randomRecords = summary?.random_records ?? [];
@@ -104,13 +105,16 @@ function LiveStatsSection() {
     if (reducedMotion.current || randomRecords.length <= 1) return;
     const interval = window.setInterval(() => {
       setFeaturedIndex((prev) => prev + 1);
-    }, 5000);
+    }, 12000);
     return () => window.clearInterval(interval);
   }, [reducedMotion.current, randomRecords.length]);
 
   useEffect(() => {
     if (reducedMotion.current || randomRecords.length === 0) return;
     if (featuredIndex < randomRecords.length) return;
+    const cycle = Math.floor(featuredIndex / randomRecords.length);
+    if (cycle <= lastCycleRef.current) return;
+    lastCycleRef.current = cycle;
     summaryQuery.refetch();
   }, [featuredIndex, randomRecords.length, summaryQuery]);
 

@@ -19,6 +19,7 @@ from app.services.community_notification_service import CommunityNotificationSer
 from app.services.news_service import NewsService
 from app.services.public_data_service import PublicDataService
 from app.services.public_submission_service import PublicSubmissionService
+from app.services.share_service import ShareService
 from app.services.stats_service import StatsService
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
@@ -76,3 +77,7 @@ def get_public_submission_service(settings: SettingsDep) -> PublicSubmissionServ
 
 def get_stats_service() -> StatsService:
     return StatsService()
+
+
+def get_share_service() -> ShareService:
+    return ShareService()
