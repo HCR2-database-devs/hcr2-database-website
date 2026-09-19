@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import io
 from dataclasses import dataclass
 from hashlib import sha1
 from pathlib import Path
@@ -274,9 +275,9 @@ class ShareService:
 
         self._draw_badge(draw, row, bold_path)
 
-        buf = bytearray()
+        buf = io.BytesIO()
         image.save(buf, format="PNG")
-        return bytes(buf)
+        return buf.getvalue()
 
     @staticmethod
     def _gradient(
