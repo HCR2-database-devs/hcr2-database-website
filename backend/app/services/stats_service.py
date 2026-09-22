@@ -92,6 +92,29 @@ class StatsService:
         )
         return {"weeks": rows}
 
+    def longest_record(self) -> dict[str, Any]:
+        rows = self._fetch_all(
+            """
+            SELECT
+                lr.id_record AS "recordId",
+                wr.distance,
+                COALESCE(m.name_map, '') AS "mapName",
+                COALESCE(v.name_vehicle, '') AS "vehicleName",
+                COALESCE(p.name_player, '') AS "playerName"
+            FROM longest_standing_record AS lr
+            LEFT JOIN world_record AS wr ON lr.id_record = wr.id_record
+            LEFT JOIN map AS m ON wr.id_map = m.id_map
+            LEFT JOIN vehicle AS v ON wr.id_vehicle = v.id_vehicle
+            LEFT JOIN player AS p ON wr.id_player = p.id_player
+            WHERE lr.id = 1 AND lr.id_record IS NOT NULL
+            """
+        )
+        if not rows:
+            return {"set": False}
+        row = rows[0]
+        row["set"] = True
+        return row
+
     def _fetch_all(
         self, sql: str, params: dict[str, Any] | None = None
     ) -> list[dict[str, Any]]:

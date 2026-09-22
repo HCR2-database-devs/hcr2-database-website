@@ -15,7 +15,7 @@ import {
   TuningPartsIcons,
   VehicleWithIcon
 } from "../lib/legacyDisplay";
-import { exportRecords, getPublicData, getRecordHistory, getSubmissionVolume } from "../services/publicData";
+import { exportRecords, getLongestRecord, getPublicData, getRecordHistory, getSubmissionVolume } from "../services/publicData";
 import { emptyRecordFilters } from "../types/api";
 import type { DataRow } from "../types/api";
 
@@ -189,6 +189,10 @@ export function StatsPage() {
     queryKey: ["stats", "submission-volume", volumeWeeks],
     queryFn: () => getSubmissionVolume(volumeWeeks)
   });
+  const longestRecordQuery = useQuery({
+    queryKey: ["stats", "longest-record"],
+    queryFn: getLongestRecord
+  });
 
   const rows = records.data ?? [];
   const normalRows = useMemo(() => rows.filter((row) => row.isMythic !== true), [rows]);
@@ -285,6 +289,29 @@ export function StatsPage() {
     }
     return best;
   }, [normalRows]);
+
+  const featuredLongest = useMemo(() => {
+    const manual = longestRecordQuery.data;
+    if (manual?.set) {
+      return {
+        manual: true,
+        mapName: asText(manual.mapName),
+        vehicleName: asText(manual.vehicleName),
+        playerName: asText(manual.playerName),
+        distance: Number(manual.distance ?? 0)
+      };
+    }
+    if (longestActive) {
+      return {
+        manual: false,
+        mapName: asText(longestActive.map_name),
+        vehicleName: asText(longestActive.vehicle_name),
+        playerName: asText(longestActive.player_name),
+        distance: distance(longestActive)
+      };
+    }
+    return null;
+  }, [longestActive, longestRecordQuery.data]);
 
   const playerStreaks = useMemo(() => {
     const perPlayer: Record<string, Record<string, number>> = {};
@@ -694,18 +721,23 @@ export function StatsPage() {
             )}
           </section>
 
-          {longestActive && (
+          {featuredLongest && (
             <section className="stats-section" style={{ marginTop: "1.5rem" }}>
-              <h2>Longest Active Record</h2>
+              <h2>Longest Standing Record</h2>
+              {featuredLongest.manual && (
+                <p className="eyebrow" style={{ textAlign: "center" }}>
+                  Manually set by admins
+                </p>
+              )}
               <p style={{ fontSize: "1.1em", textAlign: "center", padding: "0.75rem" }}>
-                <MapWithIcon name={asText(longestActive.map_name)} />
+                <VehicleWithIcon name={featuredLongest.vehicleName} />
                 {" on "}
-                <VehicleWithIcon name={asText(longestActive.vehicle_name)} />
+                <MapWithIcon name={featuredLongest.mapName} />
                 {" by "}
-                <strong>{asText(longestActive.player_name)}</strong>
+                <strong>{featuredLongest.playerName}</strong>
                 {" — "}
                 <span style={{ fontSize: "1.3em", fontWeight: 800 }}>
-                  {formatDistance(distance(longestActive))}
+                  {formatDistance(featuredLongest.distance)}
                 </span>
               </p>
             </section>

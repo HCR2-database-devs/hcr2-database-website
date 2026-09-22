@@ -18,6 +18,14 @@ router = APIRouter(tags=["stats"], dependencies=[Depends(_check_maintenance)])
 StatsServiceDep = Annotated[StatsService, Depends(get_stats_service)]
 
 
+@router.get("/stats/longest-record", response_model=None)
+def get_longest_record(service: StatsServiceDep) -> Any:
+    try:
+        return service.longest_record()
+    except DATABASE_ERROR_TYPES as exc:
+        return database_error_response(exc)  # type: ignore[return-value]
+
+
 @router.get("/stats/record-history", response_model=None)
 def get_record_history(
     service: StatsServiceDep,

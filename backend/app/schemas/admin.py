@@ -105,6 +105,10 @@ class DeleteChangelogRequest(AdminPayload):
     id: int
 
 
+class SetLongestRecordRequest(AdminPayload):
+    record_id: int = Field(validation_alias=AliasChoices("recordId", "record_id"))
+
+
 class SetMaintenanceRequest(AdminPayload):
     action: str | None = None
     maintenance: bool | None = None

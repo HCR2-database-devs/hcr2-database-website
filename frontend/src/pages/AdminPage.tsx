@@ -21,6 +21,7 @@ import {
   deleteAdminNews,
   deleteBackup,
   getAdminRecords,
+  getAdminLongestRecord,
   getMaintenanceStatus,
   getPendingSubmissions,
   listBans,
@@ -29,6 +30,8 @@ import {
   postAdminNews,
   rejectPendingSubmission,
   runIntegrityCheck,
+  setLongestRecord as setLongestRecordAdmin,
+  clearLongestRecord as clearLongestRecordAdmin,
   setMaintenance,
   setRecordQuestionable,
   submitAdminRecord,
@@ -322,6 +325,7 @@ export function AdminPage() {
   const [assignRecordFilter, setAssignRecordFilter] = useState("");
   const [assignSetupId, setAssignSetupId] = useState("");
   const [assignSetupFilter, setAssignSetupFilter] = useState("");
+  const [longestRecordId, setLongestRecordId] = useState("");
   const [mapName, setMapName] = useState("");
   const [mapSpecial, setMapSpecial] = useState(false);
   const [vehicleName, setVehicleName] = useState("");
@@ -375,6 +379,10 @@ export function AdminPage() {
     queryFn: () => getPublicData("tuning-setups")
   });
   const recordsQuery = useQuery({ queryKey: ["admin", "records"], queryFn: getAdminRecords });
+  const longestRecordQuery = useQuery({
+    queryKey: ["admin", "longest-record"],
+    queryFn: getAdminLongestRecord
+  });
   const pendingQuery = useQuery({ queryKey: ["admin", "pending"], queryFn: getPendingSubmissions });
   const newsQuery = useQuery({ queryKey: ["news", 20], queryFn: () => getNews(20) });
   const changelogQuery = useQuery({ queryKey: ["changelog"], queryFn: () => getChangelog(200) });
@@ -414,6 +422,15 @@ export function AdminPage() {
       }
     }
   }, [recordForm.playerId, playersQuery.data]);
+  useEffect(() => {
+    const selected = longestRecordQuery.data;
+    if (selected?.set && selected.recordId != null) {
+      setLongestRecordId(String(selected.recordId));
+    } else if (!selected?.set) {
+      setLongestRecordId("");
+    }
+  }, [longestRecordQuery.data]);
+
   const filterRecordOptions = (records: AdminRecord[], filter: string) =>
     records.filter((record) => recordLabel(record).toLowerCase().includes(filter.toLowerCase()));
 
@@ -533,6 +550,30 @@ export function AdminPage() {
       setAssignRecordId("");
       setAssignSetupId("");
     }, "Tuning setup assigned.");
+  }
+
+  async function handleSetLongestRecord(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const recordId = Number(longestRecordId);
+    if (!recordId) {
+      return;
+    }
+    await runAction(async () => {
+      await setLongestRecordAdmin(recordId);
+    }, "Longest standing record set.");
+  }
+
+  async function handleClearLongestRecord() {
+    const confirmed = window.confirm(
+      "Clear the longest standing record? The stats page will fall back to the automatic pick until a new one is set."
+    );
+    if (!confirmed) {
+      return;
+    }
+    await runAction(async () => {
+      await clearLongestRecordAdmin();
+      setLongestRecordId("");
+    }, "Longest standing record cleared.");
   }
 
   async function handleAddMap(event: FormEvent<HTMLFormElement>) {
@@ -1081,6 +1122,48 @@ export function AdminPage() {
           <button type="submit">Assign Setup</button>
         </form>
         <p id="assign-message" />
+      </div>
+
+      <div className="form-container">
+        <h2>Longest Standing Record</h2>
+        <form id="longest-record-form" onSubmit={handleSetLongestRecord}>
+          <label>Current setting</label>
+          <p className="frontend-muted">
+            {longestRecordQuery.isLoading
+              ? "Loading..."
+              : longestRecordQuery.data?.set
+                ? `${longestRecordQuery.data.distance ?? 0} - ${longestRecordQuery.data.mapName ?? "?"} - ${
+                    longestRecordQuery.data.vehicleName ?? "?"
+                  } - ${longestRecordQuery.data.playerName ?? "?"} — set by ${longestRecordQuery.data.setBy || "?"}`
+                : "None set. The stats page shows the automatic pick until one is set."}
+          </p>
+          <label>Record (current records only)</label>
+          <select
+            id="longest-record-select"
+            required
+            value={longestRecordId}
+            onChange={(event) => setLongestRecordId(event.target.value)}
+          >
+            <option value="">Select a record</option>
+            {(recordsQuery.data ?? []).map((record) => (
+              <option key={record.idRecord} value={record.idRecord}>
+                {recordLabel(record)}
+              </option>
+            ))}
+          </select>
+          <div className="admin-actions">
+            <button type="submit">Set as Longest Standing Record</button>
+            <button
+              type="button"
+              onClick={handleClearLongestRecord}
+              className="button-ghost"
+              disabled={!longestRecordQuery.data?.set}
+            >
+              Clear
+            </button>
+          </div>
+        </form>
+        <p id="longest-record-message" />
       </div>
         </>
       )}

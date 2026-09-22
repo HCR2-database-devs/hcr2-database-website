@@ -366,3 +366,17 @@ export type SubmissionVolumeEntry = {
 export type SubmissionVolumeResponse = {
   weeks: SubmissionVolumeEntry[];
 };
+
+export type LongestRecordResponse = {
+  set: boolean;
+  recordId?: number | null;
+  distance?: number | null;
+  mapName?: string | null;
+  vehicleName?: string | null;
+  playerName?: string | null;
+};
+
+export type AdminLongestRecordResponse = LongestRecordResponse & {
+  setBy?: string | null;
+  setAt?: string | null;
+};

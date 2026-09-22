@@ -45,6 +45,10 @@ class FakeStatsService:
         )
         return {"weeks": rows}
 
+    def longest_record(self) -> dict[str, Any]:
+        rows = self.capture.fetch_all("SELECT * FROM longest_standing_record")
+        return {"set": bool(rows), "distance": (rows[0]["distance"] if rows else None)}
+
 
 def test_record_history_filters_by_map_and_vehicle() -> None:
     service = FakeStatsService()
@@ -77,3 +81,22 @@ def test_submission_volume_bounds_weeks() -> None:
 
 def test_stats_service_default_config_is_available() -> None:
     assert StatsService().config is None
+
+
+def test_longest_record_unset_returns_set_false() -> None:
+    service = FakeStatsService()
+    service.capture.result_rows = []
+
+    result = service.longest_record()
+
+    assert result["set"] is False
+
+
+def test_longest_record_returns_record_row() -> None:
+    service = FakeStatsService()
+    service.capture.result_rows = [{"distance": 12345, "mapName": "Countryside"}]
+
+    result = service.longest_record()
+
+    assert result["set"] is True
+    assert result["distance"] == 12345

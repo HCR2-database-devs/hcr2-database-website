@@ -2,6 +2,7 @@ import type {
   ChangelogItem,
   DataRow,
   HomeSummary,
+  LongestRecordResponse,
   NewsItem,
   PaginatedRecordsResponse,
   PublicDataView,
@@ -95,4 +96,8 @@ export function getRecordHistory(map: string, vehicle: string, mythic?: boolean)
 
 export function getSubmissionVolume(weeks = 12) {
   return fetchJson<SubmissionVolumeResponse>(`/api/v1/stats/submission-volume?weeks=${weeks}`);
+}
+
+export function getLongestRecord() {
+  return fetchJson<LongestRecordResponse>("/api/v1/stats/longest-record");
 }

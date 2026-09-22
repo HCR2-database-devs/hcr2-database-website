@@ -17,6 +17,7 @@ from app.schemas.admin import (
     DeleteRecordRequest,
     PendingActionRequest,
     PostNewsRequest,
+    SetLongestRecordRequest,
     SetMaintenanceRequest,
     SetQuestionableRequest,
     SubmitRecordRequest,
@@ -507,6 +508,40 @@ def delete_changelog(
         return service.delete_changelog(payload, str(admin.get("username") or ""))
     except AdminServiceError as exc:
         return _error_response(exc)
+
+
+@router.get("/longest-record", response_model=None)
+def get_longest_record(
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    _admin_status(request, auth_service)
+    return service.get_longest_record()
+
+
+@router.post("/longest-record", response_model=None)
+def set_longest_record(
+    payload: SetLongestRecordRequest,
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    admin = _admin_status(request, auth_service)
+    try:
+        return service.set_longest_record(payload, str(admin.get("username") or ""))
+    except AdminServiceError as exc:
+        return _error_response(exc)
+
+
+@router.delete("/longest-record", response_model=None)
+def clear_longest_record(
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    admin = _admin_status(request, auth_service)
+    return service.clear_longest_record(str(admin.get("username") or ""))
 
 
 @router.get("/maintenance", response_model=None)

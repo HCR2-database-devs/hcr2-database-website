@@ -21,6 +21,7 @@ from app.schemas.admin import (
     DeleteNewsRequest,
     DeleteRecordRequest,
     PostNewsRequest,
+    SetLongestRecordRequest,
     SetQuestionableRequest,
     SubmitRecordRequest,
     UpdateChangelogRequest,
@@ -388,6 +389,75 @@ class AdminService:
                     (payload.tuning_setup_id, payload.record_id),
                 )
         self._log(admin_username, "updated", "record", payload.record_id)
+        return {"success": True}
+
+    def get_longest_record(self) -> dict[str, Any]:
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT
+                        lr.id_record AS "recordId",
+                        lr.set_by AS "setBy",
+                        lr.set_at AS "setAt",
+                        wr.distance,
+                        m.name_map AS "mapName",
+                        v.name_vehicle AS "vehicleName",
+                        p.name_player AS "playerName"
+                    FROM longest_standing_record AS lr
+                    LEFT JOIN world_record AS wr ON lr.id_record = wr.id_record
+                    LEFT JOIN map AS m ON wr.id_map = m.id_map
+                    LEFT JOIN vehicle AS v ON wr.id_vehicle = v.id_vehicle
+                    LEFT JOIN player AS p ON wr.id_player = p.id_player
+                    WHERE lr.id = 1
+                    """
+                )
+                row = cursor.fetchone()
+        if row is None or row["recordId"] is None:
+            return {"set": False}
+        data: dict[str, Any] = dict(row)
+        data["set"] = True
+        return data
+
+    def set_longest_record(
+        self,
+        payload: SetLongestRecordRequest,
+        admin_username: str = "",
+    ) -> dict[str, Any]:
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT 1 FROM world_record
+                    WHERE id_record = %s AND current = 1
+                    LIMIT 1
+                    """,
+                    (payload.record_id,),
+                )
+                if cursor.fetchone() is None:
+                    raise AdminNotFoundError("Record not found or not currently active")
+                cursor.execute(
+                    """
+                    INSERT INTO longest_standing_record (id, id_record, set_by, set_at)
+                    VALUES (1, %s, %s, now())
+                    ON CONFLICT (id) DO UPDATE
+                    SET id_record = EXCLUDED.id_record,
+                        set_by = EXCLUDED.set_by,
+                        set_at = EXCLUDED.set_at
+                    """,
+                    (payload.record_id, admin_username),
+                )
+        self._log(admin_username, "updated", "longest_record", payload.record_id)
+        return {"success": True, "recordId": payload.record_id}
+
+    def clear_longest_record(self, admin_username: str = "") -> dict[str, bool]:
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE longest_standing_record SET id_record = NULL, "
+                    "set_by = '', set_at = now() WHERE id = 1"
+                )
+        self._log(admin_username, "deleted", "longest_record", None)
         return {"success": True}
 
     def add_map(self, payload: AddMapRequest, admin_username: str = "") -> dict[str, Any]:
