@@ -1883,6 +1883,105 @@ tbody tr:hover {
 
 .public-records-table {
   min-width: 0;
+  table-layout: fixed;
+}
+
+.virtual-players-table {
+  table-layout: fixed;
+}
+
+/* Fixed per-column widths: the virtualized tables only ever render the
+   rows currently in view, so with the default "auto" table layout the
+   browser recomputes column widths from whatever happens to be mounted
+   and columns visibly jump left/right while scrolling. Pinning each
+   column's width keeps layout stable regardless of which rows are mounted.
+   Scoped to the desktop breakpoint so it never fights the mobile
+   stacked-card layout below, which sets its own td widths. */
+@media (min-width: 721px) {
+  .public-records-table th:nth-child(1),
+  .public-records-table td:nth-child(1) {
+    width: 100px;
+  }
+
+  .public-records-table th:nth-child(2),
+  .public-records-table td:nth-child(2) {
+    width: 130px;
+  }
+
+  .public-records-table th:nth-child(3),
+  .public-records-table td:nth-child(3) {
+    width: 80px;
+  }
+
+  .public-records-table th:nth-child(4),
+  .public-records-table td:nth-child(4) {
+    width: 190px;
+  }
+
+  .public-records-table th:nth-child(5),
+  .public-records-table td:nth-child(5) {
+    width: 190px;
+  }
+
+  .public-records-table th:nth-child(6),
+  .public-records-table td:nth-child(6) {
+    width: 190px;
+  }
+
+  .public-records-table th:nth-child(7),
+  .public-records-table td:nth-child(7) {
+    width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .public-records-table th:nth-child(8),
+  .public-records-table td:nth-child(8) {
+    width: 140px;
+  }
+
+  .public-records-table th:nth-child(9),
+  .public-records-table td:nth-child(9) {
+    width: 90px;
+  }
+
+  .virtual-players-table th:nth-child(1),
+  .virtual-players-table td:nth-child(1) {
+    width: 100px;
+  }
+
+  .virtual-players-table th:nth-child(2),
+  .virtual-players-table td:nth-child(2) {
+    width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .virtual-players-table th:nth-child(3),
+  .virtual-players-table td:nth-child(3) {
+    width: 160px;
+  }
+
+  .virtual-players-table th:nth-child(4),
+  .virtual-players-table td:nth-child(4) {
+    width: 140px;
+  }
+}
+
+.public-records-table .map-cell,
+.public-records-table .vehicle-cell,
+.public-records-table .country-cell,
+.virtual-players-table .country-cell {
+  max-width: 100%;
+}
+
+.cell-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .tuning-stats .stat-subsection {

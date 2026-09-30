@@ -781,7 +781,7 @@ function VirtualPlayersTable({
         className="table-scroll table-scroll--virtual"
         style={{ maxHeight: VIRTUAL_TABLE_HEIGHT }}
       >
-        <table>
+        <table className="virtual-players-table">
           <thead>
             <tr>
               <th>Player ID</th>
