@@ -1894,10 +1894,24 @@ tbody tr:hover {
    rows currently in view, so with the default "auto" table layout the
    browser recomputes column widths from whatever happens to be mounted
    and columns visibly jump left/right while scrolling. Pinning each
-   column's width keeps layout stable regardless of which rows are mounted.
-   Scoped to the desktop breakpoint so it never fights the mobile
-   stacked-card layout below, which sets its own td widths. */
+   column's width (also mirrored as a <colgroup> in DataViewPage.tsx, which
+   is what actually keeps the sticky header in sync — see RECORDS_COL_WIDTHS)
+   keeps the column layout stable regardless of which rows are mounted.
+   overflow: hidden is mandatory here: table-layout: fixed only pins the
+   column's own box, it does NOT stop a cell's content (a status pill, the
+   "Note" button, a long share-button label, ...) from painting past that
+   box into the next column when the content is wider than the column —
+   which looked identical to the column itself resizing. Scoped to the
+   desktop breakpoint so it never fights the mobile stacked-card layout
+   below, which sets its own td widths. */
 @media (min-width: 721px) {
+  .public-records-table th,
+  .public-records-table td,
+  .virtual-players-table th,
+  .virtual-players-table td {
+    overflow: hidden;
+  }
+
   .public-records-table th:nth-child(1),
   .public-records-table td:nth-child(1) {
     width: 100px;
@@ -1905,12 +1919,12 @@ tbody tr:hover {
 
   .public-records-table th:nth-child(2),
   .public-records-table td:nth-child(2) {
-    width: 130px;
+    width: 155px;
   }
 
   .public-records-table th:nth-child(3),
   .public-records-table td:nth-child(3) {
-    width: 80px;
+    width: 105px;
   }
 
   .public-records-table th:nth-child(4),
@@ -1931,7 +1945,6 @@ tbody tr:hover {
   .public-records-table th:nth-child(7),
   .public-records-table td:nth-child(7) {
     width: 160px;
-    overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -1943,7 +1956,7 @@ tbody tr:hover {
 
   .public-records-table th:nth-child(9),
   .public-records-table td:nth-child(9) {
-    width: 90px;
+    width: 140px;
   }
 
   .virtual-players-table th:nth-child(1),
@@ -1954,7 +1967,6 @@ tbody tr:hover {
   .virtual-players-table th:nth-child(2),
   .virtual-players-table td:nth-child(2) {
     width: 220px;
-    overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
