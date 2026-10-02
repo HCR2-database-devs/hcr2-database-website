@@ -2953,6 +2953,12 @@ tbody tr:hover {
   margin-top: 0;
 }
 
+.admin-submitter-detail {
+  color: var(--muted);
+  display: block;
+  font-size: 0.85em;
+}
+
 .admin-actions--compact {
   margin-top: 10px;
 }

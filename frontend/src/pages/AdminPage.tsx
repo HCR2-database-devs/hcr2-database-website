@@ -5,6 +5,7 @@ import { ActivityLogPanel } from "../components/ActivityLogPanel";
 import { CommunityAdminPanel } from "../components/CommunityAdminPanel";
 import { FormattedText } from "../components/FormattedText";
 import { useAuthStatus } from "../hooks/useAuthStatus";
+import { formatDateTime } from "../lib/format";
 import { formatDate, MapWithIcon, TuningPartWithIcon, VehicleWithIcon } from "../lib/legacyDisplay";
 import {
   addMap,
@@ -46,7 +47,8 @@ import type {
   ChangelogItem,
   DataRow,
   IntegrityStatus,
-  NewsItem
+  NewsItem,
+  PendingSubmission
 } from "../types/api";
 
 function formatBytes(bytes: number): string {
@@ -104,6 +106,25 @@ function text(row: DataRow, ...keys: string[]) {
     }
   }
   return "";
+}
+
+// Logged-in submitters are stored without an IP (the account is the identity), so
+// prefer the community handle and only fall back to the IP for anonymous sends.
+function submitterIdentity(submission: PendingSubmission): { label: string; detail: string | null } {
+  const handle =
+    submission.submitterCommunityUsername ||
+    submission.submitterDiscordUsername ||
+    submission.submitterDiscordId ||
+    "";
+  if (handle) {
+    return {
+      label: handle,
+      detail: submission.submitterCommunityUsername && submission.submitterDiscordUsername
+        ? `Discord: ${submission.submitterDiscordUsername}`
+        : null,
+    };
+  }
+  return { label: submission.submitterIp ?? "", detail: null };
 }
 
 function numberValue(row: DataRow, ...keys: string[]) {
@@ -1293,13 +1314,15 @@ export function AdminPage() {
                   <th>Country</th>
                   <th>Tuning Parts</th>
                   <th>Echo Part</th>
-                  <th>IP</th>
+                  <th>Submitter</th>
                   <th>When</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {(pendingQuery.data?.pending ?? []).map((submission) => (
+                {(pendingQuery.data?.pending ?? []).map((submission) => {
+                  const submitter = submitterIdentity(submission);
+                  return (
                   <tr key={submission.id}>
                     <td>{submission.id}</td>
                     <td>{submission.mapName}</td>
@@ -1309,8 +1332,13 @@ export function AdminPage() {
                     <td>{submission.playerCountry}</td>
                     <td>{submission.tuningParts}</td>
                     <td>{(submission as Record<string, unknown>).echoAffectedPartName as string ?? ""}</td>
-                    <td>{submission.submitterIp ?? ""}</td>
-                    <td>{submission.submitted_at}</td>
+                    <td>
+                      {submitter.label}
+                      {submitter.detail && (
+                        <span className="admin-submitter-detail"> {submitter.detail}</span>
+                      )}
+                    </td>
+                    <td>{formatDateTime(submission.submitted_at) ?? ""}</td>
                     <td className="admin-table-actions">
                       <button
                         type="button"
@@ -1331,7 +1359,8 @@ export function AdminPage() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

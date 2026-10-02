@@ -267,6 +267,11 @@ export type PendingSubmission = {
   playerCountry?: string | null;
   tuningParts?: string | null;
   submitterIp?: string | null;
+  submitterCommunityUserId?: number | null;
+  submitterCommunityUsername?: string | null;
+  submitterDiscordUsername?: string | null;
+  submitterDiscordId?: string | null;
+  echoAffectedPartName?: string | null;
   status: string;
   submitted_at: string;
   mapName?: string | null;
