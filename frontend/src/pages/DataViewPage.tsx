@@ -456,6 +456,24 @@ const VIRTUAL_TABLE_HEIGHT = "72vh";
 const MOBILE_BREAKPOINT = "(max-width: 720px)";
 const SHARE_LINK_AUTO_LOAD_CAP = 60;
 
+// Column widths in px, matching the .public-records-table / .virtual-players-table
+// nth-child rules in app.css. Declared here as <col> elements too because Chrome
+// recomputes the intrinsic width of position: sticky <th> cells independently of
+// the table's fixed column widths while scrolling — a <colgroup> pins the column
+// widths at the table level so the sticky header can't drift out of sync with the body.
+const RECORDS_COL_WIDTHS = [100, 155, 105, 190, 190, 190, 160, 140, 140];
+const PLAYERS_COL_WIDTHS = [100, 220, 160, 140];
+
+function ColGroup({ widths }: { widths: number[] }) {
+  return (
+    <colgroup>
+      {widths.map((width, index) => (
+        <col key={index} style={{ width }} />
+      ))}
+    </colgroup>
+  );
+}
+
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
   useEffect(() => {
@@ -720,6 +738,7 @@ function VirtualRecordsTable({
         style={{ maxHeight: VIRTUAL_TABLE_HEIGHT }}
       >
         <table className="public-records-table">
+          <ColGroup widths={RECORDS_COL_WIDTHS} />
           <thead>
             <tr>
               <th>Distance</th>
@@ -784,7 +803,8 @@ function VirtualPlayersTable({
         className="table-scroll table-scroll--virtual"
         style={{ maxHeight: VIRTUAL_TABLE_HEIGHT }}
       >
-        <table>
+        <table className="virtual-players-table">
+          <ColGroup widths={PLAYERS_COL_WIDTHS} />
           <thead>
             <tr>
               <th>Player ID</th>

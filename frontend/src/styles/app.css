@@ -1883,6 +1883,117 @@ tbody tr:hover {
 
 .public-records-table {
   min-width: 0;
+  table-layout: fixed;
+}
+
+.virtual-players-table {
+  table-layout: fixed;
+}
+
+/* Fixed per-column widths: the virtualized tables only ever render the
+   rows currently in view, so with the default "auto" table layout the
+   browser recomputes column widths from whatever happens to be mounted
+   and columns visibly jump left/right while scrolling. Pinning each
+   column's width (also mirrored as a <colgroup> in DataViewPage.tsx, which
+   is what actually keeps the sticky header in sync — see RECORDS_COL_WIDTHS)
+   keeps the column layout stable regardless of which rows are mounted.
+   overflow: hidden is mandatory here: table-layout: fixed only pins the
+   column's own box, it does NOT stop a cell's content (a status pill, the
+   "Note" button, a long share-button label, ...) from painting past that
+   box into the next column when the content is wider than the column —
+   which looked identical to the column itself resizing. Scoped to the
+   desktop breakpoint so it never fights the mobile stacked-card layout
+   below, which sets its own td widths. */
+@media (min-width: 721px) {
+  .public-records-table th,
+  .public-records-table td,
+  .virtual-players-table th,
+  .virtual-players-table td {
+    overflow: hidden;
+  }
+
+  .public-records-table th:nth-child(1),
+  .public-records-table td:nth-child(1) {
+    width: 100px;
+  }
+
+  .public-records-table th:nth-child(2),
+  .public-records-table td:nth-child(2) {
+    width: 155px;
+  }
+
+  .public-records-table th:nth-child(3),
+  .public-records-table td:nth-child(3) {
+    width: 105px;
+  }
+
+  .public-records-table th:nth-child(4),
+  .public-records-table td:nth-child(4) {
+    width: 190px;
+  }
+
+  .public-records-table th:nth-child(5),
+  .public-records-table td:nth-child(5) {
+    width: 190px;
+  }
+
+  .public-records-table th:nth-child(6),
+  .public-records-table td:nth-child(6) {
+    width: 190px;
+  }
+
+  .public-records-table th:nth-child(7),
+  .public-records-table td:nth-child(7) {
+    width: 160px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .public-records-table th:nth-child(8),
+  .public-records-table td:nth-child(8) {
+    width: 140px;
+  }
+
+  .public-records-table th:nth-child(9),
+  .public-records-table td:nth-child(9) {
+    width: 140px;
+  }
+
+  .virtual-players-table th:nth-child(1),
+  .virtual-players-table td:nth-child(1) {
+    width: 100px;
+  }
+
+  .virtual-players-table th:nth-child(2),
+  .virtual-players-table td:nth-child(2) {
+    width: 220px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .virtual-players-table th:nth-child(3),
+  .virtual-players-table td:nth-child(3) {
+    width: 160px;
+  }
+
+  .virtual-players-table th:nth-child(4),
+  .virtual-players-table td:nth-child(4) {
+    width: 140px;
+  }
+}
+
+.public-records-table .map-cell,
+.public-records-table .vehicle-cell,
+.public-records-table .country-cell,
+.virtual-players-table .country-cell {
+  max-width: 100%;
+}
+
+.cell-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .tuning-stats .stat-subsection {

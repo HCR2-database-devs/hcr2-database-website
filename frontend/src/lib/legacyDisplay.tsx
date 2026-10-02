@@ -390,14 +390,14 @@ function fallbackToPng(event: SyntheticEvent<HTMLImageElement>, folder: string, 
 export function MapWithIcon({ name }: { name: unknown }) {
   const text = asText(name) || "Unknown";
   return (
-    <span className="map-cell">
+    <span className="map-cell" title={text}>
       <img
         className="map-icon"
         src={`/img/map_icons/${iconSlug(text)}.svg`}
         alt={`${text} icon`}
         onError={(event) => fallbackToPng(event, "map_icons", text)}
-      />{" "}
-      {text}
+      />
+      <span className="cell-text">{text}</span>
     </span>
   );
 }
@@ -405,14 +405,14 @@ export function MapWithIcon({ name }: { name: unknown }) {
 export function VehicleWithIcon({ name }: { name: unknown }) {
   const text = asText(name) || "Unknown";
   return (
-    <span className="vehicle-cell">
+    <span className="vehicle-cell" title={text}>
       <img
         className="vehicle-icon"
         src={`/img/vehicle_icons/${iconSlug(text)}.svg`}
         alt={`${text} icon`}
         onError={(event) => fallbackToPng(event, "vehicle_icons", text)}
-      />{" "}
-      {text}
+      />
+      <span className="cell-text">{text}</span>
     </span>
   );
 }
@@ -503,12 +503,12 @@ export function CountryWithFlag({ country }: { country: unknown }) {
     return null;
   }
   return (
-    <span className="country-cell">
+    <span className="country-cell" title={text}>
       {code && code !== "question" && (
         <img className="country-flag" src={`https://flagcdn.com/${code}.svg`} alt={`${text} flag`} />
       )}
       {code === "question" && <span className="country-flag">?</span>}
-      <span>{text}</span>
+      <span className="cell-text">{text}</span>
     </span>
   );
 }
