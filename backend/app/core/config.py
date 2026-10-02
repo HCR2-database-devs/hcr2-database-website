@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Annotated, Any
 from urllib.parse import quote_plus
 
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -48,6 +48,14 @@ class Settings(BaseSettings):
     db_connect_timeout: int = Field(default=5, validation_alias="DB_CONNECT_TIMEOUT")
 
     auth_shared_secret: str | None = Field(default=None, validation_alias="AUTH_SHARED_SECRET")
+    submission_rate_limit_hmac_secret: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "SUBMISSION_RATE_LIMIT_HMAC_SECRET",
+            "SUBMISSION_RATE_LIMIT_SECRET",
+            "submission_rate_limit_hmac_secret",
+        ),
+    )
     allowed_discord_ids: Annotated[list[str], NoDecode] = Field(
         default_factory=list,
         validation_alias="ALLOWED_DISCORD_IDS",
@@ -96,8 +104,12 @@ class Settings(BaseSettings):
     )
 
     username_change_cooldown_days: int = Field(
-        default=30,
+        default=7,
         validation_alias="USERNAME_CHANGE_COOLDOWN_DAYS",
+    )
+    banner_change_cooldown_days: int = Field(
+        default=7,
+        validation_alias="BANNER_CHANGE_COOLDOWN_DAYS",
     )
 
     @field_validator(

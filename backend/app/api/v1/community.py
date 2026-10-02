@@ -131,6 +131,14 @@ def community_members(
     )
 
 
+@router.get("/config", response_model=None)
+def community_config(settings: SettingsDep) -> dict[str, int]:
+    return {
+        "username_change_cooldown_days": settings.username_change_cooldown_days,
+        "banner_change_cooldown_days": settings.banner_change_cooldown_days,
+    }
+
+
 @router.patch("/profile", response_model=None)
 def update_own_profile(
     payload: CommunityProfileUpdate,
@@ -195,7 +203,11 @@ async def upload_own_banner(
     )
     _, _, content = await _read_upload(banner)
     try:
-        account = community_service.upload_banner(str(status["id"]), content or b"")
+        account = community_service.upload_banner(
+            str(status["id"]),
+            content or b"",
+            settings.banner_change_cooldown_days,
+        )
     except CommunityProfileError as exc:
         return _profile_error_response(exc)
     if account is None:

@@ -102,7 +102,7 @@ export function OnboardingPage() {
         <h1>Choose your community username</h1>
         <p className="onboarding-intro">
           Your username is how you&apos;ll appear in the HCR2 community: the member directory, on
-          your public profile and next to your reports. You can change it once every 30 days.
+          your public profile and next to your reports. You can change it once every 7 days.
         </p>
         <form className="profile-settings-form" onSubmit={handleSubmit}>
           <label>

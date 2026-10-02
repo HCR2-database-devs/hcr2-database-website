@@ -17,6 +17,7 @@ import {
   VehicleWithIcon
 } from "../lib/legacyDisplay";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { compareCountryNames } from "../lib/countries";
 import { exportRecords, getPublicData, getRecordsPaginated } from "../services/publicData";
 import type { DataRow, PaginatedRecordsResponse, PublicDataView, RecordFilters } from "../types/api";
 import { emptyRecordFilters } from "../types/api";
@@ -358,7 +359,9 @@ function PlayerFilters({
   const [recordCountValue, setRecordCountValue] = useState("");
   const countryOptions = useMemo(
     () =>
-      [...new Set(rows.map((row) => normalizeCountryDisplay(row.country)).filter((item): item is string => Boolean(item)))].sort(),
+      [...new Set(rows.map((row) => normalizeCountryDisplay(row.country)).filter((item): item is string => Boolean(item)))].sort(
+        compareCountryNames
+      ),
     [rows],
   );
 

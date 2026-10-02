@@ -13,6 +13,7 @@ class FakeModerationRepository:
         self.reports: dict[int, dict[str, Any]] = {}
         self.username_history: dict[int, list[dict[str, Any]]] = {}
         self.taken_norms: set[str] = set()
+        self.username_audit_matches: list[dict[str, Any]] = []
         self.next_report_id = 1
         self.next_profile_id = 1
 
@@ -89,6 +90,8 @@ class FakeModerationRepository:
         username: str,
         username_norm: str,
         admin_username: str,
+        override_bad_words: bool = False,
+        note: str | None = None,
     ) -> dict[str, Any]:
         row = self.profiles.get(user_id)
         if row is None:
@@ -103,16 +106,42 @@ class FakeModerationRepository:
         row["username"] = username
         row["username_norm"] = username_norm
         row["last_username_change_at"] = None
+        self.username_history.setdefault(user_id, []).insert(
+            0,
+            {
+                "id": len(self.username_history.get(user_id, [])) + 1,
+                "community_user_id": user_id,
+                "username": username,
+                "changed_by_admin": admin_username,
+                "override_bad_words": override_bad_words,
+                "note": note,
+                "changed_at": "2026-09-25T10:00:00",
+            },
+        )
         return dict(row)
 
     def admin_reset_username(
         self,
         user_id: int,
         admin_username: str,
+        note: str | None = None,
     ) -> dict[str, Any] | None:
         row = self.profiles.get(user_id)
         if row is None:
             return None
+        if row["username"] is not None:
+            self.username_history.setdefault(user_id, []).insert(
+                0,
+                {
+                    "id": len(self.username_history.get(user_id, [])) + 1,
+                    "community_user_id": user_id,
+                    "username": row["username"],
+                    "changed_by_admin": admin_username,
+                    "override_bad_words": False,
+                    "note": note,
+                    "changed_at": "2026-09-25T10:00:00",
+                },
+            )
         row["username"] = None
         row["username_norm"] = None
         row["last_username_change_at"] = None
@@ -123,6 +152,17 @@ class FakeModerationRepository:
             dict(entry)
             for entry in self.username_history.get(user_id, [])
         ]
+
+    def list_username_matches(
+        self,
+        *,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[dict[str, Any]], int]:
+        return (
+            self.username_audit_matches[offset : offset + limit],
+            len(self.username_audit_matches),
+        )
 
     def create_report(self, target_id, reporter_id, category, reason) -> dict[str, Any] | None:
         for report in self.reports.values():
@@ -429,6 +469,72 @@ def test_admin_set_username_conflict_returns_generic() -> None:
     assert "isn't available" in excinfo.value.message
 
 
+def test_admin_set_username_records_override_and_note() -> None:
+    service, repository, _ = _make_service()
+    repository.add_profile("Nipa")
+
+    service.set_username(
+        1,
+        "f u c k",
+        admin_username="Admin",
+        override_bad_words=True,
+        note="Approved appeal",
+    )
+
+    history = repository.list_username_history(1)
+    assert history[0]["override_bad_words"] is True
+    assert history[0]["note"] == "Approved appeal"
+
+
+def test_admin_set_username_override_requires_note() -> None:
+    service, repository, _ = _make_service()
+    repository.add_profile("Nipa")
+
+    with pytest.raises(CommunityProfileError) as excinfo:
+        service.set_username(1, "fuck", admin_username="Admin", override_bad_words=True)
+
+    assert "note is required" in excinfo.value.message
+    assert repository.list_username_history(1) == []
+
+
+def test_admin_set_username_override_does_not_bypass_other_rules() -> None:
+    service, repository, _ = _make_service()
+    repository.add_profile("Nipa")
+
+    with pytest.raises(CommunityProfileError):
+        service.set_username(
+            1,
+            "admin",
+            admin_username="Admin",
+            override_bad_words=True,
+            note="Approved appeal",
+        )
+    with pytest.raises(CommunityProfileError):
+        service.set_username(
+            1,
+            "a",
+            admin_username="Admin",
+            override_bad_words=True,
+            note="Approved appeal",
+        )
+
+
+def test_admin_username_audit_paginates() -> None:
+    service, repository, _ = _make_service()
+    repository.username_audit_matches = [
+        {"community_user_id": 1, "username": "fuck", "category": "exact"},
+        {"community_user_id": 2, "username": "f u c k", "category": "exact"},
+        {"community_user_id": 3, "username": "shithead", "category": "compound"},
+    ]
+
+    result = service.list_username_audit(limit=1, offset=1)
+
+    assert result["count"] == 3
+    assert result["limit"] == 1
+    assert result["offset"] == 1
+    assert result["matches"] == [repository.username_audit_matches[1]]
+
+
 def test_admin_reset_username_clears_and_logs() -> None:
     service, repository, logging = _make_service()
     repository.add_profile("Nipa")
@@ -438,6 +544,9 @@ def test_admin_reset_username_clears_and_logs() -> None:
 
     assert updated["username"] is None
     assert logging.calls[-1]["action"] == "username_reset"
+    history = repository.list_username_history(1)
+    assert history[0]["override_bad_words"] is False
+    assert history[0]["note"] == "Name change request"
 
 
 def test_admin_reset_username_missing_returns_none() -> None:

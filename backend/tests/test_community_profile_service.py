@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from PIL import Image
 
-from app.repositories.community_user import UsernameConflictError
+from app.repositories.community_user import PostgresCommunityUserRepository, UsernameConflictError
 from app.services.community_account_service import (
     MAX_BANNER_DIMENSION,
     CommunityAccountService,
@@ -163,12 +163,21 @@ class FakeCommunityUserRepository:
         discord_id: str,
         content: bytes,
         content_type: str,
+        cooldown_days: int = 7,
     ) -> dict[str, Any] | None:
         row = self._row_by_discord(discord_id)
         if row is None:
             return None
+        last_change = row["banner_updated_at"]
+        if last_change is not None and cooldown_days > 0:
+            if isinstance(last_change, str):
+                last_change = datetime.fromisoformat(last_change)
+            if last_change.tzinfo is None:
+                last_change = last_change.replace(tzinfo=UTC)
+            if datetime.now(UTC) - last_change < timedelta(days=cooldown_days):
+                return None
         self.banners[row["id"]] = {"content": content, "content_type": content_type}
-        row["banner_updated_at"] = "2026-09-06T10:00:00"
+        row["banner_updated_at"] = datetime.now(UTC)
         row["updated_at"] = "2026-09-06T10:00:00"
         return dict(row)
 
@@ -439,7 +448,7 @@ def test_set_username_first_time_bypasses_cooldown() -> None:
     service, repository = _make_service()
     repository.ensure_account("123", "Nipa")
 
-    account = service.set_username("123", "  cool   racer  ", cooldown_days=30)
+    account = service.set_username("123", "  cool   racer  ", cooldown_days=7)
 
     assert account is not None
     assert account["username"] == "cool racer"
@@ -450,10 +459,10 @@ def test_set_username_enforces_cooldown() -> None:
     service, repository = _make_service()
     repository.ensure_account("123", "Nipa")
     repository.set_username(1, "First", "first")
-    repository.rows[1]["last_username_change_at"] = datetime.now(UTC) - timedelta(days=5)
+    repository.rows[1]["last_username_change_at"] = datetime.now(UTC) - timedelta(days=6)
 
     with pytest.raises(CommunityProfileError) as exc_info:
-        service.set_username("123", "Second", cooldown_days=30)
+        service.set_username("123", "Second", cooldown_days=7)
     assert exc_info.value.status_code == 409
 
 
@@ -461,11 +470,11 @@ def test_set_username_enforces_cooldown_with_naive_timestamp() -> None:
     service, repository = _make_service()
     repository.ensure_account("123", "Nipa")
     repository.set_username(1, "First", "first")
-    naive = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=5)
+    naive = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=6)
     repository.rows[1]["last_username_change_at"] = naive
 
     with pytest.raises(CommunityProfileError) as exc_info:
-        service.set_username("123", "Second", cooldown_days=30)
+        service.set_username("123", "Second", cooldown_days=7)
     assert exc_info.value.status_code == 409
 
 
@@ -473,10 +482,43 @@ def test_set_username_allows_change_after_cooldown() -> None:
     service, repository = _make_service()
     repository.ensure_account("123", "Nipa")
     repository.set_username(1, "First", "first")
-    repository.rows[1]["last_username_change_at"] = datetime.now(UTC) - timedelta(days=31)
+    repository.rows[1]["last_username_change_at"] = datetime.now(UTC) - timedelta(days=8)
 
-    account = service.set_username("123", "Second", cooldown_days=30)
+    account = service.set_username("123", "Second", cooldown_days=7)
 
+    assert account["username"] == "Second"
+
+
+def test_set_username_uses_configured_cooldown_at_seven_day_boundary(monkeypatch) -> None:
+    fixed_now = datetime(2026, 9, 25, 12, tzinfo=UTC)
+
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return fixed_now
+
+    monkeypatch.setattr("app.services.community_account_service.datetime", FrozenDateTime)
+    service, repository = _make_service()
+    repository.ensure_account("123", "Nipa")
+    repository.set_username(1, "First", "first")
+
+    repository.rows[1]["last_username_change_at"] = fixed_now - timedelta(days=6)
+    with pytest.raises(CommunityProfileError) as exc_info:
+        service.set_username("123", "Second", cooldown_days=7)
+    assert exc_info.value.status_code == 409
+
+    repository.rows[1]["last_username_change_at"] = fixed_now - timedelta(days=7)
+    account = service.set_username("123", "Second", cooldown_days=7)
+    assert account["username"] == "Second"
+
+
+def test_set_username_uses_configured_cooldown_independent_of_copy() -> None:
+    service, repository = _make_service()
+    repository.ensure_account("123", "Nipa")
+    repository.set_username(1, "First", "first")
+    repository.rows[1]["last_username_change_at"] = datetime.now(UTC) - timedelta(days=2)
+
+    account = service.set_username("123", "Second", cooldown_days=1)
     assert account["username"] == "Second"
 
 
@@ -486,7 +528,7 @@ def test_set_username_rejects_format() -> None:
 
     for bad in ("ab", "a" * 21, "https://evil.example", "has@symbol"):
         with pytest.raises(CommunityProfileError):
-            service.set_username("123", bad, cooldown_days=30)
+            service.set_username("123", bad, cooldown_days=7)
 
 
 def test_set_username_rejects_reserved_and_profanity() -> None:
@@ -495,7 +537,7 @@ def test_set_username_rejects_reserved_and_profanity() -> None:
 
     for bad in ("admin", " hCr2 ", "Official", "shItface"):
         with pytest.raises(CommunityProfileError) as exc_info:
-            service.set_username("123", bad, cooldown_days=30)
+            service.set_username("123", bad, cooldown_days=7)
         assert exc_info.value.message == "This username isn't available. Please choose another one."
 
 
@@ -507,7 +549,7 @@ def test_set_username_conflict_returns_generic_message() -> None:
     repository.rows[2]["username"] = "taken"
 
     with pytest.raises(CommunityProfileError) as exc_info:
-        service.set_username("456", "Taker", cooldown_days=30)
+        service.set_username("456", "Taker", cooldown_days=7)
     assert exc_info.value.status_code == 409
     assert "isn't available" in exc_info.value.message
 
@@ -539,9 +581,51 @@ def test_upload_banner_downscales_large_images() -> None:
 def test_upload_banner_rejects_non_image() -> None:
     service, repository = _make_service()
     repository.ensure_account("123", "Nipa")
+    service.upload_banner("123", _tiny_image_bytes())
+    previous_updated_at = repository.rows[1]["banner_updated_at"]
 
     with pytest.raises(CommunityProfileError):
         service.upload_banner("123", b"<svg onload=\"alert(1)\"></svg>")
+
+    assert repository.rows[1]["banner_updated_at"] == previous_updated_at
+    assert 1 in repository.banners
+
+
+def test_upload_banner_rejects_replacement_during_cooldown() -> None:
+    service, repository = _make_service()
+    repository.ensure_account("123", "Nipa")
+    service.upload_banner("123", _tiny_image_bytes())
+    repository.rows[1]["banner_updated_at"] = datetime.now(UTC) - timedelta(days=6)
+    original = repository.banners[1]["content"]
+
+    with pytest.raises(CommunityProfileError) as exc_info:
+        service.upload_banner("123", _tiny_image_bytes())
+
+    assert exc_info.value.status_code == 409
+    assert repository.banners[1]["content"] == original
+
+
+def test_upload_banner_allows_replacement_after_cooldown() -> None:
+    service, repository = _make_service()
+    repository.ensure_account("123", "Nipa")
+    service.upload_banner("123", _tiny_image_bytes())
+    repository.rows[1]["banner_updated_at"] = datetime.now(UTC) - timedelta(days=7)
+
+    account = service.upload_banner("123", _tiny_image_bytes(), cooldown_days=7)
+
+    assert account["banner_updated_at"] is not None
+
+
+def test_upload_banner_allows_reupload_after_removal() -> None:
+    service, repository = _make_service()
+    repository.ensure_account("123", "Nipa")
+    service.upload_banner("123", _tiny_image_bytes())
+    service.clear_banner("123")
+
+    account = service.upload_banner("123", _tiny_image_bytes(), cooldown_days=7)
+
+    assert account["banner_updated_at"] is not None
+    assert 1 in repository.banners
 
 
 def test_get_banner_respects_privacy() -> None:
@@ -557,3 +641,49 @@ def test_get_banner_respects_privacy() -> None:
     assert service.get_banner(1, viewer_discord_id=None) is None
     assert service.get_banner(1, viewer_discord_id="other") is None
     assert service.get_banner(1, viewer_discord_id="123") is not None
+
+
+def test_repository_banner_update_uses_atomic_cooldown_condition(monkeypatch) -> None:
+    class FakeCursor:
+        def __init__(self) -> None:
+            self.sql = ""
+            self.params: dict[str, Any] = {}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return None
+
+        def execute(self, sql: str, params: dict[str, Any]) -> None:
+            self.sql = sql
+            self.params = params
+
+        def fetchone(self) -> dict[str, int]:
+            return {"id": 1}
+
+    class FakeConnection:
+        def __init__(self, cursor: FakeCursor) -> None:
+            self._cursor = cursor
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return None
+
+        def cursor(self) -> FakeCursor:
+            return self._cursor
+
+    cursor = FakeCursor()
+    monkeypatch.setattr(
+        "app.repositories.community_user.open_connection",
+        lambda _: FakeConnection(cursor),
+    )
+
+    result = PostgresCommunityUserRepository().update_banner("123", b"image", "image/webp", 7)
+
+    assert result == {"id": 1}
+    assert "banner_updated_at IS NULL" in cursor.sql
+    assert "banner_updated_at <= CURRENT_TIMESTAMP" in cursor.sql
+    assert cursor.params["cooldown_days"] == 7

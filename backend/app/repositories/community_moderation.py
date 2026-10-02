@@ -2,6 +2,7 @@ from typing import Any, Protocol
 
 import psycopg
 
+from app.core.username_rules import find_bad_word
 from app.db.session import DatabaseConfig, open_connection
 from app.repositories.community_user import PROFILE_COLUMNS, UsernameConflictError
 
@@ -55,11 +56,25 @@ class CommunityModerationRepository(Protocol):
         username: str,
         username_norm: str,
         admin_username: str,
+        override_bad_words: bool = False,
+        note: str | None = None,
     ) -> dict[str, Any]: ...
 
-    def admin_reset_username(self, user_id: int, admin_username: str) -> dict[str, Any] | None: ...
+    def admin_reset_username(
+        self,
+        user_id: int,
+        admin_username: str,
+        note: str | None = None,
+    ) -> dict[str, Any] | None: ...
 
     def list_username_history(self, user_id: int) -> list[dict[str, Any]]: ...
+
+    def list_username_matches(
+        self,
+        *,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[dict[str, Any]], int]: ...
 
     def create_report(
         self,
@@ -273,6 +288,8 @@ class PostgresCommunityModerationRepository:
         username: str,
         username_norm: str,
         admin_username: str,
+        override_bad_words: bool = False,
+        note: str | None = None,
     ) -> dict[str, Any]:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
@@ -301,19 +318,28 @@ class PostgresCommunityModerationRepository:
                 cursor.execute(
                     """
                     INSERT INTO community_username_history
-                        (community_user_id, username, username_norm, changed_by_admin)
-                    VALUES (%(user_id)s, %(username)s, %(username_norm)s, %(admin_username)s)
+                        (community_user_id, username, username_norm, changed_by_admin,
+                         override_bad_words, note)
+                    VALUES (%(user_id)s, %(username)s, %(username_norm)s, %(admin_username)s,
+                            %(override_bad_words)s, %(note)s)
                     """,
                     {
                         "user_id": user_id,
                         "username": username,
                         "username_norm": username_norm,
                         "admin_username": admin_username,
+                        "override_bad_words": override_bad_words,
+                        "note": note,
                     },
                 )
                 return dict(row)
 
-    def admin_reset_username(self, user_id: int, admin_username: str) -> dict[str, Any] | None:
+    def admin_reset_username(
+        self,
+        user_id: int,
+        admin_username: str,
+        note: str | None = None,
+    ) -> dict[str, Any] | None:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
@@ -342,14 +368,17 @@ class PostgresCommunityModerationRepository:
                     cursor.execute(
                         """
                         INSERT INTO community_username_history
-                            (community_user_id, username, username_norm, changed_by_admin)
-                        VALUES (%(user_id)s, %(username)s, %(username_norm)s, %(admin_username)s)
+                            (community_user_id, username, username_norm, changed_by_admin,
+                             override_bad_words, note)
+                        VALUES (%(user_id)s, %(current_username)s, %(current_username_norm)s,
+                                %(admin_username)s, FALSE, %(note)s)
                         """,
                         {
                             "user_id": user_id,
-                            "username": current["username"],
-                            "username_norm": current["username_norm"],
+                            "current_username": current["username"],
+                            "current_username_norm": current["username_norm"],
                             "admin_username": admin_username,
+                            "note": note,
                         },
                     )
                 return dict(row)
@@ -359,7 +388,8 @@ class PostgresCommunityModerationRepository:
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT id, community_user_id, username, changed_by_admin, changed_at
+                    SELECT id, community_user_id, username, changed_by_admin,
+                           override_bad_words, note, changed_at
                     FROM community_username_history
                     WHERE community_user_id = %(user_id)s
                     ORDER BY changed_at DESC, id DESC
@@ -367,6 +397,40 @@ class PostgresCommunityModerationRepository:
                     {"user_id": user_id},
                 )
                 return [dict(row) for row in cursor.fetchall()]
+
+    def list_username_matches(
+        self,
+        *,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[dict[str, Any]], int]:
+        with open_connection(self._config) as connection:
+            # Matching happens in Python, so every username has to be read. A
+            # server-side cursor streams them instead of materializing the whole
+            # table, which keeps memory flat on large community tables.
+            with connection.cursor(name="username_audit_scan") as cursor:
+                cursor.itersize = 2000
+                cursor.execute(
+                    """
+                    SELECT id AS community_user_id, username
+                    FROM community_user
+                    WHERE username IS NOT NULL
+                    ORDER BY id
+                    """
+                )
+                matches: list[dict[str, Any]] = []
+                for row in cursor:
+                    match = find_bad_word(str(row["username"]))
+                    if match is not None:
+                        matches.append(
+                            {
+                                "community_user_id": row["community_user_id"],
+                                "username": row["username"],
+                                "category": match.category,
+                                "term": match.term,
+                            }
+                        )
+                return matches[offset : offset + limit], len(matches)
 
     def create_report(
         self,

@@ -3,6 +3,16 @@ export type CountryOption = {
   name: string;
 };
 
+export const COUNTRY_NAME_COLLATOR = new Intl.Collator("en");
+
+export function compareCountryNames(a: string, b: string): number {
+  return COUNTRY_NAME_COLLATOR.compare(a, b);
+}
+
+export function compareCountryOptions(a: CountryOption, b: CountryOption): number {
+  return compareCountryNames(a.name, b.name);
+}
+
 export const COUNTRIES: CountryOption[] = [
   { code: "ad", name: "Andorra" },
   { code: "ae", name: "United Arab Emirates" },
@@ -254,7 +264,7 @@ export const COUNTRIES: CountryOption[] = [
   { code: "za", name: "South Africa" },
   { code: "zm", name: "Zambia" },
   { code: "zw", name: "Zimbabwe" },
-];
+].sort(compareCountryOptions);
 
 const COUNTRY_NAMES: Record<string, string> = Object.fromEntries(COUNTRIES.map((c) => [c.code, c.name]));
 

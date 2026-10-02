@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 from psycopg import sql
 
 from app.core.config import REPO_ROOT
+from app.core.network import canonicalize_client_ip
 from app.db.session import DatabaseConfig, open_connection
 from app.schemas.admin import (
     AddMapRequest,
@@ -202,6 +203,10 @@ class AdminService:
                         p.tuning_parts AS "tuningParts",
                         p.echo_affected_part_id AS "echoAffectedPartId",
                         p.submitter_ip AS "submitterIp",
+                        p.submitter_community_user_id AS "submitterCommunityUserId",
+                        cu.username AS "submitterCommunityUsername",
+                        cu.discord_username AS "submitterDiscordUsername",
+                        cu.discord_id AS "submitterDiscordId",
                         p.status,
                         p.submitted_at,
                         m.name_map AS "mapName",
@@ -211,11 +216,50 @@ class AdminService:
                     LEFT JOIN map m ON p.id_map = m.id_map
                     LEFT JOIN vehicle v ON p.id_vehicle = v.id_vehicle
                     LEFT JOIN tuning_part tp ON p.echo_affected_part_id = tp.id_tuning_part
+                    LEFT JOIN community_user cu ON p.submitter_community_user_id = cu.id
                     WHERE p.status = 'pending'
                     ORDER BY p.submitted_at DESC, p.id DESC
                     """
                 )
                 return {"pending": [dict(row) for row in cursor.fetchall()]}
+
+    def get_pending_submission(self, submission_id: int) -> dict[str, Any]:
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT
+                        p.id,
+                        p.id_map AS "idMap",
+                        p.id_vehicle AS "idVehicle",
+                        p.distance,
+                        p.player_name AS "playerName",
+                        p.player_country AS "playerCountry",
+                        p.tuning_parts AS "tuningParts",
+                        p.echo_affected_part_id AS "echoAffectedPartId",
+                        p.submitter_ip AS "submitterIp",
+                        p.submitter_community_user_id AS "submitterCommunityUserId",
+                        cu.username AS "submitterCommunityUsername",
+                        cu.discord_username AS "submitterDiscordUsername",
+                        cu.discord_id AS "submitterDiscordId",
+                        p.status,
+                        p.submitted_at,
+                        m.name_map AS "mapName",
+                        v.name_vehicle AS "vehicleName",
+                        tp.name_tuning_part AS "echoAffectedPartName"
+                    FROM pending_submission p
+                    LEFT JOIN map m ON p.id_map = m.id_map
+                    LEFT JOIN vehicle v ON p.id_vehicle = v.id_vehicle
+                    LEFT JOIN tuning_part tp ON p.echo_affected_part_id = tp.id_tuning_part
+                    LEFT JOIN community_user cu ON p.submitter_community_user_id = cu.id
+                    WHERE p.id = %s
+                    """,
+                    (submission_id,),
+                )
+                submission = cursor.fetchone()
+                if submission is None:
+                    raise AdminNotFoundError("Submission not found")
+                return dict(submission)
 
     def _is_mythic_setup(self, cursor: Any, tuning_setup_id: int | None) -> bool:
         if tuning_setup_id is None:
@@ -617,8 +661,9 @@ class AdminService:
                 cursor.execute(
                     """
                     INSERT INTO world_record
-                        (id_map, id_vehicle, id_player, distance, current, is_mythic)
-                    VALUES (%s, %s, %s, %s, 1, %s)
+                        (id_map, id_vehicle, id_player, distance, current, is_mythic,
+                         submitter_community_user_id)
+                    VALUES (%s, %s, %s, %s, 1, %s, %s)
                     RETURNING id_record
                     """,
                     (
@@ -627,6 +672,7 @@ class AdminService:
                         player_id,
                         submission["distance"],
                         is_mythic,
+                        submission.get("submitter_community_user_id"),
                     ),
                 )
                 record_id = cursor.fetchone()["id_record"]
@@ -648,7 +694,11 @@ class AdminService:
                         )
 
                 cursor.execute(
-                    "UPDATE pending_submission SET status = 'approved' WHERE id = %s",
+                    """
+                    UPDATE pending_submission
+                    SET status = 'approved', submitter_ip = NULL
+                    WHERE id = %s AND status = 'pending'
+                    """,
                     (submission_id,),
                 )
         self._log(admin_username, "approved", "submission", submission_id)
@@ -659,7 +709,11 @@ class AdminService:
             with connection.cursor() as cursor:
                 self._get_pending_submission(cursor, submission_id)
                 cursor.execute(
-                    "UPDATE pending_submission SET status = 'rejected' WHERE id = %s",
+                    """
+                    UPDATE pending_submission
+                    SET status = 'rejected', submitter_ip = NULL
+                    WHERE id = %s AND status = 'pending'
+                    """,
                     (submission_id,),
                 )
         self._log(admin_username, "rejected", "submission", submission_id)
@@ -822,9 +876,9 @@ class AdminService:
                 return {"bans": [dict(row) for row in cursor.fetchall()]}
 
     def create_ban(self, payload: BanIPRequest, admin_username: str = "") -> dict[str, Any]:
-        ip = _clean_text(payload.ip)
+        ip = canonicalize_client_ip(_clean_text(payload.ip))
         reason = _clean_text(payload.reason)
-        if not ip:
+        if ip is None:
             raise AdminServiceError("IP address is required.")
         if not reason:
             raise AdminServiceError("A ban reason is required.")
@@ -835,11 +889,28 @@ class AdminService:
 
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (ip,))
                 cursor.execute(
                     """
-                    SELECT id FROM ip_ban
-                    WHERE banned_ip = %s AND active = TRUE
+                    UPDATE ip_ban
+                    SET active = FALSE
+                    WHERE banned_ip = %s
+                      AND active = TRUE
+                      AND expires_at IS NOT NULL
+                      AND expires_at <= NOW()
+                    """,
+                    (ip,),
+                )
+                cursor.execute(
+                    """
+                    SELECT id
+                    FROM ip_ban
+                    WHERE banned_ip = %s
+                      AND active = TRUE
+                      AND (expires_at IS NULL OR expires_at > NOW())
+                    ORDER BY id DESC
                     LIMIT 1
+                    FOR UPDATE
                     """,
                     (ip,),
                 )
@@ -1020,7 +1091,17 @@ class AdminService:
 
     def _get_pending_submission(self, cursor: Any, submission_id: int) -> dict[str, Any]:
         cursor.execute(
-            "SELECT * FROM pending_submission WHERE id = %s LIMIT 1",
+            """
+            SELECT p.*,
+                cu.username AS "submitterCommunityUsername",
+                cu.discord_username AS "submitterDiscordUsername",
+                cu.discord_id AS "submitterDiscordId"
+            FROM pending_submission p
+            LEFT JOIN community_user cu ON p.submitter_community_user_id = cu.id
+            WHERE p.id = %s
+              AND p.status = 'pending'
+            FOR UPDATE OF p
+            """,
             (submission_id,),
         )
         submission = cursor.fetchone()

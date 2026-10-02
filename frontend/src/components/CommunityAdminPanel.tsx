@@ -8,14 +8,15 @@ import {
   adminRejectReport,
   adminResolveReport,
   getAdminCommunityProfiles,
-  getAdminCommunityReports
+  getAdminCommunityReports,
+  getAdminUsernameAudit
 } from "../services/adminCommunity";
 import { formatMemberSince } from "../lib/format";
 import { discordAvatarUrl } from "../services/community";
 
 const PAGE_SIZE = 20;
 
-type SubTab = "profiles" | "reports";
+type SubTab = "profiles" | "reports" | "usernameAudit";
 
 const REPORT_STATUSES = [
   { value: "open", label: "Open" },
@@ -31,6 +32,7 @@ export function CommunityAdminPanel() {
   const [profilesOffset, setProfilesOffset] = useState(0);
   const [reportsStatus, setReportsStatus] = useState("");
   const [reportsOffset, setReportsOffset] = useState(0);
+  const [auditOffset, setAuditOffset] = useState(0);
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
 
   const profilesQuery = useQuery({
@@ -51,6 +53,11 @@ export function CommunityAdminPanel() {
         limit: PAGE_SIZE,
         offset: reportsOffset
       })
+  });
+
+  const auditQuery = useQuery({
+    queryKey: ["admin", "community", "username-audit", auditOffset],
+    queryFn: () => getAdminUsernameAudit({ limit: PAGE_SIZE, offset: auditOffset })
   });
 
   function invalidate() {
@@ -85,6 +92,10 @@ export function CommunityAdminPanel() {
   const reportCount = reportsQuery.data?.count ?? 0;
   const hasMoreReports = reportsOffset + reports.length < reportCount;
 
+  const auditMatches = auditQuery.data?.matches ?? [];
+  const auditCount = auditQuery.data?.count ?? 0;
+  const hasMoreAuditMatches = auditOffset + auditMatches.length < auditCount;
+
   return (
     <div className="admin-community-panel">
       <nav className="admin-subtabs" aria-label="Community admin sections">
@@ -102,6 +113,14 @@ export function CommunityAdminPanel() {
         >
           Reports
           <span className="admin-subtab-count">{reportsStatus === "" ? "all" : reportsStatus}</span>
+        </button>
+        <button
+          type="button"
+          className={`admin-subtab${subTab === "usernameAudit" ? " admin-subtab--active" : ""}`}
+          onClick={() => setSubTab("usernameAudit")}
+        >
+          Username audit
+          <span className="admin-subtab-count">{auditCount === 0 ? "clean" : auditCount}</span>
         </button>
       </nav>
 
@@ -282,6 +301,66 @@ export function CommunityAdminPanel() {
                   type="button"
                   disabled={!hasMoreReports}
                   onClick={() => setReportsOffset((current) => current + PAGE_SIZE)}
+                >
+                  Next
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {subTab === "usernameAudit" && (
+        <div className="admin-section">
+          <p className="admin-report-reason">
+            Community usernames that currently match the moderated word list. These are usually
+            names that were set before the list was tightened, or via an administrator override.
+            Open a member to change their username.
+          </p>
+
+          {auditQuery.isLoading && <p className="community-status">Scanning usernames...</p>}
+          {auditQuery.isError && (
+            <p className="community-status">Could not load the username audit.</p>
+          )}
+          {!auditQuery.isLoading && !auditQuery.isError && auditMatches.length === 0 && (
+            <p className="community-status">No usernames match the moderated word list.</p>
+          )}
+
+          {auditMatches.length > 0 && (
+            <>
+              <div className="admin-profile-table">
+                {auditMatches.map((match) => (
+                  <button
+                    key={match.community_user_id}
+                    type="button"
+                    className="admin-profile-row"
+                    onClick={() => setSelectedProfileId(match.community_user_id)}
+                  >
+                    <span className="admin-profile-row-name">{match.username}</span>
+                    <span className="admin-profile-row-meta">#{match.community_user_id}</span>
+                    <span className="activity-log-action-badge">{match.category}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="community-pagination">
+                <button
+                  className="button-ghost"
+                  type="button"
+                  disabled={auditOffset === 0 || auditQuery.isFetching}
+                  onClick={() => setAuditOffset((current) => Math.max(0, current - PAGE_SIZE))}
+                >
+                  Previous
+                </button>
+                <span className="community-pagination-info">
+                  {auditCount === 0
+                    ? "0 matches"
+                    : `${auditOffset + 1}-${Math.min(auditOffset + auditMatches.length, auditCount)} of ${auditCount} matches`}
+                </span>
+                <button
+                  className="button-ghost"
+                  type="button"
+                  disabled={!hasMoreAuditMatches || auditQuery.isFetching}
+                  onClick={() => setAuditOffset((current) => current + PAGE_SIZE)}
                 >
                   Next
                 </button>

@@ -1,5 +1,6 @@
 import type {
   CommunityAccount,
+  CommunityConfig,
   CommunityMember,
   CommunityMemberListResponse,
   CommunityProfileUpdate,
@@ -38,6 +39,10 @@ function jsonRequest<T>(path: string, method: "PATCH" | "POST" | "DELETE", body?
     headers: { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body)
   });
+}
+
+export function getCommunityConfig() {
+  return fetchJson<CommunityConfig>("/api/v1/community/config");
 }
 
 export function getCommunityMe() {

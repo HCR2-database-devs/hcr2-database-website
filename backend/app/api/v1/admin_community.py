@@ -4,7 +4,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from app.api.dependencies import get_auth_service, get_community_moderation_service
-from app.schemas.community import AdminNote, AdminProfileUpdate
+from app.schemas.community import AdminNote, AdminProfileUpdate, AdminUsernameRequest
 from app.services.auth_service import AuthService
 from app.services.community_account_service import CommunityProfileError
 from app.services.community_moderation_service import CommunityModerationService
@@ -85,11 +85,14 @@ def admin_update_profile(
                     community_id,
                     payload.username,
                     admin_username,
+                    note=payload.note,
+                    override_bad_words=payload.override_bad_words,
                 )
         updated = moderation_service.update_profile(
             community_id,
             payload,
             admin_username,
+            note=payload.note,
         )
     except CommunityProfileError as exc:
         return _profile_error_response(exc)
@@ -98,10 +101,22 @@ def admin_update_profile(
     return updated
 
 
+@router.get("/usernames/audit", response_model=None)
+def admin_username_audit(
+    request: Request,
+    auth_service: AuthServiceDep,
+    moderation_service: CommunityModerationServiceDep,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> Any:
+    _admin_status(request, auth_service)
+    return moderation_service.list_username_audit(limit=limit, offset=offset)
+
+
 @router.post("/profiles/{community_id}/username", response_model=None)
 def admin_set_username(
     community_id: int,
-    payload: AdminProfileUpdate,
+    payload: AdminUsernameRequest,
     request: Request,
     auth_service: AuthServiceDep,
     moderation_service: CommunityModerationServiceDep,
@@ -111,8 +126,10 @@ def admin_set_username(
     try:
         updated = moderation_service.set_username(
             community_id,
-            payload.username or "",
+            payload.username,
             str(admin.get("username") or ""),
+            override_bad_words=payload.override_bad_words,
+            note=payload.note,
         )
     except CommunityProfileError as exc:
         return _profile_error_response(exc)

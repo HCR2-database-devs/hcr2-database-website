@@ -43,6 +43,8 @@ export type CommunityProfileUpdate = {
 
 export type AdminProfileUpdate = CommunityProfileUpdate & {
   username?: string | null;
+  override_bad_words?: boolean;
+  note?: string | null;
 };
 
 export type UsernameUpdate = {
@@ -166,6 +168,27 @@ export type UsernameHistoryEntry = {
   username: string;
   changed_by_admin: string;
   changed_at: string;
+  override_bad_words?: boolean;
+  note?: string | null;
+};
+
+export type CommunityConfig = {
+  username_change_cooldown_days: number;
+  banner_change_cooldown_days: number;
+};
+
+export type AdminUsernameMatch = {
+  community_user_id: number;
+  username: string;
+  category: string;
+  term: string;
+};
+
+export type AdminUsernameAuditResponse = {
+  matches: AdminUsernameMatch[];
+  count: number;
+  limit: number;
+  offset: number;
 };
 
 export type FeatureName =

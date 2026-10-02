@@ -58,6 +58,8 @@ function AdminProfileForm({
   const [showFavoriteMap, setShowFavoriteMap] = useState(profile.show_favorite_map);
   const [showDiscordUsername, setShowDiscordUsername] = useState(profile.show_discord_username);
   const [showDiscordAvatar, setShowDiscordAvatar] = useState(profile.show_discord_avatar);
+  const [overrideBadWords, setOverrideBadWords] = useState(false);
+  const [note, setNote] = useState("");
 
   const vehiclesQuery = useQuery({
     queryKey: ["public-data", "vehicles"],
@@ -131,7 +133,9 @@ function AdminProfileForm({
       show_favorite_vehicle: showFavoriteVehicle,
       show_favorite_map: showFavoriteMap,
       show_discord_username: showDiscordUsername,
-      show_discord_avatar: showDiscordAvatar
+      show_discord_avatar: showDiscordAvatar,
+      override_bad_words: overrideBadWords,
+      note: note.trim() || null
     });
   }
 
@@ -191,6 +195,24 @@ function AdminProfileForm({
               value={username}
               onChange={(event) => setUsername(event.target.value.slice(0, 32))}
               maxLength={32}
+            />
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={overrideBadWords}
+              onChange={(event) => setOverrideBadWords(event.target.checked)}
+            />
+            Allow a username that matches the moderated word list (requires a note)
+          </label>
+          <label>
+            Moderation note
+            <input
+              type="text"
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="Reason for this change, stored in the audit log"
+              maxLength={200}
             />
           </label>
           <label>

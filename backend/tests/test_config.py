@@ -26,6 +26,24 @@ def test_settings_feature_flags_default_to_beta() -> None:
     assert settings.feature_profile_reporting == "BETA"
 
 
+def test_settings_profile_cooldowns_default_to_seven_days() -> None:
+    settings = Settings(_env_file=None)
+
+    assert settings.username_change_cooldown_days == 7
+    assert settings.banner_change_cooldown_days == 7
+
+
+def test_settings_profile_cooldowns_accept_environment_values() -> None:
+    settings = Settings(
+        _env_file=None,
+        USERNAME_CHANGE_COOLDOWN_DAYS="14",
+        BANNER_CHANGE_COOLDOWN_DAYS="3",
+    )
+
+    assert settings.username_change_cooldown_days == 14
+    assert settings.banner_change_cooldown_days == 3
+
+
 def test_settings_feature_flags_accept_valid_and_normalize_invalid_values() -> None:
     settings = Settings(
         _env_file=None,

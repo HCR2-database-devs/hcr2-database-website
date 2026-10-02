@@ -341,6 +341,20 @@ def reject_pending_by_path(
         return _error_response(exc)
 
 
+@router.get("/pending/{submission_id}", response_model=None)
+def get_pending_submission(
+    submission_id: int,
+    request: Request,
+    service: AdminServiceDep,
+    auth_service: AuthServiceDep,
+) -> Any:
+    _admin_status(request, auth_service)
+    try:
+        return service.get_pending_submission(submission_id)
+    except (AdminServiceError, AdminNotFoundError) as exc:
+        return _error_response(exc)
+
+
 @router.post("/pending/approve", response_model=None)
 def approve_pending(
     payload: PendingActionRequest,

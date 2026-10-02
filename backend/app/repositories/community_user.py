@@ -78,6 +78,7 @@ class CommunityUserRepository(Protocol):
         discord_id: str,
         content: bytes,
         content_type: str,
+        cooldown_days: int,
     ) -> dict[str, Any] | None: ...
 
     def clear_banner(self, discord_id: str) -> dict[str, Any] | None: ...
@@ -239,8 +240,9 @@ class PostgresCommunityUserRepository:
                 cursor.execute(
                     """
                     INSERT INTO community_username_history
-                        (community_user_id, username, username_norm, changed_by_admin)
-                    VALUES (%(user_id)s, %(username)s, %(username_norm)s, '')
+                        (community_user_id, username, username_norm, changed_by_admin,
+                         override_bad_words, note)
+                    VALUES (%(user_id)s, %(username)s, %(username_norm)s, '', FALSE, NULL)
                     """,
                     {"user_id": user_id, "username": username, "username_norm": username_norm},
                 )
@@ -325,6 +327,7 @@ class PostgresCommunityUserRepository:
         discord_id: str,
         content: bytes,
         content_type: str,
+        cooldown_days: int,
     ) -> dict[str, Any] | None:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
@@ -336,9 +339,20 @@ class PostgresCommunityUserRepository:
                         banner_updated_at = CURRENT_TIMESTAMP,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE discord_id = %(discord_id)s
+                      AND (
+                          %(cooldown_days)s <= 0
+                          OR banner_updated_at IS NULL
+                          OR banner_updated_at <= CURRENT_TIMESTAMP
+                             - (INTERVAL '1 day' * %(cooldown_days)s)
+                      )
                     RETURNING {PROFILE_COLUMNS}
                     """,
-                    {"content": content, "content_type": content_type, "discord_id": discord_id},
+                    {
+                        "content": content,
+                        "content_type": content_type,
+                        "discord_id": discord_id,
+                        "cooldown_days": cooldown_days,
+                    },
                 )
                 row = cursor.fetchone()
                 return dict(row) if row is not None else None

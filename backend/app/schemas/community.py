@@ -99,6 +99,17 @@ class AdminProfileUpdate(BaseModel):
     show_discord_username: bool = False
     show_discord_avatar: bool = False
     username: str | None = None
+    override_bad_words: bool = False
+    note: str | None = None
+
+
+class AdminUsernameRequest(BaseModel):
+    username: str = ""
+    override_bad_words: bool = False
+    note: str | None = None
+
+
+AdminUsernameUpdate = AdminUsernameRequest
 
 
 class UsernameHistoryEntry(BaseModel):
@@ -106,6 +117,8 @@ class UsernameHistoryEntry(BaseModel):
     community_user_id: int
     username: str
     changed_by_admin: str
+    override_bad_words: bool = False
+    note: str | None = None
     changed_at: datetime
 
 

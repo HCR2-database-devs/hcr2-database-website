@@ -4,15 +4,20 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from app.api.dependencies import (
+    get_auth_service,
     get_changelog_service,
+    get_community_account_service,
     get_news_service,
     get_public_data_service,
     get_public_submission_service,
 )
 from app.api.responses import DATABASE_ERROR_TYPES, database_error_response, error_response
+from app.api.submission import handle_public_submission
 from app.core.config import Settings, get_settings
 from app.services.admin_service import maintenance_flag_path
+from app.services.auth_service import AuthService
 from app.services.changelog_service import ChangelogService
+from app.services.community_account_service import CommunityAccountService
 from app.services.news_service import NewsService
 from app.services.public_data_service import PublicDataService
 from app.services.public_submission_service import PublicSubmissionService
@@ -31,6 +36,11 @@ ChangelogServiceDep = Annotated[ChangelogService, Depends(get_changelog_service)
 PublicSubmissionServiceDep = Annotated[
     PublicSubmissionService,
     Depends(get_public_submission_service),
+]
+AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
+CommunityAccountServiceDep = Annotated[
+    CommunityAccountService,
+    Depends(get_community_account_service),
 ]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
@@ -165,15 +175,7 @@ def get_hcaptcha_sitekey(settings: SettingsDep) -> Any:
 async def submit_public_record(
     request: Request,
     service: PublicSubmissionServiceDep,
+    auth_service: AuthServiceDep,
+    community_service: CommunityAccountServiceDep,
 ) -> JSONResponse:
-    content_type = request.headers.get("content-type", "")
-    if content_type.startswith("application/json"):
-        data = await request.json()
-    else:
-        form = await request.form()
-        data = dict(form)
-    if not isinstance(data, dict):
-        data = {}
-
-    result = service.submit(data, request.client.host if request.client else "")
-    return JSONResponse(content=result.payload, status_code=result.status_code)
+    return await handle_public_submission(request, service, auth_service, community_service)

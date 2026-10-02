@@ -23,6 +23,10 @@ MAX_SEARCH_LENGTH = 50
 DISCORD_AVATAR_CDN = "https://cdn.discordapp.com/avatars/{discord_id}/{hash}.{ext}"
 
 
+def _cooldown_unit(cooldown_days: int) -> str:
+    return "day" if cooldown_days == 1 else "days"
+
+
 def discord_avatar_url(discord_id: str | None, avatar: str | None) -> str | None:
     """Build a full Discord CDN avatar URL from an avatar hash.
 
@@ -108,7 +112,8 @@ class CommunityAccountService:
                 elapsed = (datetime.now(UTC) - last_change).total_seconds()
                 if elapsed < cooldown_seconds:
                     raise CommunityProfileError(
-                        f"Your username can only be changed once every {cooldown_days} days.",
+                        f"Your username can only be changed once every {cooldown_days} "
+                        f"{_cooldown_unit(cooldown_days)}.",
                         409,
                     )
 
@@ -160,9 +165,29 @@ class CommunityAccountService:
             show_discord_avatar=bool(payload.show_discord_avatar),
         )
 
-    def upload_banner(self, discord_id: str, content: bytes) -> dict[str, Any] | None:
+    def upload_banner(
+        self,
+        discord_id: str,
+        content: bytes,
+        cooldown_days: int = 7,
+    ) -> dict[str, Any] | None:
+        account = self.repository.get_by_discord_id(discord_id)
+        if account is None:
+            return None
         normalized, content_type = _normalize_banner(content)
-        return self.repository.update_banner(discord_id, normalized, content_type)
+        updated = self.repository.update_banner(
+            discord_id,
+            normalized,
+            content_type,
+            cooldown_days,
+        )
+        if updated is None:
+            raise CommunityProfileError(
+                f"Your banner can only be changed once every {cooldown_days} "
+                f"{_cooldown_unit(cooldown_days)}.",
+                409,
+            )
+        return updated
 
     def clear_banner(self, discord_id: str) -> dict[str, Any] | None:
         return self.repository.clear_banner(discord_id)

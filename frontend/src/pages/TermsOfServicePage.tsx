@@ -91,7 +91,7 @@ export function TermsOfServicePage() {
           <li>May not be offensive, abusive, or misleading</li>
         </ul>
         <p>
-          You may change your username at most once every 30 days (the username change cooldown). A
+          You may change your username at most once every 7 days (the username change cooldown). A
           record of previous usernames is kept to enforce this cooldown and to let administrators
           restore a previous username if needed.
         </p>

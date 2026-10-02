@@ -5,6 +5,7 @@ import type {
   AdminCommunityReportListResponse,
   AdminProfileDetail,
   AdminProfileUpdate,
+  AdminUsernameAuditResponse,
   CommunityAccount
 } from "../types/api";
 import { fetchJson } from "./api";
@@ -53,6 +54,13 @@ export function adminResetProfile(id: number, note?: string) {
 
 export function adminResetBanner(id: number, note?: string) {
   return adminProfileAction(id, "reset-banner", note);
+}
+
+export function getAdminUsernameAudit(params: { limit?: number; offset?: number }) {
+  const query = new URLSearchParams();
+  query.set("limit", String(params.limit ?? 20));
+  query.set("offset", String(params.offset ?? 0));
+  return fetchJson<AdminUsernameAuditResponse>(`/api/v1/admin/community/usernames/audit?${query}`);
 }
 
 export function getAdminCommunityReports(params: { status?: string; limit?: number; offset?: number }) {

@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi.testclient import TestClient
@@ -34,6 +35,8 @@ class FakeCommunityAccountService:
         self.users: dict[int, dict[str, Any]] = {}
         self.next_id = 1
         self.banners: dict[int, dict[str, Any]] = {}
+        self.username_audit_matches: list[dict[str, Any]] = []
+        self.last_username_request: dict[str, Any] | None = None
 
     def add_user(
         self,
@@ -81,14 +84,15 @@ class FakeCommunityAccountService:
         self,
         discord_id: str,
         raw_username: str,
-        cooldown_days: int = 30,
+        cooldown_days: int = 7,
     ) -> dict[str, Any] | None:
         user = self.get_account(discord_id)
         if user is None:
             return None
         if user["username"] is not None and user["last_username_change_at"] is not None:
             raise CommunityProfileError(
-                f"Your username can only be changed once every {cooldown_days} days.",
+                f"Your username can only be changed once every {cooldown_days} "
+                f"{'day' if cooldown_days == 1 else 'days'}.",
                 409,
             )
         try:
@@ -152,14 +156,30 @@ class FakeCommunityAccountService:
         user["bio"] = payload.bio or ""
         return user
 
-    def upload_banner(self, discord_id: str, content: bytes) -> dict[str, Any] | None:
+    def upload_banner(
+        self,
+        discord_id: str,
+        content: bytes,
+        cooldown_days: int = 7,
+    ) -> dict[str, Any] | None:
         user = self.get_account(discord_id)
         if user is None:
             return None
         if not content.startswith(b"RIFF"):
             raise CommunityProfileError("The uploaded file is not a valid PNG, JPEG or WebP image.")
+        last_change = user["banner_updated_at"]
+        if last_change is not None and cooldown_days > 0:
+            last_change_at = datetime.fromisoformat(last_change)
+            if last_change_at.tzinfo is None:
+                last_change_at = last_change_at.replace(tzinfo=UTC)
+            if datetime.now(UTC) - last_change_at < timedelta(days=cooldown_days):
+                raise CommunityProfileError(
+                    f"Your banner can only be changed once every {cooldown_days} "
+                    f"{'day' if cooldown_days == 1 else 'days'}.",
+                    409,
+                )
         self.banners[user["id"]] = {"content": content, "content_type": "image/webp"}
-        user["banner_updated_at"] = "2026-09-06T10:00:00"
+        user["banner_updated_at"] = datetime.now(UTC).isoformat()
         return user
 
     def clear_banner(self, discord_id: str) -> dict[str, Any] | None:
@@ -205,6 +225,7 @@ class FakeCommunityModerationService:
         user_id: int,
         payload: Any,
         admin_username: str = "",
+        note: str | None = None,
     ) -> dict[str, Any] | None:
         return self.community.get_account_by_id(user_id)
 
@@ -235,7 +256,15 @@ class FakeCommunityModerationService:
         raw_username: str,
         admin_username: str = "",
         note: str | None = None,
+        override_bad_words: bool = False,
     ) -> dict[str, Any] | None:
+        self.community.last_username_request = {
+            "username": raw_username,
+            "override_bad_words": override_bad_words,
+            "note": note,
+        }
+        if override_bad_words and not (note or "").strip():
+            raise CommunityProfileError("A note is required when overriding username moderation.")
         user = self.community.users.get(user_id)
         if user is None:
             return None
@@ -270,6 +299,15 @@ class FakeCommunityModerationService:
 
     def get_username_history(self, user_id: int) -> list[dict[str, Any]]:
         return []
+
+    def list_username_audit(self, *, limit: int, offset: int) -> dict[str, Any]:
+        matches = self.community.username_audit_matches
+        return {
+            "matches": matches[offset : offset + limit],
+            "count": len(matches),
+            "limit": limit,
+            "offset": offset,
+        }
 
     def create_report(self, target_id: int, reporter_id: int, payload: Any) -> dict[str, Any]:
         if reporter_id == target_id:
@@ -469,6 +507,83 @@ def test_banner_upload_rejects_invalid_image() -> None:
         cookies=_cookie("user-a"),
     )
     assert response.status_code == 400
+    assert community.users[1]["banner_updated_at"] is None
+
+
+def test_banner_upload_rejects_replacement_during_cooldown() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+    first = client.post(
+        "/api/v1/community/profile/banner",
+        files={"banner": ("banner.webp", b"RIFFfirst", "image/webp")},
+        cookies=_cookie("user-a"),
+    )
+    assert first.status_code == 200
+    community.users[1]["banner_updated_at"] = (datetime.now(UTC) - timedelta(days=6)).isoformat()
+
+    response = client.post(
+        "/api/v1/community/profile/banner",
+        files={"banner": ("banner.webp", b"RIFFsecond", "image/webp")},
+        cookies=_cookie("user-a"),
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"error": "Your banner can only be changed once every 7 days."}
+    assert community.banners[1]["content"] == b"RIFFfirst"
+
+
+def test_banner_upload_uses_configured_cooldown() -> None:
+    client, community = _client()
+    client.app.dependency_overrides[get_settings] = lambda: Settings(
+        _env_file=None,
+        API_KEYS="dev-api-key",
+        FEATURE_DISCORD_ACCOUNTS="ENABLED",
+        FEATURE_COMMUNITY_PROFILES="ENABLED",
+        FEATURE_PROFILE_CUSTOMIZATION="ENABLED",
+        FEATURE_COMMUNITY_MEMBERS="ENABLED",
+        FEATURE_PROFILE_REPORTING="ENABLED",
+        FEATURE_COMMUNITY_NOTIFICATIONS="ENABLED",
+        BANNER_CHANGE_COOLDOWN_DAYS="1",
+    )
+    community.add_user("user-a")
+    first = client.post(
+        "/api/v1/community/profile/banner",
+        files={"banner": ("banner.webp", b"RIFFfirst", "image/webp")},
+        cookies=_cookie("user-a"),
+    )
+    assert first.status_code == 200
+    community.users[1]["banner_updated_at"] = (datetime.now(UTC) - timedelta(hours=12)).isoformat()
+
+    response = client.post(
+        "/api/v1/community/profile/banner",
+        files={"banner": ("banner.webp", b"RIFFsecond", "image/webp")},
+        cookies=_cookie("user-a"),
+    )
+
+    assert response.status_code == 409
+    assert "1 day" in response.json()["error"]
+
+
+def test_banner_removal_allows_immediate_reupload() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+    first = client.post(
+        "/api/v1/community/profile/banner",
+        files={"banner": ("banner.webp", b"RIFFfirst", "image/webp")},
+        cookies=_cookie("user-a"),
+    )
+    assert first.status_code == 200
+
+    removed = client.delete("/api/v1/community/profile/banner", cookies=_cookie("user-a"))
+    reuploaded = client.post(
+        "/api/v1/community/profile/banner",
+        files={"banner": ("banner.webp", b"RIFFsecond", "image/webp")},
+        cookies=_cookie("user-a"),
+    )
+
+    assert removed.status_code == 200
+    assert reuploaded.status_code == 200
+    assert community.banners[1]["content"] == b"RIFFsecond"
 
 
 def test_members_list_requires_login() -> None:
@@ -775,6 +890,141 @@ def test_admin_can_set_username_via_patch() -> None:
     )
     assert response.status_code == 200
     assert community.users[1]["username"] == "ForcedName"
+
+
+def test_admin_can_override_bad_words_via_patch() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+
+    response = client.patch(
+        "/api/v1/admin/community/profiles/1",
+        json={
+            "username": "fuck",
+            "override_bad_words": True,
+            "note": "Legacy name, approved",
+        },
+        cookies=_cookie("admin"),
+    )
+
+    assert response.status_code == 200
+    assert community.last_username_request == {
+        "username": "fuck",
+        "override_bad_words": True,
+        "note": "Legacy name, approved",
+    }
+
+
+def test_admin_patch_override_without_note_is_rejected() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+
+    response = client.patch(
+        "/api/v1/admin/community/profiles/1",
+        json={"username": "fuck", "override_bad_words": True},
+        cookies=_cookie("admin"),
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "error": "A note is required when overriding username moderation."
+    }
+
+
+def test_admin_patch_username_without_override_does_not_bypass_moderation() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+
+    response = client.patch(
+        "/api/v1/admin/community/profiles/1",
+        json={"username": "fuck"},
+        cookies=_cookie("admin"),
+    )
+
+    assert response.status_code == 200
+    assert community.last_username_request == {
+        "username": "fuck",
+        "override_bad_words": False,
+        "note": None,
+    }
+
+
+def test_community_config_exposes_cooldown_days_without_authentication() -> None:
+    app = create_app()
+    app.dependency_overrides[get_settings] = lambda: Settings(
+        _env_file=None,
+        USERNAME_CHANGE_COOLDOWN_DAYS="14",
+        BANNER_CHANGE_COOLDOWN_DAYS="3",
+    )
+
+    response = TestClient(app).get("/api/v1/community/config")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "username_change_cooldown_days": 14,
+        "banner_change_cooldown_days": 3,
+    }
+
+
+def test_admin_username_endpoint_passes_override_and_note() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+
+    response = client.post(
+        "/api/v1/admin/community/profiles/1/username",
+        json={"username": "fuck", "override_bad_words": True, "note": "Approved"},
+        cookies=_cookie("admin"),
+    )
+
+    assert response.status_code == 200
+    assert community.users[1]["username"] == "fuck"
+    assert community.last_username_request == {
+        "username": "fuck",
+        "override_bad_words": True,
+        "note": "Approved",
+    }
+
+
+def test_admin_username_endpoint_requires_note_for_override() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+
+    response = client.post(
+        "/api/v1/admin/community/profiles/1/username",
+        json={"username": "fuck", "override_bad_words": True},
+        cookies=_cookie("admin"),
+    )
+
+    assert response.status_code == 400
+    assert "note is required" in response.json()["error"]
+
+
+def test_admin_username_audit_requires_admin() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+    community.username_audit_matches = [
+        {"community_user_id": 1, "username": "fuck", "category": "exact"},
+        {"community_user_id": 2, "username": "shithead", "category": "compound"},
+    ]
+
+    assert client.get("/api/v1/admin/community/usernames/audit").status_code == 401
+    assert (
+        client.get(
+            "/api/v1/admin/community/usernames/audit",
+            cookies=_cookie("user-a"),
+        ).status_code
+        == 403
+    )
+    response = client.get(
+        "/api/v1/admin/community/usernames/audit?limit=1&offset=1",
+        cookies=_cookie("admin"),
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "matches": [community.username_audit_matches[1]],
+        "count": 2,
+        "limit": 1,
+        "offset": 1,
+    }
 
 
 def test_admin_reset_username_endpoint() -> None:
