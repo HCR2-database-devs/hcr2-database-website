@@ -13,7 +13,7 @@ export const PLANNED_FEATURES: PlannedFeature[] = [
   { id: "leaderboard", label: "Community leaderboard" },
   { id: "discord", label: "Discord integration" },
   { id: "friend-requests", label: "Friend requests" },
-  { id: "profile-comments", label: "Profile comments" }
+  { id: "hcr2-name-connection", label: "HCR2 name connection" }
 ];
 
 export const COMMUNITY_LAUNCH_ANNOUNCEMENT_ID = "community-launch-2026-10";

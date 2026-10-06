@@ -9,31 +9,38 @@ const storageKey = `announcement:${COMMUNITY_LAUNCH_ANNOUNCEMENT_ID}`;
 
 const LOGIN_URL = "https://auth.hcr2.xyz/login";
 
-function readDismissed(): boolean {
+function keyFor(loggedIn: boolean): string {
+  return loggedIn ? `${storageKey}:logged-in` : `${storageKey}:logged-out`;
+}
+
+function readDismissed(loggedIn: boolean): boolean {
   try {
-    return window.localStorage.getItem(storageKey) === "dismissed";
+    const store = loggedIn ? window.localStorage : window.sessionStorage;
+    return store.getItem(keyFor(loggedIn)) === "dismissed";
   } catch {
     return false;
   }
 }
 
-function writeDismissed(): void {
+function writeDismissed(loggedIn: boolean): void {
   try {
-    window.localStorage.setItem(storageKey, "dismissed");
+    const store = loggedIn ? window.localStorage : window.sessionStorage;
+    store.setItem(keyFor(loggedIn), "dismissed");
   } catch {
   }
 }
 
 export function CommunityAnnouncement() {
-  const { data: authStatus } = useAuthStatus();
+  const { data: authStatus, isLoading } = useAuthStatus();
   const canUseCommunity = useCanUseFeature("community_members");
   const location = useLocation();
-  const [dismissed, setDismissed] = useState(readDismissed);
-
-  if (!canUseCommunity || dismissed) return null;
-  if (location.pathname === "/onboarding") return null;
+  const [hidden, setHidden] = useState(false);
 
   const loggedIn = authStatus?.logged === true;
+
+  if (isLoading || !canUseCommunity || hidden) return null;
+  if (readDismissed(loggedIn)) return null;
+  if (location.pathname === "/onboarding") return null;
 
   return (
     <div className="site-announcement">
@@ -85,8 +92,8 @@ export function CommunityAnnouncement() {
           type="button"
           aria-label="Dismiss this announcement"
           onClick={() => {
-            writeDismissed();
-            setDismissed(true);
+            writeDismissed(loggedIn);
+            setHidden(true);
           }}
         >
           &times;
