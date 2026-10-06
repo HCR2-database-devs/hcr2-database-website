@@ -4,8 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 
 import { BannerImage } from "../components/BannerImage";
 import { BetaBadge } from "../components/BetaBadge";
+import { BugReportNotice } from "../components/BugReportNotice";
 import { CountryFlag } from "../components/CountryFlag";
 import { FeatureGate } from "../components/FeatureGate";
+import { PlannedFeatures } from "../components/PlannedFeatures";
 import { ReportProfileModal } from "../components/ReportProfileModal";
 import { RequireAuth } from "../components/RequireAuth";
 import { UserAvatar } from "../components/UserAvatar";
@@ -183,7 +185,19 @@ function CommunityProfileContent() {
             {lastUpdated ? <> · Last updated {lastUpdated}</> : null}.
           </p>
         )}
+
+        <BugReportNotice className="community-profile-bug-note" />
       </div>
+
+      <section className="profile-roadmap" aria-labelledby="profile-roadmap-heading">
+        <p className="eyebrow">What's next</p>
+        <h2 id="profile-roadmap-heading">What we're planning to add</h2>
+        <p>
+          The community section is new, so this is the shortlist. Nothing here is promised yet, but
+          it's the order we're working through it.
+        </p>
+        <PlannedFeatures />
+      </section>
 
       {reportOpen && (
         <ReportProfileModal

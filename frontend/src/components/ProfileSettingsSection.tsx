@@ -16,6 +16,8 @@ import { getPublicData } from "../services/publicData";
 import type { CommunityAccount } from "../types/api";
 import { BannerCropModal } from "./BannerCropModal";
 import { BetaBadge } from "./BetaBadge";
+import { BugReportNotice } from "./BugReportNotice";
+import { PlannedFeatures } from "./PlannedFeatures";
 
 const MAX_BIO_LENGTH = 500;
 const FALLBACK_USERNAME_CHANGE_COOLDOWN_DAYS = 7;
@@ -423,6 +425,16 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
           </button>
         </div>
       </form>
+      <BugReportNotice />
+      <section className="profile-roadmap" aria-labelledby="settings-roadmap-heading">
+        <p className="eyebrow">What's next</p>
+        <h2 id="settings-roadmap-heading">What we're planning to add</h2>
+        <p>
+          These community features are still being built and tested. If you hit a bug while editing
+          your profile, please report it — it helps.
+        </p>
+        <PlannedFeatures />
+      </section>
       {message && <p className="frontend-message">{message}</p>}
       {error && <p className="frontend-error">{error}</p>}
       {pendingBanner && (

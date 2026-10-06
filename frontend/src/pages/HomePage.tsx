@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 
 import { AdSlot } from "../components/AdSlot";
 import { DonatorBanner } from "../components/DonatorBanner";
+import { PlannedFeatures } from "../components/PlannedFeatures";
+import { REPO_URL } from "../lib/communityInfo";
 import { asText, formatDistance, iconSlug, TuningPartsIcons } from "../lib/legacyDisplay";
 import { getHomeSummary } from "../services/publicData";
 import type { DataRow } from "../types/api";
@@ -330,18 +332,11 @@ function CommunityVisionSection() {
           <p className="eyebrow">What's next</p>
           <h2 id="vision-heading">More things are coming</h2>
           <p>
-            We're working on making hcr2.xyz the go-to place for the HCR2
-            adventure community. Here's what's on the way.
+            The community section is open to everyone now. Here's what we're building next on top
+            of it.
           </p>
         </div>
-        <div className="vision-features">
-          <span className="vision-feature">Notifications</span>
-          <span className="vision-feature">Achievements</span>
-          <span className="vision-feature">XP system</span>
-          <span className="vision-feature">Community leaderboard</span>
-          <span className="vision-feature">Discord integration</span>
-          <span className="vision-feature vision-feature--soon">More coming soon</span>
-        </div>
+        <PlannedFeatures />
       </div>
     </section>
   );
@@ -408,7 +403,7 @@ function LinksSection() {
       <div className="links-grid">
         <a
           className="link-card feature-card"
-          href="https://github.com/anomalyco/hcr2-database-website"
+          href={REPO_URL}
           target="_blank"
           rel="noopener noreferrer"
         >

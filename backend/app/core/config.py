@@ -78,8 +78,6 @@ class Settings(BaseSettings):
     )
 
     # Feature flags. Valid values: DISABLED, BETA, ENABLED (see app/core/features.py).
-    # Community features are public, so they default to ENABLED. Set DISABLED to hide a
-    # feature behind a 403, or BETA to limit it to BETA_DISCORD_IDS and admins.
     feature_discord_accounts: str = Field(
         default="ENABLED",
         validation_alias="FEATURE_DISCORD_ACCOUNTS",
@@ -136,7 +134,6 @@ class Settings(BaseSettings):
     )
     @classmethod
     def normalize_feature_flag(cls, value: Any) -> str:
-        # Fail closed: an unparseable value must not silently publish a feature.
         raw = str(value).strip().upper() if value is not None else ""
         if raw not in ("DISABLED", "BETA", "ENABLED"):
             return "BETA"

@@ -4,6 +4,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AdBlockerDetector } from "../components/AdBlockerDetector";
 import { AdSenseLoader } from "../components/AdSenseLoader";
 import { AdSlot } from "../components/AdSlot";
+import { CommunityAnnouncement } from "../components/CommunityAnnouncement";
 import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
 import { useAuthStatus } from "../hooks/useAuthStatus";
@@ -45,6 +46,7 @@ export function App() {
       <AdSenseLoader />
       <Header />
       <main>
+        <CommunityAnnouncement />
         <Outlet />
         <AdSlot slotId="9695011824" />
         <Footer />
