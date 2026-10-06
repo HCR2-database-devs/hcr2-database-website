@@ -52,7 +52,7 @@ def _require_feature(
     status = auth_service.status_from_cookie(request.cookies.get("WC_TOKEN"))
     discord_id = str(status["id"]) if status.get("logged") else None
     if not can_use_feature(discord_id, feature_name, settings):
-        raise HTTPException(status_code=403, detail="This feature is currently in beta")
+        raise HTTPException(status_code=403, detail="This feature is currently disabled")
 
 
 def _require_onboarded(

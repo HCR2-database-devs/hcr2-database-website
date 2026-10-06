@@ -56,6 +56,18 @@ AUTH_SHARED_SECRET=long_random_secret_here
 SUBMISSION_RATE_LIMIT_HMAC_SECRET=another_long_random_secret_here
 ALLOWED_DISCORD_IDS=123456789,987654321
 
+# Feature flags. Values: DISABLED, BETA, ENABLED. The community features are
+# public, so keep these ENABLED. Set DISABLED to hide a feature behind a 403, or
+# BETA to limit it to BETA_DISCORD_IDS and admins. See docs/beta-testing.md.
+FEATURE_DISCORD_ACCOUNTS=ENABLED
+FEATURE_COMMUNITY_PROFILES=ENABLED
+FEATURE_PROFILE_CUSTOMIZATION=ENABLED
+FEATURE_COMMUNITY_MEMBERS=ENABLED
+FEATURE_PROFILE_REPORTING=ENABLED
+FEATURE_COMMUNITY_NOTIFICATIONS=ENABLED
+# Only needed while a feature flag is set to BETA.
+BETA_DISCORD_IDS=
+
 # Community profile cooldowns, in days. The frontend reads these from
 # GET /api/v1/community/config, so keep them in sync with the site copy.
 USERNAME_CHANGE_COOLDOWN_DAYS=7

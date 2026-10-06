@@ -399,17 +399,9 @@ class FakeCommunityNotificationService:
         return updated
 
 
-def _client() -> tuple[TestClient, FakeCommunityAccountService]:
+def _community_client(settings: Settings) -> tuple[TestClient, FakeCommunityAccountService]:
     app = create_app()
-    app.dependency_overrides[get_settings] = lambda: Settings(
-        API_KEYS="dev-api-key",
-        FEATURE_DISCORD_ACCOUNTS="ENABLED",
-        FEATURE_COMMUNITY_PROFILES="ENABLED",
-        FEATURE_PROFILE_CUSTOMIZATION="ENABLED",
-        FEATURE_COMMUNITY_MEMBERS="ENABLED",
-        FEATURE_PROFILE_REPORTING="ENABLED",
-        FEATURE_COMMUNITY_NOTIFICATIONS="ENABLED",
-    )
+    app.dependency_overrides[get_settings] = lambda: settings
     community = FakeCommunityAccountService()
     moderation = FakeCommunityModerationService(community)
     notifications = FakeCommunityNotificationService()
@@ -421,26 +413,43 @@ def _client() -> tuple[TestClient, FakeCommunityAccountService]:
         dependencies.get_community_notification_service
     ] = lambda: notifications
     return TestClient(app), community
+
+
+def _client() -> tuple[TestClient, FakeCommunityAccountService]:
+    return _community_client(
+        Settings(
+            _env_file=None,
+            API_KEYS="dev-api-key",
+            FEATURE_DISCORD_ACCOUNTS="ENABLED",
+            FEATURE_COMMUNITY_PROFILES="ENABLED",
+            FEATURE_PROFILE_CUSTOMIZATION="ENABLED",
+            FEATURE_COMMUNITY_MEMBERS="ENABLED",
+            FEATURE_PROFILE_REPORTING="ENABLED",
+            FEATURE_COMMUNITY_NOTIFICATIONS="ENABLED",
+        )
+    )
+
+
+def _default_client() -> tuple[TestClient, FakeCommunityAccountService]:
+    """No feature flags set at all: the shipped defaults must be public."""
+    return _community_client(Settings(_env_file=None, API_KEYS="dev-api-key"))
 
 
 def _beta_client() -> tuple[TestClient, FakeCommunityAccountService]:
-    app = create_app()
-    app.dependency_overrides[get_settings] = lambda: Settings(
-        API_KEYS="dev-api-key",
-        BETA_DISCORD_IDS="beta-user",
-        ALLOWED_DISCORD_IDS="admin",
+    return _community_client(
+        Settings(
+            _env_file=None,
+            API_KEYS="dev-api-key",
+            BETA_DISCORD_IDS="beta-user",
+            ALLOWED_DISCORD_IDS="admin",
+            FEATURE_DISCORD_ACCOUNTS="BETA",
+            FEATURE_COMMUNITY_PROFILES="BETA",
+            FEATURE_PROFILE_CUSTOMIZATION="BETA",
+            FEATURE_COMMUNITY_MEMBERS="BETA",
+            FEATURE_PROFILE_REPORTING="BETA",
+            FEATURE_COMMUNITY_NOTIFICATIONS="BETA",
+        )
     )
-    community = FakeCommunityAccountService()
-    moderation = FakeCommunityModerationService(community)
-    notifications = FakeCommunityNotificationService()
-    community.notifications = notifications
-    app.dependency_overrides[dependencies.get_auth_service] = FakeAuthService
-    app.dependency_overrides[dependencies.get_community_account_service] = lambda: community
-    app.dependency_overrides[dependencies.get_community_moderation_service] = lambda: moderation
-    app.dependency_overrides[
-        dependencies.get_community_notification_service
-    ] = lambda: notifications
-    return TestClient(app), community
 
 
 def _cookie(token: str) -> dict[str, str]:
@@ -699,6 +708,53 @@ def test_admin_report_resolution() -> None:
     )
     assert resolved.status_code == 200
     assert resolved.json()["status"] == "resolved"
+
+
+def test_default_members_list_allowed_for_plain_user() -> None:
+    client, community = _default_client()
+    community.add_user("user-a")
+    response = client.get("/api/v1/community/members", cookies=_cookie("user-a"))
+    assert response.status_code == 200
+    assert response.json()["count"] == 1
+
+
+def test_default_profile_allowed_for_plain_user() -> None:
+    client, community = _default_client()
+    community.add_user("user-a")
+    response = client.get("/api/v1/community/1", cookies=_cookie("user-a"))
+    assert response.status_code == 200
+
+
+def test_default_notifications_allowed_for_plain_user() -> None:
+    client, community = _default_client()
+    community.add_user("user-a")
+    response = client.get(
+        "/api/v1/community/notifications",
+        cookies=_cookie("user-a"),
+    )
+    assert response.status_code == 200
+
+
+def test_default_auth_status_reports_features_enabled() -> None:
+    client, _ = _default_client()
+    response = client.get("/api/v1/auth/status", cookies=_cookie("user-a"))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["beta"] is False
+    assert set(body["features"].values()) == {"ENABLED"}
+
+
+def test_disabled_feature_denied_for_plain_user() -> None:
+    client = _community_client(
+        Settings(
+            _env_file=None,
+            API_KEYS="dev-api-key",
+            FEATURE_COMMUNITY_MEMBERS="DISABLED",
+        )
+    )[0]
+    response = client.get("/api/v1/community/members", cookies=_cookie("user-a"))
+    assert response.status_code == 403
+    assert response.json()["detail"] == "This feature is currently disabled"
 
 
 def test_beta_members_list_denied_for_anonymous_user() -> None:

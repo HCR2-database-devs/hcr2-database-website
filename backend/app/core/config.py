@@ -78,28 +78,30 @@ class Settings(BaseSettings):
     )
 
     # Feature flags. Valid values: DISABLED, BETA, ENABLED (see app/core/features.py).
+    # Community features are public, so they default to ENABLED. Set DISABLED to hide a
+    # feature behind a 403, or BETA to limit it to BETA_DISCORD_IDS and admins.
     feature_discord_accounts: str = Field(
-        default="BETA",
+        default="ENABLED",
         validation_alias="FEATURE_DISCORD_ACCOUNTS",
     )
     feature_community_profiles: str = Field(
-        default="BETA",
+        default="ENABLED",
         validation_alias="FEATURE_COMMUNITY_PROFILES",
     )
     feature_profile_customization: str = Field(
-        default="BETA",
+        default="ENABLED",
         validation_alias="FEATURE_PROFILE_CUSTOMIZATION",
     )
     feature_community_members: str = Field(
-        default="BETA",
+        default="ENABLED",
         validation_alias="FEATURE_COMMUNITY_MEMBERS",
     )
     feature_profile_reporting: str = Field(
-        default="BETA",
+        default="ENABLED",
         validation_alias="FEATURE_PROFILE_REPORTING",
     )
     feature_community_notifications: str = Field(
-        default="BETA",
+        default="ENABLED",
         validation_alias="FEATURE_COMMUNITY_NOTIFICATIONS",
     )
 
@@ -134,6 +136,7 @@ class Settings(BaseSettings):
     )
     @classmethod
     def normalize_feature_flag(cls, value: Any) -> str:
+        # Fail closed: an unparseable value must not silently publish a feature.
         raw = str(value).strip().upper() if value is not None else ""
         if raw not in ("DISABLED", "BETA", "ENABLED"):
             return "BETA"

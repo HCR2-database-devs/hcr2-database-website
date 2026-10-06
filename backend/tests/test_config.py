@@ -16,14 +16,15 @@ def test_settings_parse_comma_separated_lists() -> None:
     assert settings.cors_origins == ["http://localhost:5173", "http://127.0.0.1:5173"]
 
 
-def test_settings_feature_flags_default_to_beta() -> None:
+def test_settings_feature_flags_default_to_enabled() -> None:
     settings = Settings(_env_file=None)
 
-    assert settings.feature_discord_accounts == "BETA"
-    assert settings.feature_community_profiles == "BETA"
-    assert settings.feature_profile_customization == "BETA"
-    assert settings.feature_community_members == "BETA"
-    assert settings.feature_profile_reporting == "BETA"
+    assert settings.feature_discord_accounts == "ENABLED"
+    assert settings.feature_community_profiles == "ENABLED"
+    assert settings.feature_profile_customization == "ENABLED"
+    assert settings.feature_community_members == "ENABLED"
+    assert settings.feature_profile_reporting == "ENABLED"
+    assert settings.feature_community_notifications == "ENABLED"
 
 
 def test_settings_profile_cooldowns_default_to_seven_days() -> None:
@@ -52,6 +53,7 @@ def test_settings_feature_flags_accept_valid_and_normalize_invalid_values() -> N
         FEATURE_PROFILE_CUSTOMIZATION="garbage",
         FEATURE_COMMUNITY_MEMBERS="beta",
         FEATURE_PROFILE_REPORTING="",
+        FEATURE_COMMUNITY_NOTIFICATIONS="disabled",
     )
 
     assert settings.feature_discord_accounts == "ENABLED"
@@ -59,6 +61,7 @@ def test_settings_feature_flags_accept_valid_and_normalize_invalid_values() -> N
     assert settings.feature_profile_customization == "BETA"
     assert settings.feature_community_members == "BETA"
     assert settings.feature_profile_reporting == "BETA"
+    assert settings.feature_community_notifications == "DISABLED"
 
 
 def test_settings_parse_comma_separated_lists_from_environment(monkeypatch) -> None:

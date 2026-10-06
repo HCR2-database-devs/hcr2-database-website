@@ -7,14 +7,30 @@ from app.core.features import (
     is_beta_user,
 )
 
+_ALL_FEATURES = tuple(FEATURE_FIELDS)
+
+_ALL_BETA_FLAGS = {f"FEATURE_{name.upper()}": "BETA" for name in _ALL_FEATURES}
+
 
 def _settings(**kwargs) -> Settings:
     return Settings(
         _env_file=None,
         BETA_DISCORD_IDS="beta-user",
         ALLOWED_DISCORD_IDS="admin-user",
-        **kwargs,
+        **{**_ALL_BETA_FLAGS, **kwargs},
     )
+
+
+def test_community_features_default_to_public() -> None:
+    settings = Settings(
+        _env_file=None,
+        BETA_DISCORD_IDS="beta-user",
+        ALLOWED_DISCORD_IDS="admin-user",
+    )
+
+    for feature_name in _ALL_FEATURES:
+        assert get_feature_state(feature_name, settings) is FeatureState.ENABLED
+        assert can_use_feature("other", feature_name, settings) is True
 
 
 def test_get_feature_state_reads_settings() -> None:
@@ -37,8 +53,7 @@ def test_get_feature_state_falls_back_to_beta_for_unknown_feature() -> None:
 def test_feature_registry_covers_all_known_features() -> None:
     settings = _settings()
 
-    for feature_name in ("discord_accounts", "community_profiles", "profile_customization",
-                         "community_members", "profile_reporting"):
+    for feature_name in _ALL_FEATURES:
         assert feature_name in FEATURE_FIELDS
         assert get_feature_state(feature_name, settings) is not None
 

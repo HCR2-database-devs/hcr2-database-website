@@ -989,15 +989,6 @@ h3 {
   flex-shrink: 0;
 }
 
-.community-highlight__coming-soon {
-  cursor: default;
-  opacity: 0.7;
-}
-
-.community-highlight__coming-soon:hover {
-  transform: none;
-}
-
 /* Live stats */
 
 .live-stats-layout {

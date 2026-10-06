@@ -32,6 +32,8 @@ FEATURE_FIELDS: dict[str, str] = {
 
 
 def get_feature_state(feature_name: str, settings: Settings) -> FeatureState:
+    # Unknown features and unparseable values fall back to BETA so a typo can never
+    # publish a feature that was meant to stay restricted.
     field_name = FEATURE_FIELDS.get(feature_name)
     raw = getattr(settings, field_name, "BETA") if field_name else None
     try:

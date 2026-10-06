@@ -3,9 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { AdSlot } from "../components/AdSlot";
-import { BetaBadge } from "../components/BetaBadge";
 import { DonatorBanner } from "../components/DonatorBanner";
-import { useFeatureAccess } from "../lib/features";
 import { asText, formatDistance, iconSlug, TuningPartsIcons } from "../lib/legacyDisplay";
 import { getHomeSummary } from "../services/publicData";
 import type { DataRow } from "../types/api";
@@ -204,33 +202,21 @@ function LiveStatsSection() {
 }
 
 function CommunityHighlight() {
-  const { canUse, isLoading } = useFeatureAccess("community_members");
-
-  if (isLoading) return null;
-
   return (
     <section className="content-section" aria-labelledby="community-heading">
       <div className="community-highlight__card">
         <div className="community-highlight__copy">
-          <p className="eyebrow">
-            Community <BetaBadge feature="community_members" />
-          </p>
+          <p className="eyebrow">Community</p>
           <h2 id="community-heading">More than just records</h2>
           <p>
-            We're building a proper HCR2 community here. Create your own
-            profile, find other players, and connect through Discord.
+            Create your own community profile, find other HCR2 players, and
+            connect through Discord.
           </p>
         </div>
         <div className="community-highlight__action">
-          {canUse ? (
-            <Link className="button button--primary" to="/community">
-              Explore Community
-            </Link>
-          ) : (
-            <span className="button button--secondary community-highlight__coming-soon">
-              Coming Soon
-            </span>
-          )}
+          <Link className="button button--primary" to="/community">
+            Explore Community
+          </Link>
         </div>
       </div>
     </section>
