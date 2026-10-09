@@ -13,6 +13,7 @@ from app.repositories.public_data import PostgresPublicDataRepository
 from app.services.activity_log_service import ActivityLogService
 from app.services.admin_service import AdminService
 from app.services.auth_service import AuthService
+from app.services.avatar_probe import avatar_reachable
 from app.services.changelog_service import ChangelogService
 from app.services.community_account_service import CommunityAccountService
 from app.services.community_moderation_service import CommunityModerationService
@@ -108,4 +109,5 @@ def get_community_share_service(settings: SettingsDep) -> CommunityShareService:
     return CommunityShareService(
         community_service=get_community_account_service(),
         site_url=settings.public_site_url,
+        avatar_check=avatar_reachable,
     )

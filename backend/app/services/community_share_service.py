@@ -14,13 +14,16 @@ from __future__ import annotations
 
 import html
 import json
-from dataclasses import dataclass
+import time
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import Any
 
 from app.services.community_account_service import (
     CommunityAccountService,
     discord_avatar_url,
 )
+from app.services.countries import country_name
 
 # Discord component type numbers (ComponentType in discord-component-embed).
 _ACTION_ROW = 1
@@ -41,6 +44,12 @@ _MAX_DESCRIPTION = 4000
 
 _SITE_NAME = "hcr2.xyz"
 _FALLBACK_LOGO = "/img/hcrdatabaselogo.png"
+
+#: Seconds to cache an avatar reachability result. Discord rotates avatar
+#: hashes when a member changes their avatar, which makes the stored URL 404 and
+#: breaks the embed, so we verify before embedding and fall back to the logo.
+_AVATAR_CHECK_TTL_SECONDS = 3600
+_AVATAR_CHECK_TIMEOUT_SECONDS = 3.0
 
 #: Maps each emoji-prefixed detail line to the short label used in the
 #: Open Graph description, which has no room for emoji or full sentences.
@@ -89,6 +98,43 @@ def _link(url: str, label: str, emoji: str) -> dict[str, Any]:
 class CommunityShareService:
     community_service: CommunityAccountService
     site_url: str = "https://hcr2.xyz"
+    avatar_check: Callable[[str], bool] | None = None
+    _avatar_cache: dict[str, tuple[float, bool]] = field(
+        default_factory=dict,
+        repr=False,
+        compare=False,
+    )
+
+    def avatar_reachable(self, url: str) -> bool:
+        """Return True when ``url`` still resolves on Discord's CDN.
+
+        Discord avatar hashes change whenever a member updates their avatar, and
+        the stored URL then 404s. Embedding a dead URL makes Discord report
+        ``Unable to fetch component media metadata`` and render no image, so we
+        verify once and fall back to the site logo.
+
+        Results are cached for an hour: the share page is fetched by Discord's
+        crawler, and without a cache every render would cost a network call.
+        When no checker is injected (tests, offline) the URL is assumed good.
+        """
+        if self.avatar_check is None:
+            return True
+
+        cached = self._avatar_cache.get(url)
+        if cached is not None:
+            checked_at, reachable = cached
+            if time.monotonic() - checked_at < _AVATAR_CHECK_TTL_SECONDS:
+                return reachable
+
+        try:
+            reachable = bool(self.avatar_check(url))
+        except Exception:
+            # Never let a transient network fault break the page; the logo is a
+            # better outcome than a 500 or a broken embed.
+            reachable = False
+
+        self._avatar_cache[url] = (time.monotonic(), reachable)
+        return reachable
 
     def base_url(self) -> str:
         return self.site_url.rstrip("/")
@@ -129,7 +175,7 @@ class CommunityShareService:
         # otherwise (BASE_TYPE_REQUIRED) and falls back to a bare OG card.
         # Fall back to the site logo when the member hides their avatar.
         avatar = discord_avatar_url(account["discord_id"], account["discord_avatar"])
-        if account["show_discord_avatar"] and avatar:
+        if account["show_discord_avatar"] and avatar and self.avatar_reachable(avatar):
             accessory = _thumbnail(avatar, f"{username}'s avatar")
         else:
             accessory = _thumbnail(
@@ -183,7 +229,9 @@ class CommunityShareService:
         """Build embed detail lines, skipping anything the member hid."""
         lines: list[str] = []
         if account["show_country"] and account["country"]:
-            lines.append(f"🌍 {str(account['country']).upper()}")
+            name = country_name(account["country"])
+            if name:
+                lines.append(f"🌍 {name}")
         if account["show_bio"] and account["bio"]:
             lines.append(f"💬 {_clip(str(account['bio']), _MAX_TEXT)}")
         if account["show_favorite_vehicle"] and account["favorite_vehicle_name"]:

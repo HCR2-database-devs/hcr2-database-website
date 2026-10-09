@@ -21,6 +21,24 @@ Runtime code now targets the normalized PostgreSQL schema from `main`:
 
 Public API responses still expose the camelCase keys expected by the frontend and PHP-compatible routes, such as `idMap`, `nameVehicle`, and `idTuningSetup`.
 
+## Shared Data Files
+
+`shared/` holds data read by both the backend and the frontend, so the two
+cannot drift apart.
+
+- `shared/countries.json` — country code/name pairs plus legacy free-text
+  aliases. Read at runtime by `backend/app/services/countries.py` and at build
+  time by `frontend/src/lib/countries.ts` (via the `@shared` Vite alias).
+  **To add or rename a country, edit this file only.**
+
+Country-region codes that are not ISO countries (`us-tx`, `gb-eng`) are
+deliberately excluded, because only the legacy player table stores them. They
+live in `frontend/src/lib/legacyDisplay.tsx`.
+
+Adding a `shared/` file also requires wiring it up on both sides: a Vite
+`resolve.alias` plus `server.fs.allow` entry for the frontend, and a loader in
+the backend.
+
 ## Supported Application Workflows
 
 - public data browsing for maps, vehicles, players, tuning parts, tuning setups and records

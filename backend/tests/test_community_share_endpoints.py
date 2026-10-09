@@ -135,7 +135,7 @@ def test_share_profile_embed_lists_public_details(client: TestClient) -> None:
     body = str(embed)
 
     assert "💬 I love Countryside" in body
-    assert "🌍 FI" in body
+    assert "🌍 Finland" in body
     assert "🚗 Favorite vehicle: Sand Rail" in body
     assert "🗺 Favorite map: Countryside" in body
 
@@ -197,6 +197,104 @@ def test_share_profile_never_leaks_a_hidden_avatar_into_the_embed() -> None:
     )
 
     assert "cdn.discordapp.com" not in json.dumps(embed)
+
+
+def test_share_profile_renders_country_name_not_code() -> None:
+    embed = _parse_embed(_service(_account(country="fi")).profile_page(1))
+
+    assert "🌍 Finland" in json.dumps(embed, ensure_ascii=False)
+    assert "🌍 FI" not in json.dumps(embed, ensure_ascii=False)
+
+
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        ("fi", "Finland"),
+        ("us", "United States"),
+        ("in", "India"),
+        ("de", "Germany"),
+        ("gb", "United Kingdom"),
+        ("br", "Brazil"),
+        ("jp", "Japan"),
+    ],
+)
+def test_country_names_render_in_the_embed(code: str, expected: str) -> None:
+    embed = _parse_embed(_service(_account(country=code)).profile_page(1))
+
+    assert f"🌍 {expected}" in json.dumps(embed, ensure_ascii=False)
+
+
+def test_unknown_country_code_still_renders_readably() -> None:
+    embed = _parse_embed(_service(_account(country="zz")).profile_page(1))
+
+    assert "🌍 ZZ" in json.dumps(embed, ensure_ascii=False)
+
+
+def test_embed_falls_back_to_logo_when_avatar_hash_is_stale() -> None:
+    """A rotated Discord avatar hash 404s; embedding it breaks the card."""
+    service = CommunityShareService(
+        community_service=CommunityAccountService(StubRepository(_account())),
+        site_url=SITE_URL,
+        avatar_check=lambda url: False,
+    )
+    embed = _parse_embed(service.profile_page(1))
+    accessory = _sections(embed)[0]["accessory"]
+
+    assert accessory["media"]["url"] == f"{SITE_URL}/img/hcrdatabaselogo.png"
+
+
+def test_embed_uses_avatar_when_it_still_resolves() -> None:
+    service = CommunityShareService(
+        community_service=CommunityAccountService(StubRepository(_account())),
+        site_url=SITE_URL,
+        avatar_check=lambda url: True,
+    )
+    embed = _parse_embed(service.profile_page(1))
+
+    assert "cdn.discordapp.com" in _sections(embed)[0]["accessory"]["media"]["url"]
+
+
+def test_avatar_check_runs_only_once_per_url() -> None:
+    """Discord's crawler triggers renders; the probe must not stampede the CDN."""
+    calls: list[str] = []
+
+    def counting_check(url: str) -> bool:
+        calls.append(url)
+        return True
+
+    service = CommunityShareService(
+        community_service=CommunityAccountService(StubRepository(_account())),
+        site_url=SITE_URL,
+        avatar_check=counting_check,
+    )
+
+    for _ in range(5):
+        service.profile_page(1)
+
+    assert len(calls) == 1
+
+
+def test_avatar_check_failure_falls_back_instead_of_raising() -> None:
+    def exploding_check(url: str) -> bool:
+        raise RuntimeError("network down")
+
+    service = CommunityShareService(
+        community_service=CommunityAccountService(StubRepository(_account())),
+        site_url=SITE_URL,
+        avatar_check=exploding_check,
+    )
+
+    embed = _parse_embed(service.profile_page(1))
+
+    assert _sections(embed)[0]["accessory"]["media"]["url"].endswith(
+        "/img/hcrdatabaselogo.png"
+    )
+
+
+def test_service_without_a_probe_assumes_avatar_is_good() -> None:
+    embed = _parse_embed(_service().profile_page(1))
+
+    assert "cdn.discordapp.com" in _sections(embed)[0]["accessory"]["media"]["url"]
 
 
 def test_share_profile_hides_fields_the_member_marked_private() -> None:
