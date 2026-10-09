@@ -45,10 +45,6 @@ export function getCommunityConfig() {
   return fetchJson<CommunityConfig>("/api/v1/community/config");
 }
 
-export function getCommunityMe() {
-  return fetchJson<CommunityAccount>("/api/v1/community/me");
-}
-
 export function setCommunityUsername(username: string) {
   const payload: UsernameUpdate = { username };
   return jsonRequest<CommunityAccount>("/api/v1/community/profile/username", "POST", payload);

@@ -6,7 +6,7 @@ import { CommunityAdminPanel } from "../components/CommunityAdminPanel";
 import { FormattedText } from "../components/FormattedText";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { formatDateTime } from "../lib/format";
-import { formatDate, MapWithIcon, TuningPartWithIcon, VehicleWithIcon } from "../lib/legacyDisplay";
+import { formatDate, TuningPartWithIcon } from "../lib/legacyDisplay";
 import {
   addMap,
   addTuningPart,

@@ -1,4 +1,4 @@
-import type { ReactNode, SyntheticEvent } from "react";
+import type { SyntheticEvent } from "react";
 
 import { COUNTRIES, COUNTRY_ALIASES } from "./countries";
 
@@ -268,8 +268,4 @@ export function setupPartsLabel(parts: unknown): string {
       .join(", ");
   }
   return asText(parts);
-}
-
-export function renderMaybeText(value: ReactNode) {
-  return value === "" ? null : value;
 }

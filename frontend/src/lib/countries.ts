@@ -20,10 +20,6 @@ export function compareCountryNames(a: string, b: string): number {
   return COUNTRY_NAME_COLLATOR.compare(a, b);
 }
 
-export function compareCountryOptions(a: CountryOption, b: CountryOption): number {
-  return compareCountryNames(a.name, b.name);
-}
-
 export const COUNTRIES: CountryOption[] = entries.map(({ code, name }) => ({ code, name }));
 
 export const COUNTRY_NAMES: Record<string, string> = Object.fromEntries(

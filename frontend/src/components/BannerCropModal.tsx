@@ -4,7 +4,6 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 
 const BANNER_RATIO = 3.6;
-const MAX_ZOOM_MULTIPLIER = 8;
 
 type BannerCropModalProps = {
   file: File;

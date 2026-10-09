@@ -51,7 +51,6 @@ def _load_terms() -> dict[str, frozenset[str]]:
 
 
 _TERMS = _load_terms()
-PROFANITY_TERMS = frozenset().union(*_TERMS.values())
 RESERVED_NAMES = frozenset(
     """
     admin administrator mod moderator staff support

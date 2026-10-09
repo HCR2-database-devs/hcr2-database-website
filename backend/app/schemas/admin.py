@@ -1,5 +1,3 @@
-from typing import Any
-
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
@@ -121,6 +119,3 @@ class BanIPRequest(AdminPayload):
         default=None,
         validation_alias=AliasChoices("expiresAt", "expires_at"),
     )
-
-
-AdminResponse = dict[str, Any]

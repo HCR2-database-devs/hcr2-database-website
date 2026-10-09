@@ -97,7 +97,7 @@ function AdminProfileForm({
       if (action === "resetBanner") return adminResetBanner(profile.id);
       return adminResetProfile(profile.id);
     },
-    onSuccess: (result, action) => {
+    onSuccess: (_result, action) => {
       const label =
         action === "disable"
           ? "disabled"

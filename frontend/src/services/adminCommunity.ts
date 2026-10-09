@@ -1,6 +1,5 @@
 import type {
   AdminCommunityProfileListResponse,
-  AdminCommunityProfile,
   AdminCommunityReport,
   AdminCommunityReportListResponse,
   AdminProfileDetail,

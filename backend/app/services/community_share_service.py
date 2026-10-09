@@ -39,7 +39,6 @@ _EMBED_ACCENT = 0x0F766E
 
 #: Discord truncates beyond these; staying under keeps the card intact.
 _MAX_TEXT = 400
-_MAX_TITLE = 250
 _MAX_DESCRIPTION = 4000
 
 _SITE_NAME = "hcr2.xyz"
@@ -49,7 +48,6 @@ _FALLBACK_LOGO = "/img/hcrdatabaselogo.png"
 #: hashes when a member changes their avatar, which makes the stored URL 404 and
 #: breaks the embed, so we verify before embedding and fall back to the logo.
 _AVATAR_CHECK_TTL_SECONDS = 3600
-_AVATAR_CHECK_TIMEOUT_SECONDS = 3.0
 
 #: Maps each emoji-prefixed detail line to the short label used in the
 #: Open Graph description, which has no room for emoji or full sentences.

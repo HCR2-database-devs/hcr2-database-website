@@ -11,7 +11,6 @@ from PIL import Image, ImageDraw, ImageFont
 
 from app.db.session import DatabaseConfig, open_connection
 
-
 _ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 _FONT_BOLD = _ASSETS_DIR / "fonts" / "DejaVuSans-Bold.ttf"
 _FONT_REGULAR = _ASSETS_DIR / "fonts" / "DejaVuSans.ttf"
@@ -34,7 +33,6 @@ _TEXT = (226, 232, 240)
 _MUTED = (148, 163, 184)
 _GREEN = (74, 222, 128)
 _ORANGE = (251, 146, 60)
-_RED = (248, 113, 113)
 
 
 class RecordNotFound(ValueError):
@@ -270,7 +268,6 @@ class ShareService:
         font_body = _load_font(regular_path, 25)
         font_label = _load_font(bold_path, 19)
         font_small = _load_font(regular_path, 18)
-        font_badge = _load_font(bold_path, 21)
 
         image = self._gradient(
             _CANVAS_WIDTH,

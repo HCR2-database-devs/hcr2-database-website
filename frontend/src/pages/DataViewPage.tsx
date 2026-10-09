@@ -11,7 +11,6 @@ import {
   formatDistance,
   MapWithIcon,
   normalizeCountryDisplay,
-  setupPartsLabel,
   TuningPartWithIcon,
   TuningPartsIcons,
   VehicleWithIcon
@@ -486,14 +485,6 @@ function useMediaQuery(query: string): boolean {
 }
 
 import { shareCardImageUrl } from "../services/api";
-
-function DownloadBtn({ label, href }: { label: string; href?: string }) {
-  return href ? (
-    <a className="share-btn share-btn--download" href={href} download>
-      {label}
-    </a>
-  ) : null;
-}
 
 function ShareButton({ recordId, shareUrl }: { recordId: string; shareUrl: string }) {
   const [state, setState] = useState<"idle" | "loading" | "copied" | "done">("idle");
