@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.compat import router as compatibility_router
+from app.api.share_short import router as share_short_router
 from app.api.v1.router import api_router
 from app.core.config import get_settings
 
@@ -29,6 +30,8 @@ def create_app() -> FastAPI:
 
     app.include_router(api_router, prefix="/api/v1")
     app.include_router(compatibility_router)
+    # Root-level short links such as /u/1234. Nginx must proxy this prefix.
+    app.include_router(share_short_router)
 
     @app.get("/health", tags=["health"])
     def root_health() -> dict[str, str]:

@@ -124,17 +124,26 @@ class CommunityShareService:
         subheading = _text(f"-# {_clip(f'hcr2.xyz #{user_id} · Member since {member_since}', 200)}")
 
         children: list[dict[str, Any]] = []
+
+        # A Section REQUIRES an accessory; Discord rejects the whole payload
+        # otherwise (BASE_TYPE_REQUIRED) and falls back to a bare OG card.
+        # Fall back to the site logo when the member hides their avatar.
         avatar = discord_avatar_url(account["discord_id"], account["discord_avatar"])
         if account["show_discord_avatar"] and avatar:
-            children.append(
-                {
-                    "type": _SECTION,
-                    "components": [heading, subheading],
-                    "accessory": _thumbnail(avatar, f"{username}'s avatar"),
-                }
-            )
+            accessory = _thumbnail(avatar, f"{username}'s avatar")
         else:
-            children.append({"type": _SECTION, "components": [heading, subheading]})
+            accessory = _thumbnail(
+                f"{self.base_url()}{_FALLBACK_LOGO}",
+                f"{_SITE_NAME} logo",
+            )
+
+        children.append(
+            {
+                "type": _SECTION,
+                "components": [heading, subheading],
+                "accessory": accessory,
+            }
+        )
 
         if details:
             children.append(_text(*details))

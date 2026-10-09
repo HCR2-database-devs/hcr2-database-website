@@ -8,7 +8,8 @@ from app.main import create_app
 from app.services.community_account_service import CommunityAccountService, build_api_profile
 
 API_KEY = "dev-api-key"
-ENDPOINT = "/api/v1/community-api/users/1"
+DISCORD_ID = "799318328464113704"
+ENDPOINT = f"/api/v1/community-api/users/{DISCORD_ID}"
 
 _MISSING = object()
 
@@ -16,7 +17,7 @@ _MISSING = object()
 def _account(**overrides: Any) -> dict[str, Any]:
     account = {
         "id": 1,
-        "discord_id": "10001",
+        "discord_id": DISCORD_ID,
         "discord_username": "Name 10001",
         "discord_avatar": "a_1f2e3a",
         "username": "Nick 1",
@@ -50,8 +51,8 @@ class StubCommunityUserRepository:
     def __init__(self, account: dict[str, Any] | None) -> None:
         self.account = account
 
-    def get_by_id(self, user_id: int) -> dict[str, Any] | None:
-        if self.account is None or self.account["id"] != user_id:
+    def get_by_discord_id(self, discord_id: str) -> dict[str, Any] | None:
+        if self.account is None or self.account["discord_id"] != discord_id:
             return None
         return dict(self.account)
 
@@ -100,13 +101,52 @@ def test_community_api_profile_returns_unknown_user_as_not_found() -> None:
     assert response.status_code == 404
 
 
+def test_community_api_profile_rejects_internal_sequence_id() -> None:
+    """The site id is no longer accepted; only Discord snowflakes are."""
+    response = _client().get("/api/v1/community-api/users/1?api_key=dev-api-key")
+
+    assert response.status_code == 422
+
+
+def test_community_api_profile_rejects_non_numeric_id() -> None:
+    response = _client().get(f"/api/v1/community-api/users/not-a-snowflake?api_key={API_KEY}")
+
+    assert response.status_code == 422
+
+
+def test_community_api_profile_rejects_id_that_is_too_short() -> None:
+    response = _client().get("/api/v1/community-api/users/12345?api_key=dev-api-key")
+
+    assert response.status_code == 422
+
+
+def test_community_api_profile_rejects_id_that_is_too_long() -> None:
+    response = _client().get(f"/api/v1/community-api/users/{'9' * 21}?api_key={API_KEY}")
+
+    assert response.status_code == 422
+
+
+def test_community_api_profile_rejects_sql_injection_attempt() -> None:
+    response = _client().get("/api/v1/community-api/users/1%20OR%201=1?api_key=dev-api-key")
+
+    assert response.status_code == 422
+
+
+def test_community_api_profile_preserves_snowflake_precision() -> None:
+    """Snowflakes exceed 2^53, so the id must survive as a string."""
+    response = _client().get(f"{ENDPOINT}?api_key={API_KEY}")
+
+    assert response.status_code == 200
+    assert response.json()["discord_id"] == DISCORD_ID
+
+
 def test_community_api_profile_returns_full_account() -> None:
     response = _client().get(f"{ENDPOINT}?api_key={API_KEY}")
 
     assert response.status_code == 200
     body = response.json()
     assert body["username"] == "Nick 1"
-    assert body["discord_id"] == "10001"
+    assert body["discord_id"] == DISCORD_ID
     assert body["discord_username"] == "Name 10001"
     assert body["bio"] == "I love Countryside"
     assert body["country"] == "fi"
@@ -124,7 +164,7 @@ def test_community_api_profile_builds_absolute_avatar_url() -> None:
     assert response.status_code == 200
     assert (
         response.json()["discord_avatar"]
-        == "https://cdn.discordapp.com/avatars/10001/a_1f2e3a.gif"
+        == f"https://cdn.discordapp.com/avatars/{DISCORD_ID}/a_1f2e3a.gif"
     )
 
 

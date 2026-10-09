@@ -14,6 +14,9 @@ from app.services.community_share_service import CommunityShareService, ProfileN
 
 SITE_URL = "https://hcr2.test"
 SHARE_PATH = "/api/v1/share/profiles/1"
+SHORT_PATH = "/u/1"
+
+_SECTION_TYPE = 9
 
 
 def _account(**overrides: Any) -> dict[str, Any]:
@@ -155,12 +158,45 @@ def test_share_profile_embed_uses_avatar_thumbnail_when_published(client: TestCl
     )
 
 
-def test_share_profile_embed_omits_thumbnail_when_avatar_hidden() -> None:
-    service = _service(_account(show_discord_avatar=False))
-    embed = service.profile_page(1)
-    section = embed[embed.index('"type":9') :]
+def test_share_profile_embed_falls_back_to_logo_when_avatar_hidden() -> None:
+    """A Section requires an accessory; omitting it makes Discord drop the embed."""
+    embed = _parse_embed(_service(_account(show_discord_avatar=False)).profile_page(1))
+    section = _sections(embed)[0]
 
-    assert '"accessory"' not in section.split('"type":14')[0]
+    assert section["accessory"]["type"] == 11
+    assert section["accessory"]["media"]["url"] == f"{SITE_URL}/img/hcrdatabaselogo.png"
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {},
+        {"show_discord_avatar": False},
+        {"show_discord_avatar": False, "discord_avatar": None},
+        {"show_discord_avatar": True, "discord_avatar": None},
+        {"show_discord_avatar": False, "show_bio": False},
+    ],
+    ids=["avatar-public", "avatar-hidden", "no-avatar-value", "hidden-and-no-value", "minimal"],
+)
+def test_every_share_embed_section_carries_an_accessory(overrides: dict[str, Any]) -> None:
+    """Regression: Discord rejects the payload if any Section lacks an accessory."""
+    embed = _parse_embed(_service(_account(**overrides)).profile_page(1))
+    sections = _sections(embed)
+
+    assert sections, "expected at least one Section"
+    assert all("accessory" in section for section in sections)
+
+
+def _sections(embed: dict[str, Any]) -> list[dict[str, Any]]:
+    return [c for c in embed["component"]["components"] if c["type"] == _SECTION_TYPE]
+
+
+def test_share_profile_never_leaks_a_hidden_avatar_into_the_embed() -> None:
+    embed = _parse_embed(
+        _service(_account(show_discord_avatar=False, discord_avatar="a_1f2e3a")).profile_page(1)
+    )
+
+    assert "cdn.discordapp.com" not in json.dumps(embed)
 
 
 def test_share_profile_hides_fields_the_member_marked_private() -> None:
@@ -299,3 +335,42 @@ def test_share_url_strips_trailing_slash_from_site_url() -> None:
 
     assert service.share_url(1) == "https://hcr2.test/api/v1/share/profiles/1"
     assert service.profile_url(1) == "https://hcr2.test/community/1"
+
+def test_short_link_redirects_to_canonical_share_url(client: TestClient) -> None:
+    # TestClient follows redirects by default; assert on the hop itself.
+    response = client.get(SHORT_PATH, follow_redirects=False)
+
+    assert response.status_code == 301
+    assert response.headers["location"] == f"{SITE_URL}/api/v1/share/profiles/1"
+
+
+def test_short_link_redirect_is_permanent(client: TestClient) -> None:
+    assert client.get(SHORT_PATH, follow_redirects=False).status_code == 301
+
+
+def test_short_link_404s_for_private_profile() -> None:
+    assert _app(_account(profile_public=False)).get(SHORT_PATH).status_code == 404
+
+
+def test_short_link_404s_for_unknown_profile() -> None:
+    app = create_app()
+    app.dependency_overrides[get_settings] = lambda: Settings(PUBLIC_SITE_URL=SITE_URL)
+    app.dependency_overrides[dependencies.get_community_share_service] = (
+        lambda: CommunityShareService(
+            community_service=CommunityAccountService(StubRepository(None)),
+            site_url=SITE_URL,
+        )
+    )
+
+    assert TestClient(app).get(SHORT_PATH).status_code == 404
+
+
+def test_short_link_rejects_zero_id(client: TestClient) -> None:
+    assert client.get("/u/0").status_code == 422
+
+
+def test_canonical_page_is_reachable_after_redirect(client: TestClient) -> None:
+    """The redirect target must actually render, or the short link is a dead end."""
+    target = client.get(SHORT_PATH, follow_redirects=False).headers["location"]
+
+    assert client.get(target).status_code == 200

@@ -199,8 +199,25 @@ server {
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
+
+    # Short profile share links (/u/1234). Must come BEFORE the SPA fallback
+    # above, otherwise try_files would serve index.html and Discord would see
+    # no embed metadata.
+    location ~ ^/u/[0-9]+$ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }
 ```
+
+Without the `/u/` location, `https://hcr2.xyz/u/1234` resolves to the React
+`index.html` and pastes into Discord as a bare link with no profile card. The
+backend serves this path directly because it must render Open Graph and
+`discord:component-embed` tags server-side; Discord's crawler does not execute
+JavaScript, so the SPA route alone cannot produce an embed.
 
 The Cloudflare ranges above are the published IPv4 and IPv6 edge ranges. Keep this list synchronized with the official Cloudflare IP list before each deployment. The origin must only be reachable through Cloudflare: restrict the host firewall or provider firewall so direct requests cannot bypass the trusted proxy layer. Uvicorn trusts only the local Nginx peer via `--forwarded-allow-ips=127.0.0.1`; do not widen that value to `*` or to client networks. Nginx overwrites `X-Forwarded-For` with the trusted client address rather than appending an untrusted incoming value.
 

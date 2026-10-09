@@ -186,10 +186,10 @@ export function communityBannerUrl(communityId: number, bannerUpdatedAt?: string
 }
 
 /**
- * Shareable profile link. This points at the server-rendered share page rather
- * than the SPA route on purpose: Discord fetches pasted links without running
- * JavaScript, so only the share page carries the embed metadata.
+ * Short shareable profile link (`/u/{id}`). Resolves to the canonical
+ * `/api/v1/share/profiles/{id}` page, which is what carries the Discord embed
+ * metadata — so this is also the correct link to paste into a channel.
  */
 export function communityProfileShareUrl(communityId: number): string {
-  return `${apiBaseUrl}/api/v1/share/profiles/${communityId}`;
+  return `${apiBaseUrl}/u/${communityId}`;
 }

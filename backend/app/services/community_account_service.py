@@ -313,14 +313,17 @@ class CommunityAccountService:
             return None
         return _public_profile(account, is_owner)
 
-    def get_api_profile(self, user_id: int) -> dict[str, Any] | None:
-        """Full profile for API-key consumers, bypassing member privacy settings.
+    def get_api_profile(self, discord_id: str) -> dict[str, Any] | None:
+        """Full profile for API-key consumers, keyed by Discord ID.
+
+        Discord ID rather than the internal ``community_user.id`` because the
+        primary consumer is a Discord bot, which only ever holds snowflakes.
 
         Moderator-disabled accounts are still withheld: that is an admin
         decision rather than a member's own choice. Everything else is returned
         in full, with ``*_private`` markers where the member hid a field.
         """
-        account = self.repository.get_by_id(user_id)
+        account = self.repository.get_by_discord_id(discord_id)
         if account is None or account["admin_disabled"]:
             return None
         return build_api_profile(account)
