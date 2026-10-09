@@ -1,4 +1,5 @@
 import io
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -64,6 +65,102 @@ class CommunityProfileError(Exception):
         super().__init__(message)
         self.message = message
         self.status_code = status_code
+
+
+@dataclass(frozen=True, slots=True)
+class ProfileField:
+    """One field of the API-key profile payload.
+
+    ``source`` is the key to read from the repository row. ``transform`` derives
+    the value from ``(account, raw_value)`` (avatar URL, boolean flags, ...).
+    ``visibility_flag`` is the ``show_*`` column governing whether the member
+    chose to publish this field; when set, the payload gains a ``<name>_private``
+    boolean so consumers can tell "hidden by the member" from "genuinely empty".
+    """
+
+    name: str
+    source: str
+    transform: Callable[[dict[str, Any], Any], Any] | None = None
+    visibility_flag: str | None = None
+
+
+def _avatar_url(account: dict[str, Any], avatar: Any) -> str | None:
+    return discord_avatar_url(account["discord_id"], avatar)
+
+
+def _is_set(_account: dict[str, Any], value: Any) -> bool:
+    return value is not None and value != ""
+
+
+#: Declarative source of truth for ``GET /api/v1/community-api/users/{user_id}``.
+#:
+#: The API key grants trusted access, so every column is returned regardless of
+#: the member's ``profile_public`` / ``show_*`` choices. Fields the member has
+#: marked private are still present but flagged, never hidden.
+#:
+#: To expose another profile value, add one row here. Only a genuinely new
+#: database column additionally requires an entry in ``PROFILE_COLUMNS``
+#: (backend/app/repositories/community_user.py).
+API_PROFILE_FIELDS: tuple[ProfileField, ...] = (
+    ProfileField("id", "id"),
+    ProfileField("discord_id", "discord_id"),
+    ProfileField("username", "username"),
+    ProfileField("created_at", "created_at"),
+    ProfileField("updated_at", "updated_at"),
+    ProfileField("last_username_change_at", "last_username_change_at"),
+    ProfileField("discord_username", "discord_username", visibility_flag="show_discord_username"),
+    ProfileField("discord_avatar", "discord_avatar", _avatar_url, "show_discord_avatar"),
+    ProfileField("bio", "bio", visibility_flag="show_bio"),
+    ProfileField("country", "country", visibility_flag="show_country"),
+    ProfileField(
+        "favorite_vehicle_id",
+        "favorite_vehicle_id",
+        visibility_flag="show_favorite_vehicle",
+    ),
+    ProfileField(
+        "favorite_vehicle_name",
+        "favorite_vehicle_name",
+        visibility_flag="show_favorite_vehicle",
+    ),
+    ProfileField(
+        "favorite_map_id",
+        "favorite_map_id",
+        visibility_flag="show_favorite_map",
+    ),
+    ProfileField(
+        "favorite_map_name",
+        "favorite_map_name",
+        visibility_flag="show_favorite_map",
+    ),
+    ProfileField("has_banner", "banner_updated_at", _is_set),
+    ProfileField("banner_updated_at", "banner_updated_at"),
+    ProfileField("profile_public", "profile_public"),
+    ProfileField("admin_disabled", "admin_disabled"),
+)
+
+#: Keys describing the member's own privacy settings, echoed so consumers can
+#: interpret the ``*_private`` markers without a second request.
+API_PROFILE_VISIBILITY_FLAGS: tuple[str, ...] = (
+    "show_bio",
+    "show_country",
+    "show_favorite_vehicle",
+    "show_favorite_map",
+    "show_discord_username",
+    "show_discord_avatar",
+)
+
+
+def build_api_profile(account: dict[str, Any]) -> dict[str, Any]:
+    """Serialize a repository row into the API-key profile payload."""
+    profile: dict[str, Any] = {}
+    for spec in API_PROFILE_FIELDS:
+        raw = account.get(spec.source)
+        profile[spec.name] = spec.transform(account, raw) if spec.transform else raw
+        if spec.visibility_flag is not None:
+            profile[f"{spec.name}_private"] = not bool(account.get(spec.visibility_flag))
+    for flag in API_PROFILE_VISIBILITY_FLAGS:
+        profile[flag] = bool(account.get(flag))
+    return profile
 
 
 @dataclass(frozen=True, slots=True)
@@ -215,6 +312,18 @@ class CommunityAccountService:
         if not is_owner and account["username"] is None:
             return None
         return _public_profile(account, is_owner)
+
+    def get_api_profile(self, user_id: int) -> dict[str, Any] | None:
+        """Full profile for API-key consumers, bypassing member privacy settings.
+
+        Moderator-disabled accounts are still withheld: that is an admin
+        decision rather than a member's own choice. Everything else is returned
+        in full, with ``*_private`` markers where the member hid a field.
+        """
+        account = self.repository.get_by_id(user_id)
+        if account is None or account["admin_disabled"]:
+            return None
+        return build_api_profile(account)
 
     def list_members(
         self,

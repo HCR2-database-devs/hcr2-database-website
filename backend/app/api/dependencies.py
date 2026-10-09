@@ -1,6 +1,7 @@
+import secrets
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, Request
 
 from app.core.config import Settings, get_settings
 from app.repositories.changelog import PostgresChangelogRepository
@@ -23,6 +24,25 @@ from app.services.share_service import ShareService
 from app.services.stats_service import StatsService
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
+
+
+def get_api_key(request: Request) -> str | None:
+    return request.query_params.get("api_key") or request.headers.get("X-API-Key")
+
+
+def api_key_authorized(request: Request, settings: SettingsDep) -> bool:
+    """Return True when the caller supplied a key listed in ``API_KEYS``.
+
+    Comparison is constant-time. Returns a bool rather than raising so each
+    route can pick its own error shape.
+    """
+    api_key = get_api_key(request)
+    if not api_key:
+        return False
+    return any(secrets.compare_digest(api_key, candidate) for candidate in settings.api_keys)
+
+
+ApiKeyAuthorizedDep = Annotated[bool, Depends(api_key_authorized)]
 
 
 def get_public_data_service() -> PublicDataService:

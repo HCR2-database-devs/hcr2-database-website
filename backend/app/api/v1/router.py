@@ -5,6 +5,7 @@ from app.api.v1.admin import router as admin_router
 from app.api.v1.admin_community import router as admin_community_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.community import router as community_router
+from app.api.v1.community_api import router as community_api_router
 from app.api.v1.health import router as health_router
 from app.api.v1.notifications import router as notifications_router
 from app.api.v1.public import router as public_router
@@ -19,6 +20,7 @@ api_router.include_router(admin_community_router)
 api_router.include_router(auth_router)
 api_router.include_router(notifications_router)
 api_router.include_router(community_router)
+api_router.include_router(community_api_router)
 api_router.include_router(health_router)
 api_router.include_router(public_router)
 api_router.include_router(share_router)
