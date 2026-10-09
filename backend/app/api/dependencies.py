@@ -17,6 +17,7 @@ from app.services.changelog_service import ChangelogService
 from app.services.community_account_service import CommunityAccountService
 from app.services.community_moderation_service import CommunityModerationService
 from app.services.community_notification_service import CommunityNotificationService
+from app.services.community_share_service import CommunityShareService
 from app.services.news_service import NewsService
 from app.services.public_data_service import PublicDataService
 from app.services.public_submission_service import PublicSubmissionService
@@ -101,3 +102,10 @@ def get_stats_service() -> StatsService:
 
 def get_share_service() -> ShareService:
     return ShareService()
+
+
+def get_community_share_service(settings: SettingsDep) -> CommunityShareService:
+    return CommunityShareService(
+        community_service=get_community_account_service(),
+        site_url=settings.public_site_url,
+    )

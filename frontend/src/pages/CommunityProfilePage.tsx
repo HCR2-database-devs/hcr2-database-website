@@ -6,6 +6,7 @@ import { BannerImage } from "../components/BannerImage";
 import { BetaBadge } from "../components/BetaBadge";
 import { BugReportNotice } from "../components/BugReportNotice";
 import { CountryFlag } from "../components/CountryFlag";
+import { CopyProfileLinkButton } from "../components/CopyProfileLinkButton";
 import { FeatureGate } from "../components/FeatureGate";
 import { PlannedFeatures } from "../components/PlannedFeatures";
 import { ReportProfileModal } from "../components/ReportProfileModal";
@@ -134,11 +135,18 @@ function CommunityProfileContent() {
               <p className="community-profile-discord">Discord: @{profile.discord_username}</p>
             )}
           </div>
-          {canReport && (
-            <button className="button-ghost community-report-btn" type="button" onClick={() => setReportOpen(true)}>
-              Report Profile
-            </button>
-          )}
+          <div className="community-profile-actions">
+            <CopyProfileLinkButton communityId={profile.id} />
+            {canReport && (
+              <button
+                className="button-ghost community-report-btn"
+                type="button"
+                onClick={() => setReportOpen(true)}
+              >
+                Report Profile
+              </button>
+            )}
+          </div>
         </div>
 
         <dl className="community-profile-details">

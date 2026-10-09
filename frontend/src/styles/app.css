@@ -4800,6 +4800,30 @@ tbody tr:hover {
   align-self: flex-start;
 }
 
+.account-profile-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.account-profile-actions .account-view-profile {
+  margin-top: 0;
+}
+
+.community-profile-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.community-profile-actions .community-report-btn {
+  margin-left: 0;
+}
+
 /* ---------- Frontend messages ---------- */
 
 .frontend-message {
@@ -5035,6 +5059,12 @@ tbody tr:hover {
 
   .community-report-btn {
     margin-left: 0;
+  }
+
+  .community-profile-actions {
+    justify-content: center;
+    margin-left: 0;
+    width: 100%;
   }
 
   .admin-profile-row-meta:nth-child(n + 4) {

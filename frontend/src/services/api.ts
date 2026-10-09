@@ -1,4 +1,4 @@
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
+export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export function shareCardImageUrl(recordId: number | string): string {
   return `${apiBaseUrl}/api/v1/share/records/${encodeURIComponent(String(recordId))}.png`;

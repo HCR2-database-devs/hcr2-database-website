@@ -4,9 +4,10 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
 
-from app.api.dependencies import get_share_service
+from app.api.dependencies import get_community_share_service, get_share_service
 from app.api.responses import DATABASE_ERROR_TYPES, database_error_response
 from app.services.admin_service import maintenance_flag_path
+from app.services.community_share_service import CommunityShareService, ProfileNotFound
 from app.services.share_service import RecordNotFound, ShareService
 
 
@@ -18,6 +19,7 @@ def _check_maintenance() -> None:
 router = APIRouter(prefix="/share", tags=["share"], dependencies=[Depends(_check_maintenance)])
 
 ShareServiceDep = Annotated[ShareService, Depends(get_share_service)]
+CommunityShareServiceDep = Annotated[CommunityShareService, Depends(get_community_share_service)]
 
 
 @router.get("/records/{record_id}.png")
@@ -46,6 +48,23 @@ def share_record_page(record_id: int, service: ShareServiceDep) -> Any:
         page = service.share_page(record_id)
     except RecordNotFound:
         raise HTTPException(status_code=404, detail="Record not found") from None
+    except DATABASE_ERROR_TYPES as exc:
+        return database_error_response(exc)  # type: ignore[return-value]
+    return HTMLResponse(content=page)
+
+
+@router.get("/profiles/{user_id}", response_class=HTMLResponse)
+def share_profile_page(user_id: int, service: CommunityShareServiceDep) -> Any:
+    """Render the shareable page for a community profile.
+
+    Discord fetches this URL without cookies or JavaScript, so it must render
+    Open Graph tags plus a ``discord:component-embed`` payload server-side.
+    Respects the member's privacy settings; private profiles 404.
+    """
+    try:
+        page = service.profile_page(user_id)
+    except ProfileNotFound:
+        raise HTTPException(status_code=404, detail="Profile not found") from None
     except DATABASE_ERROR_TYPES as exc:
         return database_error_response(exc)  # type: ignore[return-value]
     return HTMLResponse(content=page)

@@ -8,7 +8,7 @@ import type {
   ReportCategory,
   UsernameUpdate
 } from "../types/api";
-import { fetchJson } from "./api";
+import { apiBaseUrl, fetchJson } from "./api";
 
 export function communityDisplayName(
   profile: Pick<CommunityAccount | CommunityMember, "username" | "discord_username"> | null | undefined
@@ -183,4 +183,13 @@ export function reportCommunityProfile(id: number, category: ReportCategory, rea
 export function communityBannerUrl(communityId: number, bannerUpdatedAt?: string | null): string | null {
   if (!bannerUpdatedAt) return null;
   return `/api/v1/community/${communityId}/banner?v=${encodeURIComponent(bannerUpdatedAt)}`;
+}
+
+/**
+ * Shareable profile link. This points at the server-rendered share page rather
+ * than the SPA route on purpose: Discord fetches pasted links without running
+ * JavaScript, so only the share page carries the embed metadata.
+ */
+export function communityProfileShareUrl(communityId: number): string {
+  return `${apiBaseUrl}/api/v1/share/profiles/${communityId}`;
 }

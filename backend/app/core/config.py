@@ -77,6 +77,10 @@ class Settings(BaseSettings):
         validation_alias="CORS_ORIGINS",
     )
 
+    # Absolute public origin, used to build share/embed URLs that Discord and
+    # other crawlers can fetch. Must not include a trailing slash.
+    public_site_url: str = Field(default="https://hcr2.xyz", validation_alias="PUBLIC_SITE_URL")
+
     # Feature flags. Valid values: DISABLED, BETA, ENABLED (see app/core/features.py).
     feature_discord_accounts: str = Field(
         default="ENABLED",

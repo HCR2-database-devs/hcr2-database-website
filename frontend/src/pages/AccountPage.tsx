@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import { CopyProfileLinkButton } from "../components/CopyProfileLinkButton";
 import { ProfileSettingsSection } from "../components/ProfileSettingsSection";
 import { UserAvatar } from "../components/UserAvatar";
 import { useAuthStatus } from "../hooks/useAuthStatus";
@@ -98,9 +99,12 @@ export function AccountPage() {
         </dl>
 
         {community && canViewProfile && (
-          <Link className="button account-view-profile" to={`/community/${community.id}`}>
-            View my public profile
-          </Link>
+          <div className="account-profile-actions">
+            <Link className="button account-view-profile" to={`/community/${community.id}`}>
+              View my public profile
+            </Link>
+            <CopyProfileLinkButton communityId={community.id} />
+          </div>
         )}
       </div>
 
