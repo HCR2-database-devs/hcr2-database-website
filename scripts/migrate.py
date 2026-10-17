@@ -236,6 +236,30 @@ _TRANSACTION_CONTROL = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 
+#: Opening delimiter of a dollar-quoted body: ``$$`` or ``$tag$``.
+_DOLLAR_OPEN = re.compile(r"\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$")
+
+
+def _split_dollar_quoted(sql: str) -> list[tuple[bool, str]]:
+    """Split SQL into ``(is_quoted, text)`` chunks on dollar-quote boundaries."""
+    chunks: list[tuple[bool, str]] = []
+    pos = 0
+    while True:
+        opening = _DOLLAR_OPEN.search(sql, pos)
+        if opening is None:
+            chunks.append((False, sql[pos:]))
+            return chunks
+        chunks.append((False, sql[pos : opening.start()]))
+        tag = opening.group(0)
+        closing = sql.find(tag, opening.end())
+        if closing == -1:
+            # Unterminated body: treat the remainder as quoted rather than
+            # rewriting it, so the database reports the real error.
+            chunks.append((True, sql[opening.start() :]))
+            return chunks
+        chunks.append((True, sql[opening.start() : closing + len(tag)]))
+        pos = closing + len(tag)
+
 
 def _scrub_transaction_control(sql: str) -> str:
     """
@@ -243,8 +267,16 @@ def _scrub_transaction_control(sql: str) -> str:
 
     The runner wraps each migration in its own transaction, so any
     transaction-control statements in the file would conflict.
+
+    Text inside a dollar-quoted body is left untouched: a
+    ``DO $$ BEGIN ... END $$;`` block is PL/pgSQL, and its bare ``BEGIN`` and
+    ``END`` lines belong to that block. Removing them turns the DO into a syntax
+    error, which is how every ``DO $$`` migration used to fail here.
     """
-    scrubbed = _TRANSACTION_CONTROL.sub("", sql)
+    scrubbed = "".join(
+        chunk if quoted else _TRANSACTION_CONTROL.sub("", chunk)
+        for quoted, chunk in _split_dollar_quoted(sql)
+    )
     return scrubbed.strip()
 
 
