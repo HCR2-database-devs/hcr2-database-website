@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AdminProfileModal } from "./AdminProfileModal";
+import { Hcr2LinkAdminPanel } from "./Hcr2LinkAdminPanel";
 import { UserAvatar } from "./UserAvatar";
 import {
   adminRejectReport,
@@ -14,7 +15,7 @@ import { formatMemberSince } from "../lib/format";
 
 const PAGE_SIZE = 20;
 
-type SubTab = "profiles" | "reports";
+type SubTab = "profiles" | "reports" | "hcr2Links";
 
 const REPORT_STATUSES = [
   { value: "open", label: "Open" },
@@ -101,6 +102,13 @@ export function CommunityAdminPanel() {
         >
           Reports
           <span className="admin-subtab-count">{reportsStatus === "" ? "all" : reportsStatus}</span>
+        </button>
+        <button
+          type="button"
+          className={`admin-subtab${subTab === "hcr2Links" ? " admin-subtab--active" : ""}`}
+          onClick={() => setSubTab("hcr2Links")}
+        >
+          HCR2 account links
         </button>
       </nav>
 
@@ -288,6 +296,8 @@ export function CommunityAdminPanel() {
           )}
         </div>
       )}
+
+      {subTab === "hcr2Links" && <Hcr2LinkAdminPanel />}
 
       {selectedProfileId != null && (
         <AdminProfileModal

@@ -388,6 +388,7 @@ def _client() -> tuple[TestClient, FakeCommunityAccountService]:
 def _beta_client() -> tuple[TestClient, FakeCommunityAccountService]:
     app = create_app()
     app.dependency_overrides[get_settings] = lambda: Settings(
+        _env_file=None,
         API_KEYS="dev-api-key",
         BETA_DISCORD_IDS="beta-user",
         ALLOWED_DISCORD_IDS="admin",
@@ -815,6 +816,7 @@ def test_auth_status_sends_features_and_no_beta_for_logged_out() -> None:
             "community_members": "BETA",
             "profile_reporting": "BETA",
             "community_notifications": "BETA",
+            "hcr2_account_linking": "BETA",
         },
     }
 

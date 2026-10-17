@@ -300,6 +300,8 @@ a:hover {
 .filter-btn,
 .form-container button,
 .profile-settings-form button,
+.hcr2-link-card button,
+.hcr2-admin-panel button,
 .admin-button-link,
 .note-btn,
 .share-btn,
@@ -2978,6 +2980,29 @@ tbody tr:hover {
   margin-top: 4px;
 }
 
+/* The linked HCR2 name carries a status pill plus a date, so it needs a little
+   more room than the plain single-value rows above. */
+.account-details-linked {
+  grid-column: 1 / -1;
+}
+
+.account-details-linked dd {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.account-details-linked-name {
+  overflow-wrap: anywhere;
+}
+
+.account-details-linked-since {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .maintenance-card {
   text-align: center;
 }
@@ -4670,5 +4695,661 @@ tbody tr:hover {
 
   .admin-profile-row-meta:nth-child(n + 4) {
     display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Phase 4: HCR2 player account linking
+   Reuses the existing tokens, field styling and button treatments so the
+   wizard reads as part of the account page rather than a bolted-on widget.
+   --------------------------------------------------------------------------- */
+
+.hcr2-link-card code {
+  background: rgba(4, 10, 38, 0.72);
+  border: 1px solid rgba(93, 132, 235, 0.6);
+  border-radius: var(--radius-sm);
+  color: var(--accent-cyan);
+  font-size: 15px;
+  padding: 2px 8px;
+}
+
+/* -- status ------------------------------------------------------------- */
+
+.hcr2-status-banner {
+  background: rgba(6, 12, 42, 0.52);
+  border: 2px solid var(--border);
+  border-left-width: 6px;
+  border-radius: var(--radius);
+  color: var(--muted-strong);
+  margin: 0;
+  padding: 12px 14px;
+}
+
+.hcr2-status-banner.is-submitted {
+  border-left-color: var(--accent-yellow);
+}
+
+.hcr2-status-banner.is-rejected {
+  border-left-color: var(--danger);
+}
+
+.hcr2-status-banner.is-expired {
+  border-left-color: var(--muted);
+}
+
+.hcr2-link-current {
+  background: var(--surface-subtle);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
+.hcr2-link-current-name {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 20px;
+  gap: 10px;
+  margin: 0;
+}
+
+.hcr2-link-current-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* -- wizard shell ------------------------------------------------------- */
+
+.hcr2-wizard {
+  display: grid;
+  gap: 18px;
+}
+
+.hcr2-wizard-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hcr2-wizard-progress-step {
+  align-items: center;
+  background: var(--surface);
+  border: 2px solid var(--outline);
+  border-radius: 999px;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 8px;
+  padding: 6px 14px 6px 6px;
+}
+
+.hcr2-wizard-progress-step.is-current {
+  border-color: var(--accent-cyan);
+  color: var(--text-strong);
+}
+
+.hcr2-wizard-progress-step.is-done {
+  color: var(--success);
+}
+
+.hcr2-wizard-progress-marker {
+  align-items: center;
+  background: var(--surface-active);
+  border-radius: 999px;
+  color: var(--text-strong);
+  display: inline-flex;
+  font-size: 12px;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+}
+
+.hcr2-wizard-progress-step.is-done .hcr2-wizard-progress-marker {
+  background: var(--success);
+  color: var(--canvas-deep);
+}
+
+.hcr2-wizard-panel {
+  background: rgba(6, 12, 42, 0.52);
+  border: 2px solid rgba(93, 132, 235, 0.74);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.hcr2-wizard-panel h3 {
+  margin: 0;
+}
+
+.hcr2-wizard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.hcr2-step-body {
+  display: grid;
+  gap: 14px;
+}
+
+.hcr2-cancel-request {
+  justify-self: start;
+}
+
+/* -- player name picker ------------------------------------------------- */
+
+.hcr2-player-picker {
+  display: grid;
+  gap: 6px;
+  position: relative;
+}
+
+.hcr2-player-selected {
+  background: var(--surface-subtle);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 12px 14px;
+}
+
+.hcr2-player-selected strong {
+  font-size: 18px;
+}
+
+.hcr2-player-options {
+  background: var(--surface);
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  list-style: none;
+  margin: 4px 0 0;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 4px;
+  position: relative;
+  z-index: 5;
+}
+
+.hcr2-player-option {
+  align-items: center;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 9px 11px;
+}
+
+.hcr2-player-option.is-active,
+.hcr2-player-option:hover {
+  background: var(--surface-hover);
+}
+
+.hcr2-player-option-name {
+  font-weight: 700;
+}
+
+.hcr2-player-option-meta {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.hcr2-player-options-empty {
+  color: var(--muted);
+  padding: 10px 12px;
+}
+
+.hcr2-confirm-row {
+  background: var(--surface-subtle);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.hcr2-confirm-question {
+  margin: 0;
+}
+
+.hcr2-inline-check {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.hcr2-inline-check input {
+  accent-color: var(--accent);
+  height: 16px;
+  width: 16px;
+}
+
+/* -- method cards ------------------------------------------------------- */
+
+.hcr2-method-cards {
+  display: grid;
+  gap: 14px;
+}
+
+.hcr2-method-card {
+  background: var(--surface-subtle);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  padding: 16px;
+}
+
+.hcr2-method-card h4 {
+  margin: 0;
+}
+
+.hcr2-method-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.hcr2-method-list li {
+  color: var(--muted-strong);
+  line-height: 1.5;
+}
+
+/* -- "I did that" claim controls --------------------------------------- */
+
+.hcr2-claim {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.hcr2-claim button {
+  justify-content: center;
+  min-width: 220px;
+}
+
+.hcr2-claim .form-hint {
+  margin: 0;
+}
+
+.hcr2-claim.is-claimed button {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.hcr2-claim-check {
+  align-items: center;
+  background: var(--success);
+  border-radius: 999px;
+  color: var(--canvas-deep);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 900;
+  height: 18px;
+  justify-content: center;
+  width: 18px;
+}
+
+/* A claimed control must not look like an active, clickable action. */
+.hcr2-claim.is-claimed button {
+  cursor: default;
+  opacity: 1;
+}
+
+/* -- warnings and team details ------------------------------------------ */
+
+.hcr2-warn,
+.hcr2-code-warning,
+.hcr2-discord-explainer {
+  background: var(--warning-soft);
+  border: 2px solid var(--warning);
+  border-radius: var(--radius);
+  color: var(--text);
+  line-height: 1.55;
+  margin: 0;
+  padding: 12px 14px;
+}
+
+.hcr2-code-warning code {
+  font-size: 14px;
+  padding: 0 4px;
+}
+
+.hcr2-team-details,
+.hcr2-verify-section {
+  background: var(--surface-subtle);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.hcr2-team-details h4,
+.hcr2-verify-section h4 {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  margin: 0;
+}
+
+.hcr2-verify-section h4::before {
+  align-items: center;
+  background: var(--surface-active);
+  border-radius: 999px;
+  color: var(--text-strong);
+  content: attr(data-step);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 12px;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+}
+
+.hcr2-team-details p {
+  margin: 0;
+}
+
+/* Label / value / copy row, so team credentials line up instead of drifting. */
+.hcr2-detail-row {
+  align-items: center;
+  background: rgba(4, 10, 38, 0.55);
+  border: 2px solid rgba(93, 132, 235, 0.5);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(96px, auto) 1fr auto;
+  padding: 9px 11px;
+}
+
+.hcr2-detail-row strong {
+  overflow-wrap: anywhere;
+}
+
+.hcr2-detail-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.hcr2-warn-stack {
+  display: grid;
+  gap: 8px;
+}
+
+/* -- challenge link field (method C) ----------------------------------- */
+
+.hcr2-challenge-field {
+  color: var(--muted-strong);
+  display: grid;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 6px;
+  text-transform: uppercase;
+}
+
+.hcr2-challenge-field input {
+  background: var(--canvas-deep);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 400;
+  padding: 9px 11px;
+  text-transform: none;
+  width: 100%;
+}
+
+.hcr2-challenge-field input:focus {
+  border-color: var(--accent-cyan);
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 1px;
+}
+
+
+/* -- code panel --------------------------------------------------------- */
+
+.hcr2-code-panel {
+  background: var(--canvas-deep);
+  border: 2px solid var(--accent-cyan);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.hcr2-code-value {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.hcr2-code-value code {
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  user-select: all;
+}
+
+.hcr2-code-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.hcr2-code-expired {
+  color: var(--danger);
+  font-weight: 700;
+  margin: 0;
+}
+
+.hcr2-code-hint {
+  color: var(--muted-strong);
+  margin: 0;
+}
+
+/* -- summary ------------------------------------------------------------ */
+
+.hcr2-summary {
+  background: var(--surface-subtle);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 14px;
+}
+
+.hcr2-summary dt {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.hcr2-summary dd {
+  margin: 2px 0 0;
+}
+
+/* -- admin panel -------------------------------------------------------- */
+
+.admin-hcr2-detail {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.hcr2-admin-facts {
+  background: rgba(6, 12, 42, 0.52);
+  border: 2px solid rgba(93, 132, 235, 0.5);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  margin: 0;
+  padding: 14px;
+}
+
+.hcr2-admin-facts dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.hcr2-admin-facts dd {
+  margin: 2px 0 0;
+  word-break: break-word;
+}
+
+.hcr2-admin-warning {
+  background: var(--danger-soft);
+  border: 2px solid var(--danger);
+  border-radius: var(--radius);
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.hcr2-admin-note-fields,
+.hcr2-admin-reject,
+.hcr2-admin-appointment {
+  display: grid;
+  gap: 10px;
+}
+
+.hcr2-admin-reject,
+.hcr2-admin-appointment {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.hcr2-admin-reject h4,
+.hcr2-admin-appointment h4 {
+  margin: 0;
+}
+
+.hcr2-admin-history ul {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.hcr2-admin-history li {
+  color: var(--muted-strong);
+  font-size: 13px;
+}
+
+/* The admin review form has no `.form-container` / `.community-filters`
+   ancestor, so its controls are styled explicitly here. */
+.hcr2-admin-note-fields label,
+.hcr2-admin-reject label,
+.hcr2-admin-appointment label {
+  color: var(--muted-strong);
+  display: grid;
+  font-size: 14px;
+  font-weight: 780;
+  gap: 7px;
+}
+
+.hcr2-admin-note-fields input,
+.hcr2-admin-reject input,
+.hcr2-admin-reject select,
+.hcr2-admin-appointment input,
+.hcr2-admin-appointment select {
+  background: rgba(4, 10, 38, 0.72);
+  border: 2px solid rgba(93, 132, 235, 0.78);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  min-height: 42px;
+  padding: 9px 11px;
+  width: 100%;
+}
+
+.hcr2-admin-note-fields input:focus,
+.hcr2-admin-reject input:focus,
+.hcr2-admin-reject select:focus,
+.hcr2-admin-appointment input:focus,
+.hcr2-admin-appointment select:focus {
+  border-color: var(--accent-cyan);
+  outline: 0;
+}
+
+/* -- public profile ----------------------------------------------------- */
+
+.community-profile-hcr2-row dd {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* -- mobile ------------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .hcr2-wizard-progress {
+    gap: 6px;
+  }
+
+  .hcr2-wizard-progress-step {
+    flex: 1 1 auto;
+    font-size: 12px;
+    justify-content: center;
+    padding: 6px 10px;
+  }
+
+  .hcr2-wizard-progress-label {
+    display: none;
+  }
+
+  .hcr2-wizard-panel {
+    padding: 14px;
+  }
+
+  .hcr2-wizard-actions {
+    flex-direction: column-reverse;
+  }
+
+  .hcr2-wizard-actions button {
+    width: 100%;
+  }
+
+  .hcr2-code-value code {
+    font-size: 17px;
+  }
+
+  .hcr2-detail-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .hcr2-detail-label {
+    grid-column: 1 / -1;
+  }
+
+  .hcr2-claim button {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .hcr2-link-current-name {
+    font-size: 17px;
+  }
+
+  .hcr2-admin-facts {
+    grid-template-columns: 1fr;
   }
 }

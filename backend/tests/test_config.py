@@ -24,6 +24,72 @@ def test_settings_feature_flags_default_to_beta() -> None:
     assert settings.feature_profile_customization == "BETA"
     assert settings.feature_community_members == "BETA"
     assert settings.feature_profile_reporting == "BETA"
+    assert settings.feature_community_notifications == "BETA"
+
+
+def test_hcr2_account_linking_flag_defaults_to_beta() -> None:
+    settings = Settings(_env_file=None)
+
+    assert settings.feature_hcr2_account_linking == "BETA"
+
+
+def test_hcr2_link_configuration_defaults() -> None:
+    settings = Settings(_env_file=None)
+
+    # Team details ship empty so nothing is invented before an operator fills
+    # them in; the wizard then reports the method as not configured.
+    assert settings.hcr2_link_verification_team_name == ""
+    assert settings.hcr2_link_verification_team_password == ""
+    assert settings.hcr2_link_verification_team_details == ""
+    assert settings.hcr2_link_discord_invite_url == "https://discord.gg/GGQPunUbHj"
+    assert settings.hcr2_link_owner_handles == ["nipatsuyt", "titaniumhcr2", "yazi.arod"]
+    assert settings.hcr2_link_code_ttl_seconds == 900
+    assert settings.hcr2_link_code_reroll_cooldown_seconds == 10
+    assert settings.hcr2_link_request_ttl_days == 30
+    assert settings.hcr2_link_code_rate_limit == 6
+    assert settings.hcr2_link_code_rate_window_seconds == 300
+    assert settings.hcr2_link_request_rate_limit == 5
+    assert settings.hcr2_link_request_rate_window_seconds == 3600
+    assert settings.hcr2_link_admin_action_rate_limit == 60
+    assert settings.hcr2_link_admin_action_rate_window_seconds == 3600
+    assert settings.hcr2_link_max_open_requests == 3
+
+
+def test_hcr2_link_configuration_reads_the_environment() -> None:
+    settings = Settings(
+        _env_file=None,
+        HCR2_LINK_VERIFICATION_TEAM_NAME="hcr2xyz verify",
+        HCR2_LINK_VERIFICATION_TEAM_PASSWORD="swordfish",
+        HCR2_LINK_DISCORD_INVITE_URL="https://discord.example/invite",
+        HCR2_LINK_OWNER_HANDLES="one,two",
+        HCR2_LINK_CODE_REROLL_COOLDOWN_SECONDS="25",
+    )
+
+    assert settings.hcr2_link_verification_team_name == "hcr2xyz verify"
+    assert settings.hcr2_link_verification_team_password == "swordfish"
+    assert settings.hcr2_link_discord_invite_url == "https://discord.example/invite"
+    assert settings.hcr2_link_owner_handles == ["one", "two"]
+    assert settings.hcr2_link_code_reroll_cooldown_seconds == 25
+
+
+def test_hcr2_link_code_secret_uses_the_auth_secret() -> None:
+    with_auth_secret = Settings(_env_file=None, AUTH_SHARED_SECRET="auth")
+    with_neither = Settings(_env_file=None)
+
+    assert with_auth_secret.hcr2_link_code_secret == "auth"
+    assert with_neither.hcr2_link_code_secret == ""
+
+
+def test_settings_username_cooldown_defaults_to_thirty_days() -> None:
+    settings = Settings(_env_file=None)
+
+    assert settings.username_change_cooldown_days == 30
+
+
+def test_settings_username_cooldown_accepts_an_environment_value() -> None:
+    settings = Settings(_env_file=None, USERNAME_CHANGE_COOLDOWN_DAYS="14")
+
+    assert settings.username_change_cooldown_days == 14
 
 
 def test_settings_feature_flags_accept_valid_and_normalize_invalid_values() -> None:

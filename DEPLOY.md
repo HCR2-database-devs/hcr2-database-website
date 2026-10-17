@@ -52,6 +52,58 @@ DB_SCHEMA=hcr2
 AUTH_SHARED_SECRET=long_random_secret_here
 ALLOWED_DISCORD_IDS=123456789,987654321
 
+# Feature flags. Values: DISABLED, BETA, ENABLED (BETA by default).
+# See docs/beta-testing.md.
+FEATURE_DISCORD_ACCOUNTS=BETA
+FEATURE_COMMUNITY_PROFILES=BETA
+FEATURE_PROFILE_CUSTOMIZATION=BETA
+FEATURE_COMMUNITY_MEMBERS=BETA
+FEATURE_PROFILE_REPORTING=BETA
+FEATURE_COMMUNITY_NOTIFICATIONS=BETA
+# Phase 4 (HCR2 player account linking) is manually reviewed, so it ships
+# restricted to BETA_DISCORD_IDS and admins. See docs/hcr2-account-linking.md.
+FEATURE_HCR2_ACCOUNT_LINKING=BETA
+BETA_DISCORD_IDS=
+
+# Community profile cooldowns, in days. The frontend reads these from
+# GET /api/v1/community/config, so keep them in sync with the site copy.
+USERNAME_CHANGE_COOLDOWN_DAYS=30
+
+# Phase 4: HCR2 player account linking. See docs/hcr2-account-linking.md.
+# In-game team name and password for method A. Leave empty until configured:
+# the wizard then shows "Not configured yet" instead of a broken link.
+# Rotating the password is an env change plus a backend restart, no deploy.
+HCR2_LINK_VERIFICATION_TEAM_NAME=
+HCR2_LINK_VERIFICATION_TEAM_PASSWORD=
+HCR2_LINK_VERIFICATION_TEAM_DETAILS=
+
+# Method B: Discord server invite and the DM targets for screen-share bookings.
+HCR2_LINK_DISCORD_INVITE_URL=https://discord.gg/GGQPunUbHj
+HCR2_LINK_OWNER_HANDLES=nipatsuyt,titaniumhcr2,yazi.arod
+
+# Method C: playhcr.com jeep challenge. The server assigns a random distance
+# from 1 to HCR2_LINK_CHALLENGE_MAX_DISTANCE_M metres; the user drives it with
+# a jeep in Countryside Adventure and sends the resulting challenge link. Off
+# until an operator enables it, so the wizard shows "Not configured yet".
+HCR2_LINK_CHALLENGE_ENABLED=false
+# Any extra notes shown above the challenge link input.
+HCR2_LINK_CHALLENGE_INSTRUCTIONS=
+HCR2_LINK_CHALLENGE_MAX_DISTANCE_M=2000
+
+# Verification code lifetime and the reroll cooldown (seconds).
+HCR2_LINK_CODE_TTL_SECONDS=900
+HCR2_LINK_CODE_REROLL_COOLDOWN_SECONDS=10
+
+# Request lifetime (days) and abuse limits.
+HCR2_LINK_REQUEST_TTL_DAYS=30
+HCR2_LINK_CODE_RATE_LIMIT=6
+HCR2_LINK_CODE_RATE_WINDOW_SECONDS=300
+HCR2_LINK_REQUEST_RATE_LIMIT=5
+HCR2_LINK_REQUEST_RATE_WINDOW_SECONDS=3600
+HCR2_LINK_MAX_OPEN_REQUESTS=3
+HCR2_LINK_ADMIN_ACTION_RATE_LIMIT=60
+HCR2_LINK_ADMIN_ACTION_RATE_WINDOW_SECONDS=3600
+
 HCAPTCHA_SITE_KEY=your_hcaptcha_site_key
 HCAPTCHA_SECRET_KEY=your_hcaptcha_secret_key
 
@@ -167,6 +219,11 @@ for f in migrations/*.up.sql; do
 done
 ```
 
+**Migrate before restarting the backend.** `20261016_add_hcr2_account_linking`
+adds `hcr2_account_link`, which community profile reads now select from. If the
+backend is restarted first, profile endpoints return a database error until the
+migration is applied.
+
 ## 8. HTTPS with Let's Encrypt
 
 ```bash
@@ -217,6 +274,9 @@ sudo systemctl restart hcr2-backend
 ```bash
 psql -h 127.0.0.1 -U hcr2_user -d hcr2_prod -f migrations/new_migration.up.sql
 ```
+
+Run the migration before restarting the backend if any profile, record or
+community endpoint reads a table the migration creates.
 
 ### Nginx config changed
 

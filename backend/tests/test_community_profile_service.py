@@ -249,6 +249,7 @@ class Payload:
     show_favorite_map = False
     show_discord_username = False
     show_discord_avatar = False
+    show_hcr2_player_name = True
 
 
 def test_update_profile_persists_fields() -> None:

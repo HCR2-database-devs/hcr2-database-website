@@ -16,8 +16,18 @@ PROFILE_COLUMNS = """
     (SELECT m.name_map FROM map m WHERE m.id_map = community_user.favorite_map_id)
         AS favorite_map_name,
     profile_public, show_country, show_bio, show_favorite_vehicle, show_favorite_map,
-    show_discord_username, show_discord_avatar,
-    admin_disabled, banner_content_type, banner_updated_at
+    show_discord_username, show_discord_avatar, show_hcr2_player_name,
+    admin_disabled, banner_content_type, banner_updated_at,
+    (SELECT l.player_name FROM hcr2_account_link l
+     WHERE l.community_user_id = community_user.id AND l.status = 'active'
+     ORDER BY l.approved_at DESC NULLS LAST, l.id DESC LIMIT 1) AS hcr2_player_name,
+    -- AT TIME ZONE 'UTC' promotes the naive UTC column to timestamptz so the
+    -- value serializes with an explicit offset. Without it this field reaches
+    -- the browser as e.g. '2026-10-16T14:45:08.681936', which JavaScript
+    -- parses as *local* time and renders three hours early in UTC+3.
+    (SELECT (l.approved_at AT TIME ZONE 'UTC') FROM hcr2_account_link l
+     WHERE l.community_user_id = community_user.id AND l.status = 'active'
+     ORDER BY l.approved_at DESC NULLS LAST, l.id DESC LIMIT 1) AS hcr2_link_verified_at
 """
 
 _SORT_CLAUSES = {
@@ -71,6 +81,7 @@ class CommunityUserRepository(Protocol):
         show_favorite_map: bool,
         show_discord_username: bool,
         show_discord_avatar: bool,
+        show_hcr2_player_name: bool,
     ) -> dict[str, Any] | None: ...
 
     def update_banner(
@@ -261,6 +272,7 @@ class PostgresCommunityUserRepository:
         show_favorite_map: bool,
         show_discord_username: bool,
         show_discord_avatar: bool,
+        show_hcr2_player_name: bool,
     ) -> dict[str, Any] | None:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
@@ -278,6 +290,7 @@ class PostgresCommunityUserRepository:
                         show_favorite_map = %(show_favorite_map)s,
                         show_discord_username = %(show_discord_username)s,
                         show_discord_avatar = %(show_discord_avatar)s,
+                        show_hcr2_player_name = %(show_hcr2_player_name)s,
                         updated_at = CASE
                             WHEN community_user.bio IS DISTINCT FROM %(bio)s
                               OR community_user.country IS DISTINCT FROM %(country)s
@@ -296,6 +309,8 @@ class PostgresCommunityUserRepository:
                                  %(show_discord_username)s
                               OR community_user.show_discord_avatar IS DISTINCT FROM
                                  %(show_discord_avatar)s
+                              OR community_user.show_hcr2_player_name IS DISTINCT FROM
+                                 %(show_hcr2_player_name)s
                             THEN CURRENT_TIMESTAMP
                             ELSE community_user.updated_at
                         END
@@ -315,6 +330,7 @@ class PostgresCommunityUserRepository:
                         "show_favorite_map": show_favorite_map,
                         "show_discord_username": show_discord_username,
                         "show_discord_avatar": show_discord_avatar,
+                        "show_hcr2_player_name": show_hcr2_player_name,
                     },
                 )
                 row = cursor.fetchone()

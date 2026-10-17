@@ -22,9 +22,12 @@ export type CommunityAccount = {
   show_favorite_map: boolean;
   show_discord_username: boolean;
   show_discord_avatar: boolean;
+  show_hcr2_player_name: boolean;
   admin_disabled: boolean;
   banner_updated_at?: string | null;
   is_owner?: boolean;
+  hcr2_player_name?: string | null;
+  hcr2_link_verified_at?: string | null;
 };
 
 export type CommunityProfileUpdate = {
@@ -39,6 +42,7 @@ export type CommunityProfileUpdate = {
   show_favorite_map?: boolean;
   show_discord_username?: boolean;
   show_discord_avatar?: boolean;
+  show_hcr2_player_name?: boolean;
 };
 
 export type UsernameUpdate = {
@@ -170,7 +174,8 @@ export type FeatureName =
   | "profile_customization"
   | "community_members"
   | "profile_reporting"
-  | "community_notifications";
+  | "community_notifications"
+  | "hcr2_account_linking";
 
 export type FeatureState = "DISABLED" | "BETA" | "ENABLED";
 
@@ -353,3 +358,253 @@ export type SubmissionVolumeEntry = {
 export type SubmissionVolumeResponse = {
   weeks: SubmissionVolumeEntry[];
 };
+
+// Phase 4: HCR2 player account linking. Verification is always reviewed by a
+// human; nothing in these payloads claims an automatic check happened.
+
+export type Hcr2LinkMethod = "team" | "discord_screen_share" | "playhcr_challenge";
+
+export type Hcr2LinkRequestStatus =
+  | "draft"
+  | "in_progress"
+  | "submitted"
+  | "approved"
+  | "rejected"
+  | "expired"
+  | "cancelled";
+
+export type Hcr2LinkTeamConfig = {
+  available: boolean;
+  team_name: string;
+  team_password: string;
+  details: string;
+  requires_leaving_current_team: boolean;
+  supports_chinese_version: boolean;
+  review: string;
+};
+
+export type Hcr2LinkDiscordConfig = {
+  available: boolean;
+  invite_url: string;
+  owner_handles: string[];
+  requires_leaving_current_team: boolean;
+  requires_microphone: boolean;
+  requires_speaking: boolean;
+  review: string;
+};
+
+export type Hcr2LinkChallengeConfig = {
+  available: boolean;
+  instructions: string;
+  min_distance_m: number;
+  max_distance_m: number;
+  link_prefix: string;
+  requires_leaving_current_team: boolean;
+  review: string;
+};
+
+export type Hcr2LinkConfig = {
+  team: Hcr2LinkTeamConfig;
+  discord: Hcr2LinkDiscordConfig;
+  challenge: Hcr2LinkChallengeConfig;
+  code_ttl_seconds: number;
+  code_reroll_cooldown_seconds: number;
+  request_ttl_days: number;
+  automatic_verification: boolean;
+};
+
+export type Hcr2LinkPlayerOption = {
+  id_player: number;
+  name_player: string;
+  record_count: number;
+};
+
+export type Hcr2LinkPlayerSearchResponse = {
+  players: Hcr2LinkPlayerOption[];
+  count: number;
+  limit: number;
+  offset: number;
+  search?: string | null;
+};
+
+export type Hcr2LinkRequest = {
+  id: number;
+  player_name: string;
+  player_name_norm: string;
+  verification_method: Hcr2LinkMethod;
+  status: Hcr2LinkRequestStatus;
+  step: string;
+  attempt_count: number;
+  is_resubmission: boolean;
+  supersedes_request_id?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  expires_at?: string | null;
+  submitted_at?: string | null;
+  team_joined_claimed: boolean;
+  code?: string | null;
+  code_expires_at?: string | null;
+  code_last_generated_at?: string | null;
+  code_roll_count: number;
+  code_sent_claimed: boolean;
+  discord_joined_claimed: boolean;
+  contacted_owner_claimed: boolean;
+  /** Distance in metres the server assigned for the jeep challenge. */
+  challenge_distance_m?: number | null;
+  challenge_url?: string | null;
+  challenge_id?: string | null;
+  challenge_link_claimed: boolean;
+  appointment_status?: string | null;
+  appointment_at?: string | null;
+  decided_at?: string | null;
+  rejection_category?: string | null;
+};
+
+export type Hcr2AccountLink = {
+  id: number;
+  player_name: string;
+  player_name_norm: string;
+  verification_method: Hcr2LinkMethod;
+  status: "active" | "revoked" | "suspended";
+  requested_at?: string | null;
+  approved_at?: string | null;
+  approved_by_admin?: string | null;
+  revoked_at?: string | null;
+  revocation_reason?: string | null;
+};
+
+export type Hcr2LinkStatus = {
+  link: Hcr2AccountLink | null;
+  /** Most recent attempt, editable or not. */
+  request: Hcr2LinkRequest | null;
+  /** True when `request` is still draft/in_progress/submitted and resumable. */
+  request_is_live: boolean;
+  history: Hcr2LinkRequest[];
+  automatic_verification: boolean;
+};
+
+export type Hcr2LinkCodeState = {
+  code: string | null;
+  player_name?: string;
+  code_expires_at?: string | null;
+  code_last_generated_at?: string | null;
+  code_expired: boolean;
+  code_expires_in_seconds: number;
+  reroll_available_in_seconds: number;
+  reroll_cooldown_seconds: number;
+  code_roll_count: number;
+  single_use?: boolean;
+  previous_code_invalidated?: boolean;
+};
+
+export type Hcr2LinkActionResult = {
+  request: Hcr2LinkRequest;
+  resumed?: boolean;
+  message?: string;
+  automatic_verification?: boolean;
+};
+
+export type Hcr2LinkSubmitResult = {
+  request: Hcr2LinkRequest;
+  message: string;
+  automatic_verification: boolean;
+};
+
+export type AdminHcr2LinkRequest = Hcr2LinkRequest & {
+  community_user_id: number;
+  link_id?: number | null;
+  player_id: number;
+  code_value?: string | null;
+  code_generated_at?: string | null;
+  code_visibility_confirmed: boolean;
+  community_username?: string | null;
+  discord_id?: string | null;
+  discord_username?: string | null;
+  discord_avatar?: string | null;
+  decided_by_admin?: string | null;
+  rejection_reason?: string | null;
+  admin_note?: string | null;
+  other_attempts?: number;
+};
+
+export type AdminHcr2LinkListResponse = {
+  requests: AdminHcr2LinkRequest[];
+  count: number;
+  limit: number;
+  offset: number;
+  status?: string | null;
+  method?: string | null;
+};
+
+export type AdminHcr2LinkStep = {
+  id: number;
+  step: string;
+  reached_at?: string | null;
+  detail: string;
+};
+
+export type AdminHcr2LinkConflicts = {
+  active_links: number;
+  open_requests: number;
+  competing_claimants: number;
+};
+
+export type AdminHcr2LinkDetail = {
+  request: AdminHcr2LinkRequest;
+  steps: AdminHcr2LinkStep[];
+  history: Array<{
+    id: number;
+    community_user_id: number;
+    player_name: string;
+    status: string;
+    step: string;
+    created_at?: string | null;
+    submitted_at?: string | null;
+    decided_at?: string | null;
+    rejection_category?: string | null;
+    rejection_reason?: string | null;
+    is_resubmission: boolean;
+    attempt_count: number;
+    community_username?: string | null;
+  }>;
+  conflicts: AdminHcr2LinkConflicts;
+};
+
+export type AdminHcr2LinkList = {
+  links: Array<
+    AdminHcr2AccountLink & {
+      community_username?: string | null;
+      discord_username?: string | null;
+    }
+  >;
+  count: number;
+  limit: number;
+  offset: number;
+};
+
+export type AdminHcr2AccountLink = Hcr2AccountLink & {
+  community_user_id: number;
+  approved_by_admin?: string | null;
+  revoked_by_admin?: string | null;
+};
+
+export const HCR2_REJECTION_CATEGORIES: { value: string; label: string }[] = [
+  { value: "code_not_visible", label: "Code was censored or not visible in team chat" },
+  { value: "wrong_player_name", label: "Wrong player name" },
+  { value: "could_not_confirm_account", label: "Could not confirm the account" },
+  { value: "screen_share_inconclusive", label: "Screen share was inconclusive" },
+  { value: "challenge_mismatch", label: "Challenge link did not match the assigned distance" },
+  { value: "name_already_linked", label: "Player name is already linked" },
+  { value: "no_contact", label: "Could not reach the user" },
+  { value: "request_cancelled", label: "Request cancelled" },
+  { value: "other", label: "Other" }
+];
+
+export const HCR2_APPOINTMENT_STATUSES: { value: string; label: string }[] = [
+  { value: "waiting_contact", label: "Waiting for contact" },
+  { value: "awaiting_scheduling", label: "Awaiting scheduling" },
+  { value: "scheduled", label: "Scheduled" },
+  { value: "awaiting_screen_share", label: "Awaiting screen-share" },
+  { value: "awaiting_decision", label: "Awaiting decision" },
+  { value: "cancelled", label: "Cancelled" }
+];

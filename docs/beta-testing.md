@@ -5,7 +5,7 @@ hcr2.xyz. It is designed so that **only explicitly marked** features are ever
 gated. Normal site updates (records, bug fixes, existing admin functionality)
 are never treated as beta automatically.
 
-Current Phase 1/2 community features all start out as `BETA`:
+Every community feature starts out as `BETA`:
 
 | Feature            | Flag                          | Default |
 | ------------------ | ----------------------------- | ------- |
@@ -15,6 +15,19 @@ Current Phase 1/2 community features all start out as `BETA`:
 | Community Members  | `FEATURE_COMMUNITY_MEMBERS`   | BETA    |
 | Profile Reporting  | `FEATURE_PROFILE_REPORTING`   | BETA    |
 | Community Notifications | `FEATURE_COMMUNITY_NOTIFICATIONS` | BETA |
+
+Phase 4 is restricted for the same reason as the rest: **HCR2 Account Linking
+defaults to `BETA`** because its verification is reviewed by a human and the
+review queue needs exercising before it is opened to everyone:
+
+| Feature              | Flag                           | Default |
+| -------------------- | ------------------------------ | ------- |
+| HCR2 Account Linking | `FEATURE_HCR2_ACCOUNT_LINKING` | BETA    |
+
+Community features still require a Discord login — a beta feature is open to
+beta testers and admins, not to anonymous visitors.
+
+See `docs/hcr2-account-linking.md` for the Phase 4 workflow and configuration.
 
 ## The three feature states
 
@@ -126,5 +139,10 @@ only render while a feature's state is `BETA`.
 
 - Logged-out users are never beta testers and cannot access `BETA` features.
 - Everything is enforced on the backend, not just hidden in the UI. Direct API
-  calls to community endpoints return `403` for non-beta users while a feature
-  is in `BETA` or `DISABLED` state.
+  calls to community endpoints return `403` while a feature is `BETA` or
+  `DISABLED`, even if a caller bypasses the frontend.
+- Production env templates must list all seven `FEATURE_*` vars explicitly (see
+  `DEPLOY.md`). An empty production environment otherwise relies on the code
+  defaults, and every one of them is `BETA`. An unparseable value also fails
+  closed to `BETA`, so a typo can never publish a feature that was meant to
+  stay restricted.

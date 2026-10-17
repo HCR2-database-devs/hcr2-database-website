@@ -19,6 +19,7 @@ class Feature:
     COMMUNITY_MEMBERS = "community_members"
     PROFILE_REPORTING = "profile_reporting"
     COMMUNITY_NOTIFICATIONS = "community_notifications"
+    HCR2_ACCOUNT_LINKING = "hcr2_account_linking"
 
 
 FEATURE_FIELDS: dict[str, str] = {
@@ -28,6 +29,7 @@ FEATURE_FIELDS: dict[str, str] = {
     Feature.COMMUNITY_MEMBERS: "feature_community_members",
     Feature.PROFILE_REPORTING: "feature_profile_reporting",
     Feature.COMMUNITY_NOTIFICATIONS: "feature_community_notifications",
+    Feature.HCR2_ACCOUNT_LINKING: "feature_hcr2_account_linking",
 }
 
 

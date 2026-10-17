@@ -40,6 +40,7 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
   const [showFavoriteMap, setShowFavoriteMap] = useState(profile.show_favorite_map);
   const [showDiscordUsername, setShowDiscordUsername] = useState(profile.show_discord_username);
   const [showDiscordAvatar, setShowDiscordAvatar] = useState(profile.show_discord_avatar);
+  const [showHcr2PlayerName, setShowHcr2PlayerName] = useState(profile.show_hcr2_player_name);
   const [newUsername, setNewUsername] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -132,7 +133,8 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
       show_favorite_vehicle: showFavoriteVehicle,
       show_favorite_map: showFavoriteMap,
       show_discord_username: showDiscordUsername,
-      show_discord_avatar: showDiscordAvatar
+      show_discord_avatar: showDiscordAvatar,
+      show_hcr2_player_name: showHcr2PlayerName
     });
   }
 
@@ -296,6 +298,14 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
               onChange={(event) => setShowDiscordAvatar(event.target.checked)}
             />
             Show my Discord avatar
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={showHcr2PlayerName}
+              onChange={(event) => setShowHcr2PlayerName(event.target.checked)}
+            />
+            Show my linked HCR2 player name on my profile
           </label>
         </fieldset>
 

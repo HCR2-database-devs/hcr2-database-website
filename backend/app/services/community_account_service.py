@@ -139,6 +139,7 @@ class CommunityAccountService:
             show_favorite_map=bool(payload.show_favorite_map),
             show_discord_username=bool(payload.show_discord_username),
             show_discord_avatar=bool(payload.show_discord_avatar),
+            show_hcr2_player_name=bool(payload.show_hcr2_player_name),
         )
 
     def upload_banner(self, discord_id: str, content: bytes) -> dict[str, Any] | None:
@@ -242,6 +243,19 @@ def _public_profile(account: dict[str, Any], is_owner: bool) -> dict[str, Any]:
         "show_favorite_map": account["show_favorite_map"],
         "show_discord_username": account["show_discord_username"],
         "show_discord_avatar": account["show_discord_avatar"],
+        "show_hcr2_player_name": bool(account.get("show_hcr2_player_name", True)),
+        # Phase 4. Only ever the name of the account this profile linked, not a
+        # claim about who set any historical record that happens to match it.
+        "hcr2_player_name": (
+            account.get("hcr2_player_name")
+            if (is_owner or account.get("show_hcr2_player_name", True))
+            else None
+        ),
+        "hcr2_link_verified_at": (
+            account.get("hcr2_link_verified_at")
+            if (is_owner or account.get("show_hcr2_player_name", True))
+            else None
+        ),
         "admin_disabled": account["admin_disabled"],
         "is_owner": is_owner,
     }

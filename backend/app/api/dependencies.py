@@ -7,6 +7,7 @@ from app.repositories.changelog import PostgresChangelogRepository
 from app.repositories.community_moderation import PostgresCommunityModerationRepository
 from app.repositories.community_notification import PostgresCommunityNotificationRepository
 from app.repositories.community_user import PostgresCommunityUserRepository
+from app.repositories.hcr2_link import PostgresHcr2LinkRepository
 from app.repositories.news import PostgresNewsRepository
 from app.repositories.public_data import PostgresPublicDataRepository
 from app.services.activity_log_service import ActivityLogService
@@ -16,6 +17,7 @@ from app.services.changelog_service import ChangelogService
 from app.services.community_account_service import CommunityAccountService
 from app.services.community_moderation_service import CommunityModerationService
 from app.services.community_notification_service import CommunityNotificationService
+from app.services.hcr2_link_service import Hcr2LinkService
 from app.services.news_service import NewsService
 from app.services.public_data_service import PublicDataService
 from app.services.public_submission_service import PublicSubmissionService
@@ -76,3 +78,18 @@ def get_public_submission_service(settings: SettingsDep) -> PublicSubmissionServ
 
 def get_stats_service() -> StatsService:
     return StatsService()
+
+
+def get_hcr2_link_service(settings: SettingsDep) -> Hcr2LinkService:
+    """Phase 4 HCR2 player account linking.
+
+    Beta access is enforced by the routers through ``can_use_feature``; this
+    provider only wires up the collaborators so tests can override any one of
+    them independently.
+    """
+    return Hcr2LinkService(
+        repository=PostgresHcr2LinkRepository(),
+        settings=settings,
+        activity_log=get_activity_log_service(),
+        notification_service=get_community_notification_service(),
+    )

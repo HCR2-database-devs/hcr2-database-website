@@ -21,6 +21,18 @@ Runtime code now targets the normalized PostgreSQL schema from `main`:
 
 Public API responses still expose the camelCase keys expected by the frontend and PHP-compatible routes, such as `idMap`, `nameVehicle`, and `idTuningSetup`.
 
+## Community System Phases
+
+Phase 1 (Discord accounts), Phase 2 (community profiles) and Phase 3
+(bot/API integration) are feature-flagged. Every phase, Phase 4 included,
+starts out as `BETA`, so it is available to beta testers and admins only until
+an operator promotes it:
+
+- [beta-testing.md](beta-testing.md) — the feature flag and beta access system.
+- [hcr2-account-linking.md](hcr2-account-linking.md) — the Phase 4 linking
+  workflow, all verification methods, required configuration, migrations,
+  the admin review process and the known limitations.
+
 ## Supported Application Workflows
 
 - public data browsing for maps, vehicles, players, tuning parts, tuning setups and records

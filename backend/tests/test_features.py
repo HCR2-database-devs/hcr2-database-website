@@ -1,11 +1,18 @@
 from app.core.config import Settings
 from app.core.features import (
     FEATURE_FIELDS,
+    Feature,
     FeatureState,
     can_use_feature,
     get_feature_state,
     is_beta_user,
 )
+
+_ALL_FEATURES = tuple(FEATURE_FIELDS)
+
+#: Every feature, Phase 4 HCR2 player account linking included, ships as BETA by
+#: default. HCR2 linking in particular is reviewed by a human, so the review
+#: queue is exercised before the feature is opened up.
 
 
 def _settings(**kwargs) -> Settings:
@@ -15,6 +22,23 @@ def _settings(**kwargs) -> Settings:
         ALLOWED_DISCORD_IDS="admin-user",
         **kwargs,
     )
+
+
+def test_all_features_default_to_beta() -> None:
+    settings = _settings()
+
+    for feature_name in _ALL_FEATURES:
+        assert get_feature_state(feature_name, settings) is FeatureState.BETA
+        assert can_use_feature("other", feature_name, settings) is False
+
+
+def test_hcr2_account_linking_defaults_to_beta() -> None:
+    settings = _settings()
+
+    assert get_feature_state(Feature.HCR2_ACCOUNT_LINKING, settings) is FeatureState.BETA
+    assert can_use_feature("other", Feature.HCR2_ACCOUNT_LINKING, settings) is False
+    assert can_use_feature("beta-user", Feature.HCR2_ACCOUNT_LINKING, settings) is True
+    assert can_use_feature("admin-user", Feature.HCR2_ACCOUNT_LINKING, settings) is True
 
 
 def test_get_feature_state_reads_settings() -> None:
@@ -38,7 +62,8 @@ def test_feature_registry_covers_all_known_features() -> None:
     settings = _settings()
 
     for feature_name in ("discord_accounts", "community_profiles", "profile_customization",
-                         "community_members", "profile_reporting"):
+                         "community_members", "profile_reporting",
+                         "hcr2_account_linking"):
         assert feature_name in FEATURE_FIELDS
         assert get_feature_state(feature_name, settings) is not None
 

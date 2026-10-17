@@ -94,17 +94,119 @@ class Settings(BaseSettings):
         default="BETA",
         validation_alias="FEATURE_COMMUNITY_NOTIFICATIONS",
     )
+    # Phase 4 ships in BETA: linking is reviewed by a human, so it starts
+    # restricted to BETA_DISCORD_IDS and admins while the review queue is
+    # exercised. Promote to ENABLED once the flow is comfortable.
+    feature_hcr2_account_linking: str = Field(
+        default="BETA",
+        validation_alias="FEATURE_HCR2_ACCOUNT_LINKING",
+    )
 
     username_change_cooldown_days: int = Field(
         default=30,
         validation_alias="USERNAME_CHANGE_COOLDOWN_DAYS",
     )
 
+    # Phase 4: HCR2 player account linking.
+    #
+    # There is no official Fingersoft API available to us, so nothing here is
+    # ever verified automatically. The team name/password are only shown to
+    # authenticated users who already passed the feature gate, and are never
+    # written to the database or to the activity log.
+    hcr2_link_verification_team_name: str = Field(
+        default="",
+        validation_alias="HCR2_LINK_VERIFICATION_TEAM_NAME",
+    )
+    hcr2_link_verification_team_password: str = Field(
+        default="",
+        validation_alias="HCR2_LINK_VERIFICATION_TEAM_PASSWORD",
+    )
+    hcr2_link_verification_team_details: str = Field(
+        default="",
+        validation_alias="HCR2_LINK_VERIFICATION_TEAM_DETAILS",
+    )
+    hcr2_link_discord_invite_url: str = Field(
+        default="https://discord.gg/GGQPunUbHj",
+        validation_alias="HCR2_LINK_DISCORD_INVITE_URL",
+    )
+    hcr2_link_owner_handles: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["nipatsuyt", "titaniumhcr2", "yazi.arod"],
+        validation_alias="HCR2_LINK_OWNER_HANDLES",
+    )
+
+    # Method C: playhcr.com jeep challenge. Off unless an operator turns it on,
+    # so a deployment cannot start offering a method whose instructions nobody
+    # has written yet.
+    hcr2_link_challenge_enabled: bool = Field(
+        default=False,
+        validation_alias="HCR2_LINK_CHALLENGE_ENABLED",
+    )
+    hcr2_link_challenge_instructions: str = Field(
+        default="",
+        validation_alias="HCR2_LINK_CHALLENGE_INSTRUCTIONS",
+    )
+    hcr2_link_challenge_max_distance_m: int = Field(
+        default=2000,
+        validation_alias="HCR2_LINK_CHALLENGE_MAX_DISTANCE_M",
+    )
+
+    hcr2_link_code_ttl_seconds: int = Field(
+        default=900,
+        validation_alias="HCR2_LINK_CODE_TTL_SECONDS",
+    )
+    hcr2_link_code_reroll_cooldown_seconds: int = Field(
+        default=10,
+        validation_alias="HCR2_LINK_CODE_REROLL_COOLDOWN_SECONDS",
+    )
+    hcr2_link_request_ttl_days: int = Field(
+        default=30,
+        validation_alias="HCR2_LINK_REQUEST_TTL_DAYS",
+    )
+    hcr2_link_code_rate_limit: int = Field(
+        default=6,
+        validation_alias="HCR2_LINK_CODE_RATE_LIMIT",
+    )
+    hcr2_link_code_rate_window_seconds: int = Field(
+        default=300,
+        validation_alias="HCR2_LINK_CODE_RATE_WINDOW_SECONDS",
+    )
+    hcr2_link_request_rate_limit: int = Field(
+        default=5,
+        validation_alias="HCR2_LINK_REQUEST_RATE_LIMIT",
+    )
+    hcr2_link_request_rate_window_seconds: int = Field(
+        default=3600,
+        validation_alias="HCR2_LINK_REQUEST_RATE_WINDOW_SECONDS",
+    )
+    hcr2_link_admin_action_rate_limit: int = Field(
+        default=60,
+        validation_alias="HCR2_LINK_ADMIN_ACTION_RATE_LIMIT",
+    )
+    hcr2_link_admin_action_rate_window_seconds: int = Field(
+        default=3600,
+        validation_alias="HCR2_LINK_ADMIN_ACTION_RATE_WINDOW_SECONDS",
+    )
+    hcr2_link_max_open_requests: int = Field(
+        default=3,
+        validation_alias="HCR2_LINK_MAX_OPEN_REQUESTS",
+    )
+
+    @property
+    def hcr2_link_code_secret(self) -> str:
+        """HMAC pepper for hashing verification code tokens.
+
+        Reuses the auth secret so no new secret variable is required. A
+        missing value still produces a working (if unkeyed) hash, which keeps
+        local development simple.
+        """
+        return self.auth_shared_secret or ""
+
     @field_validator(
         "allowed_discord_ids",
         "api_keys",
         "cors_origins",
         "beta_discord_ids",
+        "hcr2_link_owner_handles",
         mode="before",
     )
     @classmethod
@@ -118,6 +220,7 @@ class Settings(BaseSettings):
         "feature_community_members",
         "feature_profile_reporting",
         "feature_community_notifications",
+        "feature_hcr2_account_linking",
         mode="before",
     )
     @classmethod

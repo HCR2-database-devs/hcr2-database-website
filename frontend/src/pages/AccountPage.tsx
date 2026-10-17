@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import { LinkedHcr2AccountSection } from "../components/hcr2Link/LinkedHcr2AccountSection";
 import { ProfileSettingsSection } from "../components/ProfileSettingsSection";
 import { UserAvatar } from "../components/UserAvatar";
 import { useAuthStatus } from "../hooks/useAuthStatus";
@@ -11,6 +12,7 @@ export function AccountPage() {
   const { data: authStatus, isLoading } = useAuthStatus();
   const canViewProfile = useCanUseFeature("community_profiles");
   const canCustomizeProfile = useCanUseFeature("profile_customization");
+  const canLinkHcr2Account = useCanUseFeature("hcr2_account_linking");
 
   if (isLoading) {
     return (
@@ -95,6 +97,20 @@ export function AccountPage() {
             <dt>Account established</dt>
             <dd>{community ? `hcr2.xyz #${community.id}` : "n/a"}</dd>
           </div>
+          {community?.hcr2_player_name && (
+            <div className="account-details-linked">
+              <dt>Linked HCR2 player name</dt>
+              <dd>
+                <span className="status-pill status-pill--verified">Verified</span>{" "}
+                <span className="account-details-linked-name">{community.hcr2_player_name}</span>
+                {community.hcr2_link_verified_at && (
+                  <span className="account-details-linked-since">
+                    {formatMemberSince(community.hcr2_link_verified_at)}
+                  </span>
+                )}
+              </dd>
+            </div>
+          )}
         </dl>
 
         {community && canViewProfile && (
@@ -106,6 +122,14 @@ export function AccountPage() {
 
       {community && !needsOnboarding && canCustomizeProfile && (
         <ProfileSettingsSection key={community.id} profile={community} />
+      )}
+
+      {community && !needsOnboarding && canLinkHcr2Account && (
+        <LinkedHcr2AccountSection
+          key={community.id}
+          communityUsername={community.username}
+          discordUsername={community.discord_username}
+        />
       )}
     </div>
   );

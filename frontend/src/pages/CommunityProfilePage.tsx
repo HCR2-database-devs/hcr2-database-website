@@ -140,6 +140,25 @@ function CommunityProfileContent() {
         </div>
 
         <dl className="community-profile-details">
+          {profile.hcr2_player_name && (
+            <div className="community-profile-hcr2-row">
+              <dt>Linked HCR2 player name</dt>
+              <dd>
+                <span className="status-pill status-pill--verified">Verified</span>{" "}
+                <strong>{profile.hcr2_player_name}</strong>
+                {profile.hcr2_link_verified_at && (
+                  <span className="frontend-muted">
+                    {" "}
+                    · verified {formatMemberSince(profile.hcr2_link_verified_at)}
+                  </span>
+                )}
+                <span className="frontend-muted">
+                  {" "}
+                  · Records matching this player name are not claimed as this member&apos;s work.
+                </span>
+              </dd>
+            </div>
+          )}
           {profile.show_country && profile.country && (
             <div>
               <dt>Country</dt>
@@ -169,7 +188,8 @@ function CommunityProfileContent() {
           {!profile.show_country &&
             !profile.show_bio &&
             !profile.show_favorite_vehicle &&
-            !profile.show_favorite_map && (
+            !profile.show_favorite_map &&
+            !profile.hcr2_player_name && (
               <div>
                 <dd>This member has not shared any extra details yet.</dd>
               </div>
