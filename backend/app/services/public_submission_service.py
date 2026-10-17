@@ -1,30 +1,60 @@
+import hashlib
+import hmac
+import inspect
+import math
 from dataclasses import dataclass
 from typing import Any
 
 from app.core.config import Settings
+from app.core.network import canonicalize_client_ip
 from app.db.session import open_connection
 from app.services.hcaptcha import verify_hcaptcha
+from app.services.submission_identity import SubmissionIdentity
 
 MAX_PUBLIC_DISTANCE = 1_000_000
 MAX_PUBLIC_PLAYER_NAME_LENGTH = 20
 MAX_PUBLIC_COUNTRY_LENGTH = 20
+SUBMISSION_RATE_LIMIT = 5
+SUBMISSION_RATE_WINDOW_SECONDS = 3_600
+GLOBAL_SUBMISSION_RATE_LIMIT = 1_000
+GLOBAL_SUBMISSION_RATE_WINDOW_SECONDS = 3_600
 
-# Tuning part IDs that cannot be the echo-affected part
 ECHO_EXCLUDED_PART_IDS: frozenset[int] = frozenset({26, 2, 14, 13, 7, 18, 16, 17, 25})
+DISABLED_SUBMISSION_ERROR = "Your community account is disabled and cannot submit records."
 
 
 @dataclass(frozen=True, slots=True)
 class SubmissionResult:
     status_code: int
     payload: dict[str, Any]
+    retry_after: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class _RateLimitResult:
+    allowed: bool
+    retry_after: int = 0
 
 
 @dataclass(frozen=True, slots=True)
 class PublicSubmissionService:
     settings: Settings
 
-    def submit(self, data: dict[str, Any], submitter_ip: str) -> SubmissionResult:
-        if not self._verify_hcaptcha(str(data.get("h_captcha_response") or "")):
+    def submit(
+        self,
+        data: dict[str, Any],
+        submitter_ip: str | None,
+        identity: SubmissionIdentity | None = None,
+    ) -> SubmissionResult:
+        if identity is not None and getattr(identity, "admin_disabled", False):
+            return self._error(DISABLED_SUBMISSION_ERROR, 403)
+        canonical_ip = canonicalize_client_ip(submitter_ip)
+        if identity is None and canonical_ip is None:
+            return self._error("Unable to determine your IP address.", 400)
+        if not self._verify_submission_hcaptcha(
+            str(data.get("h_captcha_response") or ""),
+            canonical_ip,
+        ):
             return self._error("hCaptcha verification failed. Please try again.", 400)
 
         map_id = self._optional_int(data.get("mapId"))
@@ -80,25 +110,40 @@ class PublicSubmissionService:
         if has_echo and echo_affected_part_id and echo_affected_part_id in ECHO_EXCLUDED_PART_IDS:
             return self._error("The selected affected part cannot be affected by Echo.", 400)
 
+        identity_id = None
+        if identity is not None:
+            try:
+                identity_id = int(identity.community_user_id)
+            except (TypeError, ValueError, AttributeError):
+                return self._error(DISABLED_SUBMISSION_ERROR, 403)
+            if identity_id <= 0:
+                return self._error(DISABLED_SUBMISSION_ERROR, 403)
+        elif canonical_ip is None:
+            return self._error("Unable to determine your IP address.", 400)
+
         with open_connection() as connection:
             with connection.cursor() as cursor:
-                if submitter_ip:
+                if identity_id is not None:
                     cursor.execute(
                         """
-                        SELECT COUNT(1) AS c
-                        FROM pending_submission
-                        WHERE submitter_ip = %(ip)s
-                          AND submitted_at >= NOW() - INTERVAL '1 hour'
+                        SELECT id
+                        FROM community_user
+                        WHERE id = %s
+                          AND admin_disabled = FALSE
+                        FOR UPDATE
                         """,
-                        {"ip": submitter_ip},
+                        (identity_id,),
                     )
-                    rate = cursor.fetchone()
-                    if rate and int(rate["c"]) >= 5:
-                        return self._error("Rate limit exceeded. Please try again later.", 429)
-
+                    if cursor.fetchone() is None:
+                        return self._error(DISABLED_SUBMISSION_ERROR, 403)
+                else:
+                    cursor.execute(
+                        "SELECT pg_advisory_xact_lock(hashtext(%s))",
+                        (canonical_ip,),
+                    )
                     cursor.execute(
                         """
-                        SELECT reason
+                        SELECT id
                         FROM ip_ban
                         WHERE banned_ip = %s
                           AND active = TRUE
@@ -106,17 +151,43 @@ class PublicSubmissionService:
                         ORDER BY id DESC
                         LIMIT 1
                         """,
-                        (submitter_ip,),
+                        (canonical_ip,),
                     )
-                    ban = cursor.fetchone()
-                    if ban is not None:
-                        reason = str(ban["reason"] or "")
-                        suffix = f": {reason}" if reason else ""
+                    if cursor.fetchone() is not None:
                         return self._error(
-                            "Your IP address is banned from submitting records."
-                            f"{suffix}",
+                            "Your IP address is banned from submitting records.",
                             403,
                         )
+
+                global_rate = self._consume_rate_limit(
+                    cursor,
+                    self._rate_limit_key("global", "captcha"),
+                    GLOBAL_SUBMISSION_RATE_LIMIT,
+                    GLOBAL_SUBMISSION_RATE_WINDOW_SECONDS,
+                )
+                if not global_rate.allowed:
+                    return self._error(
+                        "Rate limit exceeded. Please try again later.",
+                        429,
+                        global_rate.retry_after,
+                    )
+
+                if identity_id is not None:
+                    rate_key = self._rate_limit_key("account", str(identity_id))
+                else:
+                    rate_key = self._rate_limit_key("ip", canonical_ip or "unknown")
+                submitter_rate = self._consume_rate_limit(
+                    cursor,
+                    rate_key,
+                    SUBMISSION_RATE_LIMIT,
+                    SUBMISSION_RATE_WINDOW_SECONDS,
+                )
+                if not submitter_rate.allowed:
+                    return self._error(
+                        "Rate limit exceeded. Please try again later.",
+                        429,
+                        submitter_rate.retry_after,
+                    )
 
                 is_mythic = self._parts_contain_mythic(tuning_parts)
                 cursor.execute(
@@ -147,11 +218,12 @@ class PublicSubmissionService:
                     """
                     INSERT INTO pending_submission
                         (id_map, id_vehicle, distance, player_name, player_country,
-                         tuning_parts, echo_affected_part_id, submitter_ip, status)
+                         tuning_parts, echo_affected_part_id, submitter_ip,
+                         submitter_community_user_id, status)
                     VALUES
                         (%(map_id)s, %(vehicle_id)s, %(distance)s, %(player_name)s,
                          %(player_country)s, %(tuning_parts)s, %(echo_affected_part_id)s,
-                         %(submitter_ip)s, 'pending')
+                         %(submitter_ip)s, %(submitter_community_user_id)s, 'pending')
                     """,
                     {
                         "map_id": map_id,
@@ -161,7 +233,8 @@ class PublicSubmissionService:
                         "player_country": player_country,
                         "tuning_parts": ", ".join(tuning_parts),
                         "echo_affected_part_id": echo_affected_part_id,
-                        "submitter_ip": submitter_ip,
+                        "submitter_ip": canonical_ip if identity_id is None else None,
+                        "submitter_community_user_id": identity_id,
                     },
                 )
                 connection.commit()
@@ -174,8 +247,88 @@ class PublicSubmissionService:
             },
         )
 
-    def _verify_hcaptcha(self, token: str) -> bool:
-        return verify_hcaptcha(token, self.settings.hcaptcha_secret_key)
+    def submit_with_identity(
+        self,
+        data: dict[str, Any],
+        submitter_ip: str | None,
+        identity: SubmissionIdentity | None,
+    ) -> SubmissionResult:
+        return self.submit(data, submitter_ip, identity=identity)
+
+    def _verify_submission_hcaptcha(self, token: str, remote_ip: str | None) -> bool:
+        verifier = self._verify_hcaptcha
+        try:
+            parameters = inspect.signature(verifier).parameters
+        except (TypeError, ValueError):
+            parameters = {}
+        accepts_remote_ip = "remote_ip" in parameters or any(
+            parameter.kind == inspect.Parameter.VAR_POSITIONAL for parameter in parameters.values()
+        )
+        if accepts_remote_ip:
+            return verifier(token, remote_ip)
+        return verifier(token)
+
+    def _verify_hcaptcha(self, token: str, remote_ip: str | None = None) -> bool:
+        return verify_hcaptcha(
+            token,
+            self.settings.hcaptcha_secret_key,
+            site_key=self.settings.hcaptcha_site_key,
+            remote_ip=remote_ip,
+        )
+
+    def _rate_limit_key(self, scope: str, value: str) -> str:
+        material = f"{scope}:{value}".encode()
+        secret = self.settings.submission_rate_limit_hmac_secret or self.settings.auth_shared_secret
+        if secret:
+            digest = hmac.new(secret.encode(), material, hashlib.sha256).hexdigest()
+        else:
+            digest = hashlib.sha256(material).hexdigest()
+        return f"{scope}:{digest}"
+
+    @staticmethod
+    def _consume_rate_limit(
+        cursor: Any,
+        rate_key: str,
+        limit: int,
+        window_seconds: int,
+    ) -> _RateLimitResult:
+        cursor.execute(
+            """
+            INSERT INTO public_submission_rate_limit
+                (rate_key, request_count, window_started_at)
+            VALUES (%(rate_key)s, 1, CURRENT_TIMESTAMP)
+            ON CONFLICT (rate_key) DO UPDATE SET
+                request_count = CASE
+                    WHEN public_submission_rate_limit.window_started_at <=
+                        CURRENT_TIMESTAMP - (%(window_seconds)s * INTERVAL '1 second')
+                    THEN 1
+                    ELSE public_submission_rate_limit.request_count + 1
+                END,
+                window_started_at = CASE
+                    WHEN public_submission_rate_limit.window_started_at <=
+                        CURRENT_TIMESTAMP - (%(window_seconds)s * INTERVAL '1 second')
+                    THEN CURRENT_TIMESTAMP
+                    ELSE public_submission_rate_limit.window_started_at
+                END
+            RETURNING request_count, window_started_at,
+                EXTRACT(
+                    EPOCH FROM (
+                        window_started_at + (%(window_seconds)s * INTERVAL '1 second')
+                        - CURRENT_TIMESTAMP
+                    )
+                ) AS retry_after_seconds
+            """,
+            {"rate_key": rate_key, "window_seconds": window_seconds},
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return _RateLimitResult(allowed=False, retry_after=window_seconds)
+        request_count = int(row["request_count"])
+        if request_count <= limit:
+            return _RateLimitResult(allowed=True)
+        retry_after = _row_value(row, "retry_after_seconds", window_seconds)
+        retry_after = max(1, min(window_seconds, int(math.ceil(float(retry_after)))))
+        return _RateLimitResult(allowed=False, retry_after=retry_after)
 
     @staticmethod
     def _parts_contain_mythic(value: Any) -> bool:
@@ -203,5 +356,16 @@ class PublicSubmissionService:
         return ("hp_email", "hp_website", "hp_phone", "hp_comments")
 
     @staticmethod
-    def _error(message: str, status_code: int) -> SubmissionResult:
-        return SubmissionResult(status_code=status_code, payload={"error": message})
+    def _error(message: str, status_code: int, retry_after: int | None = None) -> SubmissionResult:
+        return SubmissionResult(
+            status_code=status_code,
+            payload={"error": message},
+            retry_after=retry_after,
+        )
+
+
+def _row_value(row: Any, key: str, default: Any) -> Any:
+    try:
+        return row[key]
+    except (KeyError, IndexError, TypeError):
+        return getattr(row, key, default)

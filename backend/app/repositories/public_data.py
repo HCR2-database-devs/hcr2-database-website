@@ -20,6 +20,8 @@ class PublicDataRepository(Protocol):
 
     def search_records(self, filters: dict[str, Any]) -> list[dict[str, Any]]: ...
 
+    def get_home_summary(self, limit: int) -> dict[str, Any]: ...
+
 
 class PostgresPublicDataRepository:
     def __init__(self, config: DatabaseConfig | None = None) -> None:
@@ -371,6 +373,74 @@ class PostgresPublicDataRepository:
             """,
             params,
         )
+
+    def get_home_summary(self, limit: Any) -> dict[str, Any]:
+        counts = self._fetch_all(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM world_record WHERE current = 1) AS records,
+                (SELECT COUNT(*) FROM world_record WHERE current = 1 AND is_mythic = TRUE)
+                    AS mythic_records,
+                (SELECT COUNT(DISTINCT p.name_player)
+                 FROM world_record wr
+                 LEFT JOIN player p ON wr.id_player = p.id_player
+                 WHERE wr.current = 1
+                   AND p.name_player IS NOT NULL AND p.name_player <> '') AS players,
+                (SELECT COUNT(*) FROM map) AS maps,
+                (SELECT COUNT(*) FROM vehicle) AS vehicles
+            """
+        )
+        row = counts[0]
+        records_total = int(row["records"]) if row["records"] is not None else 0
+        mythic_total = int(row["mythic_records"]) if row["mythic_records"] is not None else 0
+        random_limit = self._bounded_int(limit, default=8, minimum=1, maximum=20)
+        random_records = self._fetch_all(
+            """
+            SELECT
+                wr.id_record AS "idRecord",
+                wr.id_map AS "idMap",
+                wr.id_vehicle AS "idVehicle",
+                wr.id_player AS "idPlayer",
+                wr.distance,
+                wr.current,
+                wr.id_tuning_setup AS "idTuningSetup",
+                wr.questionable,
+                wr.is_mythic AS "isMythic",
+                COALESCE(wr.questionable_reason, '') AS questionable_reason,
+                m.name_map AS map_name,
+                v.name_vehicle AS vehicle_name,
+                p.name_player AS player_name,
+                COALESCE(p.country, '') AS player_country,
+                string_agg(tp.name_tuning_part, ', ' ORDER BY tp.name_tuning_part) AS tuning_parts,
+                echo_part.name_tuning_part AS "echoAffectedPart",
+                wr.created_at
+            FROM world_record AS wr
+            JOIN map AS m ON wr.id_map = m.id_map
+            JOIN vehicle AS v ON wr.id_vehicle = v.id_vehicle
+            LEFT JOIN player AS p ON wr.id_player = p.id_player
+            LEFT JOIN tuning_setup_part tsp ON wr.id_tuning_setup = tsp.id_tuning_setup
+            LEFT JOIN tuning_part tp ON tsp.id_tuning_part = tp.id_tuning_part
+            LEFT JOIN tuning_setup ts ON wr.id_tuning_setup = ts.id_tuning_setup
+            LEFT JOIN tuning_part echo_part ON ts.echo_affected_part_id = echo_part.id_tuning_part
+            WHERE wr.current = 1
+            GROUP BY wr.id_record, wr.id_map, wr.id_vehicle, wr.id_player,
+                wr.distance, wr.current, wr.id_tuning_setup, wr.questionable,
+                wr.is_mythic, wr.questionable_reason,
+                m.name_map, v.name_vehicle, p.name_player, p.country,
+                echo_part.name_tuning_part, wr.created_at
+            ORDER BY random()
+            LIMIT %(limit)s
+            """,
+            {"limit": random_limit},
+        )
+        return {
+            "records": records_total,
+            "mythic_records": mythic_total,
+            "players": int(row["players"]) if row["players"] is not None else 0,
+            "maps": int(row["maps"]) if row["maps"] is not None else 0,
+            "vehicles": int(row["vehicles"]) if row["vehicles"] is not None else 0,
+            "random_records": random_records,
+        }
 
     @staticmethod
     def _like_value(value: Any) -> str | None:

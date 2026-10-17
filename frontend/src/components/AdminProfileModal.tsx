@@ -9,12 +9,14 @@ import { COUNTRIES } from "../lib/countries";
 import {
   adminDisableProfile,
   adminEnableProfile,
+  adminResetBanner,
   adminResetProfile,
   getAdminCommunityProfile,
   updateAdminCommunityProfile
 } from "../services/adminCommunity";
 import { getPublicData } from "../services/publicData";
-import type { AdminProfileDetail, CommunityProfileUpdate } from "../types/api";
+import { discordAvatarUrl } from "../services/community";
+import type { AdminProfileDetail, AdminProfileUpdate } from "../types/api";
 
 function textValue(row: Record<string, unknown>, camel: string, lower: string): string {
   return String(row[camel] ?? row[lower] ?? "");
@@ -40,6 +42,7 @@ function AdminProfileForm({
   setError
 }: AdminProfileFormProps) {
   const queryClient = useQueryClient();
+  const [username, setUsername] = useState(profile.username ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
   const [country, setCountry] = useState(profile.country ?? "");
   const [favoriteVehicleId, setFavoriteVehicleId] = useState(
@@ -55,6 +58,8 @@ function AdminProfileForm({
   const [showFavoriteMap, setShowFavoriteMap] = useState(profile.show_favorite_map);
   const [showDiscordUsername, setShowDiscordUsername] = useState(profile.show_discord_username);
   const [showDiscordAvatar, setShowDiscordAvatar] = useState(profile.show_discord_avatar);
+  const [overrideBadWords, setOverrideBadWords] = useState(false);
+  const [note, setNote] = useState("");
 
   const vehiclesQuery = useQuery({
     queryKey: ["public-data", "vehicles"],
@@ -72,7 +77,7 @@ function AdminProfileForm({
   }
 
   const saveMutation = useMutation({
-    mutationFn: (payload: CommunityProfileUpdate) => updateAdminCommunityProfile(profile.id, payload),
+    mutationFn: (payload: AdminProfileUpdate) => updateAdminCommunityProfile(profile.id, payload),
     onSuccess: () => {
       setMessage("Profile changes saved.");
       setError("");
@@ -86,14 +91,22 @@ function AdminProfileForm({
   });
 
   const actionMutation = useMutation({
-    mutationFn: (action: "disable" | "enable" | "reset") => {
+    mutationFn: (action: "disable" | "enable" | "reset" | "resetBanner") => {
       if (action === "disable") return adminDisableProfile(profile.id);
       if (action === "enable") return adminEnableProfile(profile.id);
+      if (action === "resetBanner") return adminResetBanner(profile.id);
       return adminResetProfile(profile.id);
     },
-    onSuccess: (result, action) => {
-      const label = action === "disable" ? "disabled" : action === "enable" ? "enabled" : "reset";
-      setMessage(`Profile ${label}.`);
+    onSuccess: (_result, action) => {
+      const label =
+        action === "disable"
+          ? "disabled"
+          : action === "enable"
+            ? "enabled"
+            : action === "resetBanner"
+              ? "banner reset."
+              : "reset.";
+      setMessage(`Profile ${label}`);
       setError("");
       invalidate();
       onChanged();
@@ -109,6 +122,7 @@ function AdminProfileForm({
     setMessage("");
     setError("");
     saveMutation.mutate({
+      username: username.trim() || null,
       bio: bio.trim(),
       country: country || null,
       favorite_vehicle_id: favoriteVehicleId ? Number(favoriteVehicleId) : null,
@@ -119,7 +133,9 @@ function AdminProfileForm({
       show_favorite_vehicle: showFavoriteVehicle,
       show_favorite_map: showFavoriteMap,
       show_discord_username: showDiscordUsername,
-      show_discord_avatar: showDiscordAvatar
+      show_discord_avatar: showDiscordAvatar,
+      override_bad_words: overrideBadWords,
+      note: note.trim() || null
     });
   }
 
@@ -129,7 +145,7 @@ function AdminProfileForm({
         <h2 id="admin-profile-title">Edit Community Profile</h2>
         <div className="admin-profile-summary">
           <UserAvatar
-            avatarUrl={profile.discord_avatar}
+            avatarUrl={discordAvatarUrl(profile.discord_avatar)}
             name={profile.username ?? profile.discord_username}
             size={36}
           />
@@ -153,8 +169,52 @@ function AdminProfileForm({
           className="admin-profile-banner"
           alt="Profile banner"
         />
+        <div className="admin-profile-actions">
+          {profile.banner_updated_at && (
+            <button
+              type="button"
+              className="button-ghost"
+              disabled={actionMutation.isPending}
+              onClick={() => {
+                if (window.confirm("Remove this member's banner? This cannot be undone.")) {
+                  actionMutation.mutate("resetBanner");
+                }
+              }}
+            >
+              Reset Banner
+            </button>
+          )}
+        </div>
 
         <form onSubmit={handleSubmit}>
+          <label>
+            Community username
+            <input
+              type="text"
+              placeholder={profile.discord_username || "Username"}
+              value={username}
+              onChange={(event) => setUsername(event.target.value.slice(0, 32))}
+              maxLength={32}
+            />
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={overrideBadWords}
+              onChange={(event) => setOverrideBadWords(event.target.checked)}
+            />
+            Allow a username that matches the moderated word list (requires a note)
+          </label>
+          <label>
+            Moderation note
+            <input
+              type="text"
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="Reason for this change, stored in the audit log"
+              maxLength={200}
+            />
+          </label>
           <label>
             Bio
             <textarea

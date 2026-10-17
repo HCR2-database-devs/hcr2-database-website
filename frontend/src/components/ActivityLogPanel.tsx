@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { cleanupActivityLogs, getActivityLogAdmins, getActivityLogs } from "../services/activityLog";
 import type { ActivityLogEntry } from "../types/api";
@@ -59,7 +59,6 @@ type Props = {
 };
 
 export function ActivityLogPanel({ isOpen, onClose }: Props) {
-  const queryClient = useQueryClient();
   const [adminFilter, setAdminFilter] = useState("");
   const [actionFilter, setActionFilter] = useState("");
   const [entityFilter, setEntityFilter] = useState("");

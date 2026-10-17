@@ -1,6 +1,8 @@
 import type {
   ChangelogItem,
   DataRow,
+  HomeSummary,
+  LongestRecordResponse,
   NewsItem,
   PaginatedRecordsResponse,
   PublicDataView,
@@ -20,6 +22,10 @@ const dataEndpoints: Record<Exclude<PublicDataView, "records">, string> = {
 
 export function getPublicData(view: Exclude<PublicDataView, "records">) {
   return fetchJson<DataRow[]>(dataEndpoints[view]);
+}
+
+export function getHomeSummary(limit = 8) {
+  return fetchJson<HomeSummary>(`/api/v1/home/summary?limit=${limit}`);
 }
 
 function addMythicParam(params: URLSearchParams, mythic: boolean | undefined) {
@@ -90,4 +96,8 @@ export function getRecordHistory(map: string, vehicle: string, mythic?: boolean)
 
 export function getSubmissionVolume(weeks = 12) {
   return fetchJson<SubmissionVolumeResponse>(`/api/v1/stats/submission-volume?weeks=${weeks}`);
+}
+
+export function getLongestRecord() {
+  return fetchJson<LongestRecordResponse>("/api/v1/stats/longest-record");
 }

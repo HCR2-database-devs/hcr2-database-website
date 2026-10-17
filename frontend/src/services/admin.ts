@@ -1,4 +1,5 @@
 import type {
+  AdminLongestRecordResponse,
   AdminRecord,
   BackupItem,
   BanEntry,
@@ -173,6 +174,20 @@ export function createBan(body: { ip: string; reason: string; expiresAt?: string
 
 export function unbanPlayer(banId: number) {
   return fetchJson<SuccessResponse>(`/api/v1/admin/bans/${banId}`, {
+    method: "DELETE"
+  });
+}
+
+export function getAdminLongestRecord() {
+  return fetchJson<AdminLongestRecordResponse>("/api/v1/admin/longest-record");
+}
+
+export function setLongestRecord(recordId: number) {
+  return jsonRequest<SuccessResponse & { recordId?: number }>("/api/v1/admin/longest-record", "POST", { recordId });
+}
+
+export function clearLongestRecord() {
+  return fetchJson<SuccessResponse>("/api/v1/admin/longest-record", {
     method: "DELETE"
   });
 }

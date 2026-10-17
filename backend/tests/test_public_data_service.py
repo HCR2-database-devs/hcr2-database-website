@@ -32,16 +32,40 @@ class FakePublicDataRepository:
     def search_records(self, filters: dict[str, Any]) -> list[dict[str, Any]]:
         return [{"idRecord": 1, "filters": filters}]
 
+    def get_home_summary(self, limit: int) -> dict[str, Any]:
+        return {
+            "records": 100,
+            "mythic_records": 5,
+            "players": 42,
+            "maps": 20,
+            "vehicles": 30,
+            "random_records": [{"idRecord": 7, "distance": 9876}],
+        }
+
 
 class CapturingPostgresPublicDataRepository(PostgresPublicDataRepository):
     def __init__(self) -> None:
         super().__init__()
+        self.queries: list[str] = []
+        self.all_params: list[dict[str, Any]] = []
         self.last_sql = ""
         self.last_params: dict[str, Any] = {}
 
     def _fetch_all(self, sql: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        self.queries.append(sql)
+        self.all_params.append(params or {})
         self.last_sql = sql
         self.last_params = params or {}
+        if "AS mythic_records" in sql:
+            return [
+                {
+                    "records": 0,
+                    "mythic_records": 0,
+                    "players": 0,
+                    "maps": 0,
+                    "vehicles": 0,
+                }
+            ]
         return []
 
 
@@ -63,6 +87,29 @@ def test_public_data_service_search_records_keeps_api_records_shape() -> None:
 
     assert result["count"] == 1
     assert result["records"][0]["filters"] == {"limit": "1"}
+
+
+def test_public_data_service_get_home_summary_passes_through_repository() -> None:
+    service = PublicDataService(FakePublicDataRepository())
+
+    result = service.get_home_summary(8)
+
+    assert result["records"] == 100
+    assert result["mythic_records"] == 5
+    assert result["players"] == 42
+    assert result["maps"] == 20
+    assert result["vehicles"] == 30
+    assert result["random_records"][0]["idRecord"] == 7
+
+
+def test_postgres_get_home_summary_bounds_random_limit_and_uses_random_order() -> None:
+    repository = CapturingPostgresPublicDataRepository()
+
+    repository.get_home_summary("9999")
+
+    assert any(params == {"limit": 20} for params in repository.all_params)
+    assert any("ORDER BY random()" in sql for sql in repository.queries)
+    assert any("AS mythic_records" in sql for sql in repository.queries)
 
 
 def test_postgres_search_records_uses_exact_main_filters_and_car_alias() -> None:

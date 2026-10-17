@@ -178,13 +178,10 @@ a:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
+  .donator-banner__names {
+    animation: none;
+    white-space: normal;
+    width: 100%;
   }
 }
 
@@ -843,8 +840,7 @@ h3 {
 .feature-grid,
 .workflow-grid,
 .stats-summary,
-.tuning-stats,
-.stats-grid-layout {
+.tuning-stats {
   display: grid;
   gap: 14px;
 }
@@ -854,8 +850,7 @@ h3 {
 }
 
 .workflow-grid,
-.tuning-stats,
-.stats-grid-layout {
+.tuning-stats {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -994,13 +989,67 @@ h3 {
   flex-shrink: 0;
 }
 
-.community-highlight__coming-soon {
-  cursor: default;
-  opacity: 0.7;
+/* Site announcement banner */
+
+.site-announcement {
+  align-items: center;
+  background: var(--surface-subtle);
+  border-bottom: 2px solid rgba(62, 232, 255, 0.45);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+  justify-content: space-between;
+  padding: 14px 24px;
 }
 
-.community-highlight__coming-soon:hover {
-  transform: none;
+.site-announcement__copy {
+  display: grid;
+  gap: 4px;
+  max-width: 720px;
+}
+
+.site-announcement__copy p {
+  color: var(--muted-strong);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.site-announcement__copy .site-announcement__title {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.site-announcement__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.site-announcement__dismiss {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--muted-strong);
+  cursor: pointer;
+  font-size: 18px;
+  height: 32px;
+  line-height: 1;
+  padding: 0;
+  width: 32px;
+}
+
+.site-announcement__dismiss:hover {
+  border-color: var(--accent-cyan);
+  color: var(--text);
+}
+
+@media (max-width: 640px) {
+  .site-announcement {
+    padding: 12px 16px;
+  }
 }
 
 /* Live stats */
@@ -1172,6 +1221,42 @@ h3 {
 
 .featured-record__link:hover {
   color: var(--accent-strong);
+}
+
+.featured-record--swap {
+  animation: featured-swap 0.55s ease-out;
+}
+
+@keyframes featured-swap {
+  from {
+    opacity: 0.1;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.status-pill--mythic {
+  background: linear-gradient(180deg, rgba(255, 215, 0, 0.22), rgba(196, 138, 0, 0.22));
+  border-color: rgba(255, 215, 0, 0.45);
+  color: gold;
+}
+
+.featured-record__tuning {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 20px;
+  position: relative;
+}
+
+.filter-hint {
+  color: var(--accent-yellow, #f7c948);
+  font-size: 13px;
+  font-weight: 650;
 }
 
 /* Browse the database */
@@ -1469,18 +1554,6 @@ h3 {
   }
 }
 
-.staff-card--owner {
-  border-top: 3px solid var(--accent);
-}
-
-.staff-card--admin {
-  border-top: 3px solid var(--accent-cyan);
-}
-
-.staff-card--developer {
-  border-top: 3px solid var(--accent-violet);
-}
-
 .donator-banner {
   align-items: center;
   background: var(--surface-gradient);
@@ -1537,6 +1610,12 @@ h3 {
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.donator-banner--static .donator-banner__names {
+  animation: none;
+  white-space: normal;
+  width: 100%;
 }
 
 @keyframes marquee {
@@ -1846,6 +1925,117 @@ tbody tr:hover {
 
 .public-records-table {
   min-width: 0;
+  table-layout: fixed;
+}
+
+.virtual-players-table {
+  table-layout: fixed;
+}
+
+/* Fixed per-column widths: the virtualized tables only ever render the
+   rows currently in view, so with the default "auto" table layout the
+   browser recomputes column widths from whatever happens to be mounted
+   and columns visibly jump left/right while scrolling. Pinning each
+   column's width (also mirrored as a <colgroup> in DataViewPage.tsx, which
+   is what actually keeps the sticky header in sync — see RECORDS_COL_WIDTHS)
+   keeps the column layout stable regardless of which rows are mounted.
+   overflow: hidden is mandatory here: table-layout: fixed only pins the
+   column's own box, it does NOT stop a cell's content (a status pill, the
+   "Note" button, a long share-button label, ...) from painting past that
+   box into the next column when the content is wider than the column —
+   which looked identical to the column itself resizing. Scoped to the
+   desktop breakpoint so it never fights the mobile stacked-card layout
+   below, which sets its own td widths. */
+@media (min-width: 721px) {
+  .public-records-table th,
+  .public-records-table td,
+  .virtual-players-table th,
+  .virtual-players-table td {
+    overflow: hidden;
+  }
+
+  .public-records-table th:nth-child(1),
+  .public-records-table td:nth-child(1) {
+    width: 100px;
+  }
+
+  .public-records-table th:nth-child(2),
+  .public-records-table td:nth-child(2) {
+    width: 155px;
+  }
+
+  .public-records-table th:nth-child(3),
+  .public-records-table td:nth-child(3) {
+    width: 105px;
+  }
+
+  .public-records-table th:nth-child(4),
+  .public-records-table td:nth-child(4) {
+    width: 190px;
+  }
+
+  .public-records-table th:nth-child(5),
+  .public-records-table td:nth-child(5) {
+    width: 190px;
+  }
+
+  .public-records-table th:nth-child(6),
+  .public-records-table td:nth-child(6) {
+    width: 190px;
+  }
+
+  .public-records-table th:nth-child(7),
+  .public-records-table td:nth-child(7) {
+    width: 160px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .public-records-table th:nth-child(8),
+  .public-records-table td:nth-child(8) {
+    width: 140px;
+  }
+
+  .public-records-table th:nth-child(9),
+  .public-records-table td:nth-child(9) {
+    width: 140px;
+  }
+
+  .virtual-players-table th:nth-child(1),
+  .virtual-players-table td:nth-child(1) {
+    width: 100px;
+  }
+
+  .virtual-players-table th:nth-child(2),
+  .virtual-players-table td:nth-child(2) {
+    width: 220px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .virtual-players-table th:nth-child(3),
+  .virtual-players-table td:nth-child(3) {
+    width: 160px;
+  }
+
+  .virtual-players-table th:nth-child(4),
+  .virtual-players-table td:nth-child(4) {
+    width: 140px;
+  }
+}
+
+.public-records-table .map-cell,
+.public-records-table .vehicle-cell,
+.public-records-table .country-cell,
+.virtual-players-table .country-cell {
+  max-width: 100%;
+}
+
+.cell-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .tuning-stats .stat-subsection {
@@ -2110,6 +2300,86 @@ tbody tr:hover {
 .form-container textarea {
   min-height: 92px;
   resize: vertical;
+}
+
+.banner-crop-modal .banner-crop-hint {
+  color: var(--muted-strong);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: -6px 0 14px;
+}
+
+.banner-crop-stage {
+  background: var(--bg, #05070f);
+  border: 2px solid var(--outline);
+  border-radius: var(--radius);
+  cursor: grab;
+  height: min(52vh, 360px);
+  overflow: hidden;
+  position: relative;
+  touch-action: none;
+  user-select: none;
+}
+
+.banner-crop-stage:active {
+  cursor: grabbing;
+}
+
+.banner-crop-image {
+  will-change: transform;
+}
+
+.banner-crop-window {
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 0 0 9999px rgba(2, 4, 16, 0.58),
+    0 0 0 1px rgba(0, 0, 0, 0.9);
+  left: 50%;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.banner-crop-window--active {
+  border-color: var(--accent-yellow);
+}
+
+.banner-crop-window::before,
+.banner-crop-window::after {
+  background: var(--accent-yellow);
+  content: "";
+  height: 22px;
+  position: absolute;
+  width: 3px;
+}
+
+.banner-crop-window::before {
+  left: 50%;
+  top: -2px;
+  transform: translateX(-50%);
+}
+
+.banner-crop-window::after {
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.banner-crop-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.profile-banner-preview {
+  aspect-ratio: 3.6 / 1;
+  border: 2px solid var(--outline);
+  border-radius: var(--radius);
+  display: block;
+  margin-bottom: 4px;
+  object-fit: cover;
+  width: 100%;
 }
 
 .frontend-fieldset {
@@ -2472,25 +2742,6 @@ tbody tr:hover {
   font-weight: 760;
 }
 
-.total-stars {
-  align-items: center;
-  border-top: 2px solid rgba(95, 232, 255, 0.18);
-  display: flex;
-  gap: 10px;
-  justify-content: space-between;
-  margin-top: 8px;
-  padding-top: 14px;
-}
-
-.total-stars span {
-  color: var(--muted);
-  font-weight: 680;
-}
-
-.total-stars strong {
-  color: var(--text-strong);
-}
-
 .country-records-layout {
   align-items: start;
   display: grid;
@@ -2629,25 +2880,6 @@ tbody tr:hover {
   }
 }
 
-.legend-item {
-  align-items: center;
-  display: flex;
-  gap: 10px;
-}
-
-.legend-color {
-  border: 2px solid var(--outline);
-  border-radius: 999px;
-  height: 12px;
-  width: 12px;
-  box-shadow: 0 0 10px rgba(62, 232, 255, 0.18);
-}
-
-.legend-label {
-  color: var(--muted-strong);
-  font-size: 14px;
-}
-
 .stat-subsection {
   display: grid;
   gap: 12px;
@@ -2723,6 +2955,12 @@ tbody tr:hover {
 
 .admin-table-actions {
   margin-top: 0;
+}
+
+.admin-submitter-detail {
+  color: var(--muted);
+  display: block;
+  font-size: 0.85em;
 }
 
 .admin-actions--compact {
@@ -3133,6 +3371,13 @@ tbody tr:hover {
 
   .header-inner .header-nav {
     flex: 1 1 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .header-inner .nav-links,
+  .header-inner .header-actions {
+    flex-wrap: wrap;
     justify-content: flex-end;
   }
 }
@@ -3143,7 +3388,6 @@ tbody tr:hover {
   .feature-grid,
   .workflow-grid,
   .tuning-stats,
-  .stats-grid-layout,
   .country-records-layout {
     grid-template-columns: 1fr;
   }
@@ -3569,16 +3813,6 @@ tbody tr:hover {
 
 /* ── Ad blocker bait (invisible to users, targeted by ad blockers) ── */
 
-.ad-banner {
-  height: 1px;
-  width: 1px;
-  position: absolute;
-  left: -9999px;
-  top: -9999px;
-  opacity: 0;
-  pointer-events: none;
-}
-
 /* ── Ad blocker overlay ── */
 
 .adblock-overlay {
@@ -3968,19 +4202,53 @@ tbody tr:hover {
   padding: 8px 10px;
 }
 
-.history-controls .history-toggle {
+.history-mode-toggle {
   align-items: center;
-  display: flex;
-  flex-direction: row;
-  gap: 8px;
-  justify-content: center;
-  min-height: 40px;
+  display: inline-flex;
 }
 
-.history-controls .history-toggle input {
-  accent-color: var(--accent);
-  height: 16px;
-  width: 16px;
+.history-mode-toggle__label {
+  color: var(--muted-strong);
+  font-size: 13px;
+  font-weight: 680;
+  margin-right: 8px;
+}
+
+.history-mode-toggle button {
+  background: transparent;
+  border: 2px solid rgba(93, 132, 235, 0.45);
+  border-radius: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 680;
+  min-height: 40px;
+  padding: 8px 14px;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.history-mode-toggle button:first-of-type {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.history-mode-toggle button:last-of-type {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.history-mode-toggle button + button {
+  border-left-width: 1px;
+}
+
+.history-mode-toggle button:hover {
+  border-color: rgba(93, 132, 235, 0.78);
+  color: var(--text);
+}
+
+.history-mode-toggle button.is-active {
+  background: rgba(94, 232, 255, 0.14);
+  border-color: rgba(94, 232, 255, 0.55);
+  color: var(--accent);
 }
 
 .history-note {
@@ -4160,12 +4428,6 @@ tbody tr:hover {
   border-bottom: 2px solid var(--outline);
   object-fit: cover;
   width: 100%;
-}
-
-.community-banner-placeholder {
-  aspect-ratio: 3 / 1;
-  background: linear-gradient(135deg, rgba(62, 232, 255, 0.04), rgba(94, 232, 255, 0.02));
-  border-bottom: 2px solid var(--outline);
 }
 
 .member-card-body {
@@ -4381,6 +4643,50 @@ tbody tr:hover {
   padding: 12px 16px;
 }
 
+.bug-report-notice {
+  background: rgba(255, 211, 77, 0.09);
+  border: 1px solid rgba(255, 211, 77, 0.34);
+  border-radius: var(--radius-sm);
+  color: var(--muted-strong);
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 18px 0 0;
+  padding: 12px 14px;
+}
+
+.bug-report-notice strong {
+  color: var(--text);
+}
+
+.bug-report-notice a {
+  color: var(--accent-yellow);
+}
+
+.community-profile-bug-note {
+  margin-top: 16px;
+}
+
+.profile-roadmap {
+  border-top: 1px solid var(--outline);
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+  padding-top: 22px;
+}
+
+.profile-roadmap h2 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.profile-roadmap > p:not(.eyebrow) {
+  color: var(--muted-strong);
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0;
+  max-width: 620px;
+}
+
 .report-profile-target {
   color: var(--muted-strong);
   font-size: 14px;
@@ -4454,6 +4760,30 @@ tbody tr:hover {
 .account-view-profile {
   margin-top: 16px;
   align-self: flex-start;
+}
+
+.account-profile-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.account-profile-actions .account-view-profile {
+  margin-top: 0;
+}
+
+.community-profile-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.community-profile-actions .community-report-btn {
+  margin-left: 0;
 }
 
 /* ---------- Frontend messages ---------- */
@@ -4691,6 +5021,12 @@ tbody tr:hover {
 
   .community-report-btn {
     margin-left: 0;
+  }
+
+  .community-profile-actions {
+    justify-content: center;
+    margin-left: 0;
+    width: 100%;
   }
 
   .admin-profile-row-meta:nth-child(n + 4) {

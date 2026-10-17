@@ -1,7 +1,9 @@
 import base64
+import binascii
 import hashlib
 import hmac
 import json
+import math
 import time
 from typing import Any
 
@@ -12,6 +14,8 @@ def _base64url_decode(data: str) -> bytes:
 
 
 def verify_wc_token(jwt: str, secret: str) -> dict[str, Any] | None:
+    if not isinstance(jwt, str) or not isinstance(secret, str) or not secret:
+        return None
     parts = jwt.split(".")
     if len(parts) != 3:
         return None
@@ -27,14 +31,23 @@ def verify_wc_token(jwt: str, secret: str) -> dict[str, Any] | None:
 
     try:
         decoded = json.loads(_base64url_decode(payload))
-    except (ValueError, json.JSONDecodeError):
+    except (ValueError, TypeError, binascii.Error, json.JSONDecodeError):
         return None
 
     if not isinstance(decoded, dict):
         return None
-    if not decoded.get("sub") or not decoded.get("exp"):
+    subject = decoded.get("sub")
+    if isinstance(subject, int) and not isinstance(subject, bool):
+        subject = str(subject)
+    if not isinstance(subject, str) or not subject.strip():
         return None
-    if int(decoded["exp"]) < int(time.time()):
+    expiration = decoded.get("exp")
+    if isinstance(expiration, bool) or not isinstance(expiration, (int, float)):
+        return None
+    try:
+        if not math.isfinite(expiration) or expiration <= time.time():
+            return None
+    except (OverflowError, TypeError, ValueError):
         return None
     return decoded
 

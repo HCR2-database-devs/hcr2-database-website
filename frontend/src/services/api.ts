@@ -1,4 +1,8 @@
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
+export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
+
+export function shareCardImageUrl(recordId: number | string): string {
+  return `${apiBaseUrl}/api/v1/share/records/${encodeURIComponent(String(recordId))}.png`;
+}
 
 export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const { headers, ...rest } = init ?? {};
@@ -15,14 +19,18 @@ export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T>
 
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
-    try {
-      const payload = JSON.parse(text);
-      if (typeof payload === "object" && payload !== null) {
-        if ("error" in payload) message = String(payload.error);
-        else if ("detail" in payload) message = String(payload.detail);
+    if (response.status === 413) {
+      message = "Image is too large. Please use a smaller file (max ~10 MB).";
+    } else {
+      try {
+        const payload = JSON.parse(text);
+        if (typeof payload === "object" && payload !== null) {
+          if ("error" in payload) message = String(payload.error);
+          else if ("detail" in payload) message = String(payload.detail);
+        }
+      } catch {
+        if (text && text.length < 200) message = text;
       }
-    } catch {
-      if (text && text.length < 200) message = text;
     }
     throw new Error(message);
   }

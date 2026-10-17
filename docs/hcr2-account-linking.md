@@ -198,11 +198,12 @@ constraints, and the `challenge_mismatch` rejection category. The distance is
 constrained to 1-2000 m and the stored URL is constrained to the accepted
 prefix, so even a direct database write cannot store a lookalike link.
 
-Apply migrations the same way as every other migration (see `DEPLOY.md`):
+Apply them with the tracked runner, which skips anything already applied:
 
 ```bash
-psql -h 127.0.0.1 -U hcr2_user -d hcr2_prod -f migrations/20261016_add_hcr2_account_linking.up.sql
-psql -h 127.0.0.1 -U hcr2_user -d hcr2_prod -f migrations/20261017_add_hcr2_challenge_verification.up.sql
+python3 scripts/migrate.py status
+python3 scripts/migrate.py up --dry-run
+python3 scripts/migrate.py up
 ```
 
 **Deploy order matters.** `PROFILE_COLUMNS` in

@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { COUNTRIES } from "../lib/countries";
 import {
+  communityBannerUrl,
+  compressBannerFile,
+  getCommunityConfig,
   removeCommunityBanner,
   setCommunityUsername,
   updateCommunityProfile,
@@ -11,9 +14,30 @@ import {
 } from "../services/community";
 import { getPublicData } from "../services/publicData";
 import type { CommunityAccount } from "../types/api";
+import { BannerCropModal } from "./BannerCropModal";
 import { BetaBadge } from "./BetaBadge";
+import { BugReportNotice } from "./BugReportNotice";
+import { PlannedFeatures } from "./PlannedFeatures";
 
 const MAX_BIO_LENGTH = 500;
+const FALLBACK_USERNAME_CHANGE_COOLDOWN_DAYS = 7;
+const FALLBACK_BANNER_CHANGE_COOLDOWN_DAYS = 7;
+const DAY_IN_MILLISECONDS = 24 * 60 * 60 * 1000;
+
+function positiveDays(value: number | undefined, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function dayLabel(days: number): string {
+  return days === 1 ? "1 day" : `${days} days`;
+}
+
+function getCooldownEnd(updatedAt: string | null | undefined, cooldownDays: number): Date | null {
+  if (!updatedAt) return null;
+  const timestamp = new Date(updatedAt).getTime();
+  if (Number.isNaN(timestamp)) return null;
+  return new Date(timestamp + cooldownDays * DAY_IN_MILLISECONDS);
+}
 
 function textValue(row: Record<string, unknown>, camel: string, lower: string): string {
   return String(row[camel] ?? row[lower] ?? "");
@@ -42,8 +66,45 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
   const [showDiscordAvatar, setShowDiscordAvatar] = useState(profile.show_discord_avatar);
   const [showHcr2PlayerName, setShowHcr2PlayerName] = useState(profile.show_hcr2_player_name);
   const [newUsername, setNewUsername] = useState("");
+  const [pendingBanner, setPendingBanner] = useState<File | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const configQuery = useQuery({
+    queryKey: ["community", "config"],
+    queryFn: getCommunityConfig,
+    staleTime: 5 * 60 * 1000
+  });
+
+  const usernameCooldownDays = positiveDays(
+    configQuery.data?.username_change_cooldown_days,
+    FALLBACK_USERNAME_CHANGE_COOLDOWN_DAYS
+  );
+  const bannerCooldownDays = positiveDays(
+    configQuery.data?.banner_change_cooldown_days,
+    FALLBACK_BANNER_CHANGE_COOLDOWN_DAYS
+  );
+
+  const usernameCooldownEnd = getCooldownEnd(
+    profile.last_username_change_at,
+    usernameCooldownDays
+  );
+  const bannerCooldownEnd = getCooldownEnd(profile.banner_updated_at, bannerCooldownDays);
+  const usernameCooldownActive =
+    usernameCooldownEnd !== null && usernameCooldownEnd.getTime() > now;
+  const bannerCooldownActive = bannerCooldownEnd !== null && bannerCooldownEnd.getTime() > now;
+  const usernameCooldownMessage = usernameCooldownActive
+    ? `You can change your username again on ${usernameCooldownEnd?.toLocaleDateString()}.`
+    : "You can change your username now.";
+  const bannerCooldownMessage = bannerCooldownActive
+    ? `You can replace your banner again on ${bannerCooldownEnd?.toLocaleDateString()}.`
+    : "You can upload or replace your banner now.";
 
   const vehiclesQuery = useQuery({
     queryKey: ["public-data", "vehicles"],
@@ -71,7 +132,9 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
   const usernameMutation = useMutation({
     mutationFn: setCommunityUsername,
     onSuccess: () => {
-      setMessage("Username updated. You can change it again in 30 days.");
+      setMessage(
+        `Username updated. You can change it again in ${dayLabel(usernameCooldownDays)}.`
+      );
       setError("");
       setNewUsername("");
       queryClient.invalidateQueries({ queryKey: ["auth-status"] });
@@ -86,7 +149,11 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
   const bannerMutation = useMutation({
     mutationFn: uploadCommunityBanner,
     onSuccess: () => {
-      setMessage("Banner updated. (WebP, max 2048px per side)");
+      setMessage(
+        `Banner updated. You can replace it again in ${dayLabel(
+          bannerCooldownDays
+        )}. (WebP, max 2048px per side)`
+      );
       setError("");
       queryClient.invalidateQueries({ queryKey: ["auth-status"] });
     },
@@ -115,7 +182,19 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
     if (!file) return;
     setMessage("");
     setError("");
-    bannerMutation.mutate(file);
+    setPendingBanner(file);
+  }
+
+  async function handleBannerConfirm(selectedFile: File) {
+    setPendingBanner(null);
+    setMessage("");
+    setError("");
+    try {
+      const prepared = await compressBannerFile(selectedFile);
+      bannerMutation.mutate(prepared);
+    } catch {
+      bannerMutation.mutate(selectedFile);
+    }
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -153,7 +232,9 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
         <fieldset className="frontend-fieldset profile-settings-toggles">
           <legend>Community username</legend>
           <p className="profile-settings-hint">
-            This is how you appear across the community. Changing it is limited to once every 30 days.
+            This is how you appear across the community. Changing it is limited to once every{" "}
+            {dayLabel(usernameCooldownDays)}.
+            {usernameCooldownActive && ` ${usernameCooldownMessage}`}
           </p>
           <label>
             Current username
@@ -177,7 +258,9 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
             <button
               type="button"
               className="button-ghost"
-              disabled={newUsername.trim().length < 3 || usernameMutation.isPending}
+              disabled={
+                newUsername.trim().length < 3 || usernameMutation.isPending || usernameCooldownActive
+              }
               onClick={handleUsernameSubmit}
             >
               {usernameMutation.isPending ? "Saving..." : "Change username"}
@@ -311,14 +394,25 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
 
         <fieldset className="frontend-fieldset profile-settings-toggles">
           <legend>Banner</legend>
+          <p className="profile-settings-hint">
+            Successful uploads and replacements are limited to once every{" "}
+            {dayLabel(bannerCooldownDays)}. {bannerCooldownMessage}
+          </p>
+          {profile.banner_updated_at && (
+            <img
+              className="profile-banner-preview"
+              src={communityBannerUrl(profile.id, profile.banner_updated_at) ?? undefined}
+              alt="Current profile banner"
+            />
+          )}
           <div className="profile-settings-row">
             <label>
-              Profile banner (PNG/JPG/WebP, max 2048px)
+              Profile banner (PNG/JPG/WebP, max 2048px, ~3.6:1 ratio after cropping)
               <input
                 type="file"
                 name="banner"
                 accept="image/png,image/jpeg,image/webp,image/gif"
-                disabled={bannerMutation.isPending}
+                disabled={bannerMutation.isPending || bannerCooldownActive}
                 onChange={handleBannerChange}
               />
             </label>
@@ -341,8 +435,25 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
           </button>
         </div>
       </form>
+      <BugReportNotice />
+      <section className="profile-roadmap" aria-labelledby="settings-roadmap-heading">
+        <p className="eyebrow">What's next</p>
+        <h2 id="settings-roadmap-heading">What we're planning to add</h2>
+        <p>
+          These community features are still being built and tested. If you hit a bug while editing
+          your profile, please report it — it helps.
+        </p>
+        <PlannedFeatures />
+      </section>
       {message && <p className="frontend-message">{message}</p>}
       {error && <p className="frontend-error">{error}</p>}
+      {pendingBanner && (
+        <BannerCropModal
+          file={pendingBanner}
+          onCancel={() => setPendingBanner(null)}
+          onConfirm={handleBannerConfirm}
+        />
+      )}
     </div>
   );
 }

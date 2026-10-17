@@ -17,6 +17,7 @@ from app.services.community_account_service import (
     COUNTRY_CODES,
     MAX_BIO_LENGTH,
     CommunityProfileError,
+    discord_avatar_url,
 )
 from app.services.community_notification_service import CommunityNotificationService
 from app.services.hcaptcha import verify_hcaptcha
@@ -131,6 +132,16 @@ class CommunityModerationService:
             limit=limit,
             offset=offset,
         )
+        profiles = [
+            {
+                **profile,
+                "discord_avatar": discord_avatar_url(
+                    profile.get("discord_id"),
+                    profile.get("discord_avatar"),
+                ),
+            }
+            for profile in profiles
+        ]
         return {
             "profiles": profiles,
             "count": total,
@@ -140,7 +151,14 @@ class CommunityModerationService:
         }
 
     def get_profile(self, user_id: int) -> dict[str, Any] | None:
-        return self.moderation_repository.get_profile(user_id)
+        profile = self.moderation_repository.get_profile(user_id)
+        if profile is None:
+            return None
+        profile["discord_avatar"] = discord_avatar_url(
+            profile.get("discord_id"),
+            profile.get("discord_avatar"),
+        )
+        return profile
 
     def update_profile(
         self,
@@ -222,15 +240,48 @@ class CommunityModerationService:
             )
         return updated
 
+    def reset_banner(
+        self,
+        user_id: int,
+        admin_username: str,
+        note: str | None = None,
+    ) -> dict[str, Any] | None:
+        updated = self.moderation_repository.admin_clear_banner(user_id)
+        if updated is not None:
+            self._log(
+                admin_username,
+                "banner_reset",
+                "community_user",
+                user_id,
+                updated.get("discord_username"),
+                note=note,
+            )
+            self._notify(
+                user_id,
+                "banner_reset",
+                "An administrator removed your profile banner."
+                + self._reason_suffix(note),
+            )
+        return updated
+
     def set_username(
         self,
         user_id: int,
         raw_username: str,
         admin_username: str,
         note: str | None = None,
+        override_bad_words: bool = False,
     ) -> dict[str, Any] | None:
+        normalized_note = (note or "").strip() or None
+        if override_bad_words and normalized_note is None:
+            raise CommunityProfileError(
+                "A note is required when overriding username moderation.",
+            )
         try:
-            username = validate_username(raw_username)
+            username = validate_username(
+                raw_username,
+                override_bad_words=override_bad_words,
+            )
         except (UsernameValidationError, UsernameModerationError) as exc:
             raise CommunityProfileError(exc.message) from None
         try:
@@ -239,6 +290,8 @@ class CommunityModerationService:
                 username,
                 username_key(username),
                 admin_username,
+                override_bad_words=override_bad_words,
+                note=normalized_note,
             )
         except UsernameConflictError:
             raise CommunityProfileError(
@@ -252,13 +305,13 @@ class CommunityModerationService:
                 "community_user",
                 user_id,
                 updated.get("discord_username"),
-                note=note,
+                note=normalized_note,
             )
             self._notify(
                 user_id,
                 "username_set",
                 f'An administrator set your community username to "{username}".'
-                + self._reason_suffix(note),
+                + self._reason_suffix(normalized_note),
             )
         return updated
 
@@ -268,7 +321,12 @@ class CommunityModerationService:
         admin_username: str,
         note: str | None = None,
     ) -> dict[str, Any] | None:
-        updated = self.moderation_repository.admin_reset_username(user_id, admin_username)
+        normalized_note = (note or "").strip() or None
+        updated = self.moderation_repository.admin_reset_username(
+            user_id,
+            admin_username,
+            note=normalized_note,
+        )
         if updated is not None:
             self._log(
                 admin_username,
@@ -276,18 +334,30 @@ class CommunityModerationService:
                 "community_user",
                 user_id,
                 updated.get("discord_username"),
-                note=note,
+                note=normalized_note,
             )
             self._notify(
                 user_id,
                 "username_reset",
                 "An administrator removed your community username."
-                + self._reason_suffix(note),
+                + self._reason_suffix(normalized_note),
             )
         return updated
 
     def get_username_history(self, user_id: int) -> list[dict[str, Any]]:
         return self.moderation_repository.list_username_history(user_id)
+
+    def list_username_audit(self, *, limit: int, offset: int) -> dict[str, Any]:
+        matches, total = self.moderation_repository.list_username_matches(
+            limit=limit,
+            offset=offset,
+        )
+        return {
+            "matches": matches,
+            "count": total,
+            "limit": limit,
+            "offset": offset,
+        }
 
     def set_disabled(
         self,

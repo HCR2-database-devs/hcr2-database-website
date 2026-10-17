@@ -3,8 +3,6 @@ from enum import StrEnum
 from app.core.config import Settings
 from app.core.security import is_allowed_admin
 
-VALID_FEATURE_STATES = ("DISABLED", "BETA", "ENABLED")
-
 
 class FeatureState(StrEnum):
     DISABLED = "DISABLED"

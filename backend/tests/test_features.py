@@ -10,9 +10,10 @@ from app.core.features import (
 
 _ALL_FEATURES = tuple(FEATURE_FIELDS)
 
-#: Every feature, Phase 4 HCR2 player account linking included, ships as BETA by
-#: default. HCR2 linking in particular is reviewed by a human, so the review
-#: queue is exercised before the feature is opened up.
+#: Phase 4 (HCR2 player account linking) ships restricted on purpose, because
+#: verification is reviewed by a human and the review queue has to be exercised
+#: before it is opened up. Every Phase 1-3 feature is public by default.
+_ALL_BETA_FLAGS = {f"FEATURE_{name.upper()}": "BETA" for name in _ALL_FEATURES}
 
 
 def _settings(**kwargs) -> Settings:
@@ -20,11 +21,25 @@ def _settings(**kwargs) -> Settings:
         _env_file=None,
         BETA_DISCORD_IDS="beta-user",
         ALLOWED_DISCORD_IDS="admin-user",
-        **kwargs,
+        **{**_ALL_BETA_FLAGS, **kwargs},
     )
 
 
-def test_all_features_default_to_beta() -> None:
+def test_community_features_default_to_public() -> None:
+    settings = Settings(
+        _env_file=None,
+        BETA_DISCORD_IDS="beta-user",
+        ALLOWED_DISCORD_IDS="admin-user",
+    )
+
+    for feature_name in _ALL_FEATURES:
+        if feature_name is Feature.HCR2_ACCOUNT_LINKING:
+            continue
+        assert get_feature_state(feature_name, settings) is FeatureState.ENABLED
+        assert can_use_feature("other", feature_name, settings) is True
+
+
+def test_every_feature_can_be_forced_to_beta() -> None:
     settings = _settings()
 
     for feature_name in _ALL_FEATURES:
@@ -33,7 +48,11 @@ def test_all_features_default_to_beta() -> None:
 
 
 def test_hcr2_account_linking_defaults_to_beta() -> None:
-    settings = _settings()
+    settings = Settings(
+        _env_file=None,
+        BETA_DISCORD_IDS="beta-user",
+        ALLOWED_DISCORD_IDS="admin-user",
+    )
 
     assert get_feature_state(Feature.HCR2_ACCOUNT_LINKING, settings) is FeatureState.BETA
     assert can_use_feature("other", Feature.HCR2_ACCOUNT_LINKING, settings) is False
@@ -61,9 +80,7 @@ def test_get_feature_state_falls_back_to_beta_for_unknown_feature() -> None:
 def test_feature_registry_covers_all_known_features() -> None:
     settings = _settings()
 
-    for feature_name in ("discord_accounts", "community_profiles", "profile_customization",
-                         "community_members", "profile_reporting",
-                         "hcr2_account_linking"):
+    for feature_name in _ALL_FEATURES:
         assert feature_name in FEATURE_FIELDS
         assert get_feature_state(feature_name, settings) is not None
 

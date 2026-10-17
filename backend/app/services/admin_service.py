@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 from psycopg import sql
 
 from app.core.config import REPO_ROOT
+from app.core.network import canonicalize_client_ip
 from app.db.session import DatabaseConfig, open_connection
 from app.schemas.admin import (
     AddMapRequest,
@@ -21,6 +22,7 @@ from app.schemas.admin import (
     DeleteNewsRequest,
     DeleteRecordRequest,
     PostNewsRequest,
+    SetLongestRecordRequest,
     SetQuestionableRequest,
     SubmitRecordRequest,
     UpdateChangelogRequest,
@@ -85,31 +87,46 @@ class AdminService:
         self._activity_log = activity_log
         self._maintenance_flag = REPO_ROOT / "MAINTENANCE"
         self._backups_dir = REPO_ROOT / "backups"
-        self._backup_tables = (
-            "map",
-            "vehicle",
-            "player",
-            "tuning_part",
-            "tuning_setup",
-            "tuning_setup_part",
-            "world_record",
-            "pending_submission",
-            "news",
-            "changelog",
-            "ip_ban",
-        )
-        self._backup_sequences = {
-            "map": ("map_id_seq", "id_map"),
-            "vehicle": ("vehicle_id_seq", "id_vehicle"),
-            "player": ("player_id_seq", "id_player"),
-            "tuning_part": ("tuning_part_id_seq", "id_tuning_part"),
-            "tuning_setup": ("tuning_setup_id_seq", "id_tuning_setup"),
-            "world_record": ("world_record_id_seq", "id_record"),
-            "pending_submission": ("pending_submission_id_seq", "id"),
-            "news": ("news_id_seq", "id"),
-            "changelog": ("changelog_id_seq", "id"),
-            "ip_ban": ("ip_ban_id_seq", "id"),
-        }
+
+    @staticmethod
+    def _discover_backup_tables(connection: Any) -> list[str]:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema = current_schema() AND table_type = 'BASE TABLE'
+                ORDER BY table_name
+                """
+            )
+            return [str(row["table_name"]) for row in cursor.fetchall()]
+
+    @staticmethod
+    def _discover_backup_sequences(connection: Any) -> list[tuple[str, str, str]]:
+        """Return (sequence_name, table_name, column_name) for serial/identity columns."""
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT s.relname AS sequence_name,
+                       t.relname AS table_name,
+                       a.attname AS column_name
+                FROM pg_class s
+                JOIN pg_depend d
+                  ON d.objid = s.oid
+                 AND d.classid = 'pg_class'::regclass
+                 AND d.refclassid = 'pg_class'::regclass
+                 AND d.deptype IN ('a', 'i')
+                JOIN pg_class t ON t.oid = d.refobjid
+                JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = d.refobjsubid
+                JOIN pg_namespace n ON n.oid = s.relnamespace
+                WHERE s.relkind = 'S' AND n.nspname = current_schema()
+                ORDER BY t.relname
+                """
+            )
+            return [
+                (str(row["sequence_name"]), str(row["table_name"]), str(row["column_name"]))
+                for row in cursor.fetchall()
+            ]
 
     def _log(
         self,
@@ -186,6 +203,10 @@ class AdminService:
                         p.tuning_parts AS "tuningParts",
                         p.echo_affected_part_id AS "echoAffectedPartId",
                         p.submitter_ip AS "submitterIp",
+                        p.submitter_community_user_id AS "submitterCommunityUserId",
+                        cu.username AS "submitterCommunityUsername",
+                        cu.discord_username AS "submitterDiscordUsername",
+                        cu.discord_id AS "submitterDiscordId",
                         p.status,
                         p.submitted_at,
                         m.name_map AS "mapName",
@@ -195,11 +216,50 @@ class AdminService:
                     LEFT JOIN map m ON p.id_map = m.id_map
                     LEFT JOIN vehicle v ON p.id_vehicle = v.id_vehicle
                     LEFT JOIN tuning_part tp ON p.echo_affected_part_id = tp.id_tuning_part
+                    LEFT JOIN community_user cu ON p.submitter_community_user_id = cu.id
                     WHERE p.status = 'pending'
                     ORDER BY p.submitted_at DESC, p.id DESC
                     """
                 )
                 return {"pending": [dict(row) for row in cursor.fetchall()]}
+
+    def get_pending_submission(self, submission_id: int) -> dict[str, Any]:
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT
+                        p.id,
+                        p.id_map AS "idMap",
+                        p.id_vehicle AS "idVehicle",
+                        p.distance,
+                        p.player_name AS "playerName",
+                        p.player_country AS "playerCountry",
+                        p.tuning_parts AS "tuningParts",
+                        p.echo_affected_part_id AS "echoAffectedPartId",
+                        p.submitter_ip AS "submitterIp",
+                        p.submitter_community_user_id AS "submitterCommunityUserId",
+                        cu.username AS "submitterCommunityUsername",
+                        cu.discord_username AS "submitterDiscordUsername",
+                        cu.discord_id AS "submitterDiscordId",
+                        p.status,
+                        p.submitted_at,
+                        m.name_map AS "mapName",
+                        v.name_vehicle AS "vehicleName",
+                        tp.name_tuning_part AS "echoAffectedPartName"
+                    FROM pending_submission p
+                    LEFT JOIN map m ON p.id_map = m.id_map
+                    LEFT JOIN vehicle v ON p.id_vehicle = v.id_vehicle
+                    LEFT JOIN tuning_part tp ON p.echo_affected_part_id = tp.id_tuning_part
+                    LEFT JOIN community_user cu ON p.submitter_community_user_id = cu.id
+                    WHERE p.id = %s
+                    """,
+                    (submission_id,),
+                )
+                submission = cursor.fetchone()
+                if submission is None:
+                    raise AdminNotFoundError("Submission not found")
+                return dict(submission)
 
     def _is_mythic_setup(self, cursor: Any, tuning_setup_id: int | None) -> bool:
         if tuning_setup_id is None:
@@ -375,6 +435,75 @@ class AdminService:
         self._log(admin_username, "updated", "record", payload.record_id)
         return {"success": True}
 
+    def get_longest_record(self) -> dict[str, Any]:
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT
+                        lr.id_record AS "recordId",
+                        lr.set_by AS "setBy",
+                        lr.set_at AS "setAt",
+                        wr.distance,
+                        m.name_map AS "mapName",
+                        v.name_vehicle AS "vehicleName",
+                        p.name_player AS "playerName"
+                    FROM longest_standing_record AS lr
+                    LEFT JOIN world_record AS wr ON lr.id_record = wr.id_record
+                    LEFT JOIN map AS m ON wr.id_map = m.id_map
+                    LEFT JOIN vehicle AS v ON wr.id_vehicle = v.id_vehicle
+                    LEFT JOIN player AS p ON wr.id_player = p.id_player
+                    WHERE lr.id = 1
+                    """
+                )
+                row = cursor.fetchone()
+        if row is None or row["recordId"] is None:
+            return {"set": False}
+        data: dict[str, Any] = dict(row)
+        data["set"] = True
+        return data
+
+    def set_longest_record(
+        self,
+        payload: SetLongestRecordRequest,
+        admin_username: str = "",
+    ) -> dict[str, Any]:
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT 1 FROM world_record
+                    WHERE id_record = %s AND current = 1
+                    LIMIT 1
+                    """,
+                    (payload.record_id,),
+                )
+                if cursor.fetchone() is None:
+                    raise AdminNotFoundError("Record not found or not currently active")
+                cursor.execute(
+                    """
+                    INSERT INTO longest_standing_record (id, id_record, set_by, set_at)
+                    VALUES (1, %s, %s, now())
+                    ON CONFLICT (id) DO UPDATE
+                    SET id_record = EXCLUDED.id_record,
+                        set_by = EXCLUDED.set_by,
+                        set_at = EXCLUDED.set_at
+                    """,
+                    (payload.record_id, admin_username),
+                )
+        self._log(admin_username, "updated", "longest_record", payload.record_id)
+        return {"success": True, "recordId": payload.record_id}
+
+    def clear_longest_record(self, admin_username: str = "") -> dict[str, bool]:
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE longest_standing_record SET id_record = NULL, "
+                    "set_by = '', set_at = now() WHERE id = 1"
+                )
+        self._log(admin_username, "deleted", "longest_record", None)
+        return {"success": True}
+
     def add_map(self, payload: AddMapRequest, admin_username: str = "") -> dict[str, Any]:
         name = _clean_text(payload.map_name)
         if not name:
@@ -532,8 +661,9 @@ class AdminService:
                 cursor.execute(
                     """
                     INSERT INTO world_record
-                        (id_map, id_vehicle, id_player, distance, current, is_mythic)
-                    VALUES (%s, %s, %s, %s, 1, %s)
+                        (id_map, id_vehicle, id_player, distance, current, is_mythic,
+                         submitter_community_user_id)
+                    VALUES (%s, %s, %s, %s, 1, %s, %s)
                     RETURNING id_record
                     """,
                     (
@@ -542,6 +672,7 @@ class AdminService:
                         player_id,
                         submission["distance"],
                         is_mythic,
+                        submission.get("submitter_community_user_id"),
                     ),
                 )
                 record_id = cursor.fetchone()["id_record"]
@@ -563,7 +694,11 @@ class AdminService:
                         )
 
                 cursor.execute(
-                    "UPDATE pending_submission SET status = 'approved' WHERE id = %s",
+                    """
+                    UPDATE pending_submission
+                    SET status = 'approved', submitter_ip = NULL
+                    WHERE id = %s AND status = 'pending'
+                    """,
                     (submission_id,),
                 )
         self._log(admin_username, "approved", "submission", submission_id)
@@ -574,7 +709,11 @@ class AdminService:
             with connection.cursor() as cursor:
                 self._get_pending_submission(cursor, submission_id)
                 cursor.execute(
-                    "UPDATE pending_submission SET status = 'rejected' WHERE id = %s",
+                    """
+                    UPDATE pending_submission
+                    SET status = 'rejected', submitter_ip = NULL
+                    WHERE id = %s AND status = 'pending'
+                    """,
                     (submission_id,),
                 )
         self._log(admin_username, "rejected", "submission", submission_id)
@@ -737,9 +876,9 @@ class AdminService:
                 return {"bans": [dict(row) for row in cursor.fetchall()]}
 
     def create_ban(self, payload: BanIPRequest, admin_username: str = "") -> dict[str, Any]:
-        ip = _clean_text(payload.ip)
+        ip = canonicalize_client_ip(_clean_text(payload.ip))
         reason = _clean_text(payload.reason)
-        if not ip:
+        if ip is None:
             raise AdminServiceError("IP address is required.")
         if not reason:
             raise AdminServiceError("A ban reason is required.")
@@ -750,11 +889,28 @@ class AdminService:
 
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (ip,))
                 cursor.execute(
                     """
-                    SELECT id FROM ip_ban
-                    WHERE banned_ip = %s AND active = TRUE
+                    UPDATE ip_ban
+                    SET active = FALSE
+                    WHERE banned_ip = %s
+                      AND active = TRUE
+                      AND expires_at IS NOT NULL
+                      AND expires_at <= NOW()
+                    """,
+                    (ip,),
+                )
+                cursor.execute(
+                    """
+                    SELECT id
+                    FROM ip_ban
+                    WHERE banned_ip = %s
+                      AND active = TRUE
+                      AND (expires_at IS NULL OR expires_at > NOW())
+                    ORDER BY id DESC
                     LIMIT 1
+                    FOR UPDATE
                     """,
                     (ip,),
                 )
@@ -935,7 +1091,17 @@ class AdminService:
 
     def _get_pending_submission(self, cursor: Any, submission_id: int) -> dict[str, Any]:
         cursor.execute(
-            "SELECT * FROM pending_submission WHERE id = %s LIMIT 1",
+            """
+            SELECT p.*,
+                cu.username AS "submitterCommunityUsername",
+                cu.discord_username AS "submitterDiscordUsername",
+                cu.discord_id AS "submitterDiscordId"
+            FROM pending_submission p
+            LEFT JOIN community_user cu ON p.submitter_community_user_id = cu.id
+            WHERE p.id = %s
+              AND p.status = 'pending'
+            FOR UPDATE OF p
+            """,
             (submission_id,),
         )
         submission = cursor.fetchone()
@@ -1111,21 +1277,24 @@ class AdminService:
         }
 
     def _build_application_sql_dump(self, connection: Any) -> str:
+        tables = self._discover_backup_tables(connection)
+        sequences = self._discover_backup_sequences(connection)
+
         lines = [
-            "-- HCR2 application data backup generated by the FastAPI admin.",
-            "-- This backup contains application tables only.",
+            "-- HCR2 full database backup generated by the FastAPI admin.",
+            "-- Includes every user table in the active schema plus sequence positions.",
             "-- It does not include roles, extensions, or server settings.",
             "BEGIN;",
             "SET CONSTRAINTS ALL DEFERRED;",
             (
                 "TRUNCATE TABLE "
-                f"{', '.join(self._quote_ident(table) for table in self._backup_tables)} "
+                f"{', '.join(self._quote_ident(table) for table in tables)} "
                 "RESTART IDENTITY CASCADE;"
             ),
         ]
 
         with connection.cursor() as cursor:
-            for table in self._backup_tables:
+            for table in tables:
                 cursor.execute(
                     """
                     SELECT column_name
@@ -1159,7 +1328,7 @@ class AdminService:
 
         lines.append("")
         lines.append("-- Sequence positions")
-        for table, (sequence, column) in self._backup_sequences.items():
+        for sequence, table, column in sequences:
             quoted_table = self._quote_ident(table)
             quoted_column = self._quote_ident(column)
             lines.append(

@@ -15,7 +15,7 @@ import {
   TuningPartsIcons,
   VehicleWithIcon
 } from "../lib/legacyDisplay";
-import { exportRecords, getPublicData, getRecordHistory, getSubmissionVolume } from "../services/publicData";
+import { exportRecords, getLongestRecord, getPublicData, getRecordHistory, getSubmissionVolume } from "../services/publicData";
 import { emptyRecordFilters } from "../types/api";
 import type { DataRow } from "../types/api";
 
@@ -166,7 +166,7 @@ export function StatsPage() {
 
   const [historyMap, setHistoryMap] = useState("");
   const [historyVehicle, setHistoryVehicle] = useState("");
-  const [historyMythic, setHistoryMythic] = useState<boolean | undefined>(undefined);
+  const [historyMythic, setHistoryMythic] = useState<"all" | "normal" | "mythic">("normal");
   const [volumeWeeks, setVolumeWeeks] = useState(12);
   const [tuningMap, setTuningMap] = useState("");
 
@@ -177,12 +177,21 @@ export function StatsPage() {
 
   const recordHistoryQuery = useQuery({
     queryKey: ["stats", "record-history", activeHistoryMap, activeHistoryVehicle, historyMythic],
-    queryFn: () => getRecordHistory(activeHistoryMap, activeHistoryVehicle, historyMythic),
+    queryFn: () =>
+      getRecordHistory(
+        activeHistoryMap,
+        activeHistoryVehicle,
+        historyMythic === "normal" ? false : historyMythic === "mythic" ? true : undefined
+      ),
     enabled: canFetchHistory
   });
   const volumeQuery = useQuery({
     queryKey: ["stats", "submission-volume", volumeWeeks],
     queryFn: () => getSubmissionVolume(volumeWeeks)
+  });
+  const longestRecordQuery = useQuery({
+    queryKey: ["stats", "longest-record"],
+    queryFn: getLongestRecord
   });
 
   const rows = records.data ?? [];
@@ -280,6 +289,29 @@ export function StatsPage() {
     }
     return best;
   }, [normalRows]);
+
+  const featuredLongest = useMemo(() => {
+    const manual = longestRecordQuery.data;
+    if (manual?.set) {
+      return {
+        manual: true,
+        mapName: asText(manual.mapName),
+        vehicleName: asText(manual.vehicleName),
+        playerName: asText(manual.playerName),
+        distance: Number(manual.distance ?? 0)
+      };
+    }
+    if (longestActive) {
+      return {
+        manual: false,
+        mapName: asText(longestActive.map_name),
+        vehicleName: asText(longestActive.vehicle_name),
+        playerName: asText(longestActive.player_name),
+        distance: distance(longestActive)
+      };
+    }
+    return null;
+  }, [longestActive, longestRecordQuery.data]);
 
   const playerStreaks = useMemo(() => {
     const perPlayer: Record<string, Record<string, number>> = {};
@@ -610,14 +642,30 @@ export function StatsPage() {
                   ))}
                 </select>
               </label>
-              <label className="history-toggle">
-                <input
-                  type="checkbox"
-                  checked={historyMythic === true}
-                  onChange={(e) => setHistoryMythic(e.target.checked ? true : undefined)}
-                />
-                Mythic only
-              </label>
+              <div className="history-mode-toggle" role="group" aria-label="Record type">
+                <span className="history-mode-toggle__label">Type</span>
+                <button
+                  type="button"
+                  className={historyMythic === "normal" ? "is-active" : ""}
+                  onClick={() => setHistoryMythic("normal")}
+                >
+                  Normal
+                </button>
+                <button
+                  type="button"
+                  className={historyMythic === "mythic" ? "is-active" : ""}
+                  onClick={() => setHistoryMythic("mythic")}
+                >
+                  Mythic
+                </button>
+                <button
+                  type="button"
+                  className={historyMythic === "all" ? "is-active" : ""}
+                  onClick={() => setHistoryMythic("all")}
+                >
+                  All
+                </button>
+              </div>
               <span className="history-note">
                 History is captured from record replacements going forward.
               </span>
@@ -673,18 +721,23 @@ export function StatsPage() {
             )}
           </section>
 
-          {longestActive && (
+          {featuredLongest && (
             <section className="stats-section" style={{ marginTop: "1.5rem" }}>
-              <h2>Longest Active Record</h2>
+              <h2>Longest Standing Record</h2>
+              {featuredLongest.manual && (
+                <p className="eyebrow" style={{ textAlign: "center" }}>
+                  Manually set by admins
+                </p>
+              )}
               <p style={{ fontSize: "1.1em", textAlign: "center", padding: "0.75rem" }}>
-                <MapWithIcon name={asText(longestActive.map_name)} />
+                <VehicleWithIcon name={featuredLongest.vehicleName} />
                 {" on "}
-                <VehicleWithIcon name={asText(longestActive.vehicle_name)} />
+                <MapWithIcon name={featuredLongest.mapName} />
                 {" by "}
-                <strong>{asText(longestActive.player_name)}</strong>
+                <strong>{featuredLongest.playerName}</strong>
                 {" — "}
                 <span style={{ fontSize: "1.3em", fontWeight: 800 }}>
-                  {formatDistance(distance(longestActive))}
+                  {formatDistance(featuredLongest.distance)}
                 </span>
               </p>
             </section>

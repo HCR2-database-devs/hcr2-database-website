@@ -42,3 +42,6 @@ class PublicDataService:
     def search_records(self, filters: dict[str, Any]) -> dict[str, Any]:
         rows = self.repository.search_records(filters)
         return {"records": rows, "count": len(rows)}
+
+    def get_home_summary(self, limit: str | int | None = None) -> dict[str, Any]:
+        return self.repository.get_home_summary(limit)

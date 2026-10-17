@@ -5,7 +5,8 @@ import { ActivityLogPanel } from "../components/ActivityLogPanel";
 import { CommunityAdminPanel } from "../components/CommunityAdminPanel";
 import { FormattedText } from "../components/FormattedText";
 import { useAuthStatus } from "../hooks/useAuthStatus";
-import { formatDate, MapWithIcon, TuningPartWithIcon, VehicleWithIcon } from "../lib/legacyDisplay";
+import { formatDateTime } from "../lib/format";
+import { formatDate, TuningPartWithIcon } from "../lib/legacyDisplay";
 import {
   addMap,
   addTuningPart,
@@ -21,6 +22,7 @@ import {
   deleteAdminNews,
   deleteBackup,
   getAdminRecords,
+  getAdminLongestRecord,
   getMaintenanceStatus,
   getPendingSubmissions,
   listBans,
@@ -29,6 +31,8 @@ import {
   postAdminNews,
   rejectPendingSubmission,
   runIntegrityCheck,
+  setLongestRecord as setLongestRecordAdmin,
+  clearLongestRecord as clearLongestRecordAdmin,
   setMaintenance,
   setRecordQuestionable,
   submitAdminRecord,
@@ -43,8 +47,18 @@ import type {
   ChangelogItem,
   DataRow,
   IntegrityStatus,
-  NewsItem
+  NewsItem,
+  PendingSubmission
 } from "../types/api";
+
+function formatBytes(bytes: number): string {
+  if (!bytes) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / 1024 ** index;
+  const digits = value >= 100 || index === 0 ? 0 : 1;
+  return `${value.toFixed(digits)} ${units[index]}`;
+}
 
 type RecordFormState = {
   mapId: string;
@@ -92,6 +106,25 @@ function text(row: DataRow, ...keys: string[]) {
     }
   }
   return "";
+}
+
+// Logged-in submitters are stored without an IP (the account is the identity), so
+// prefer the community handle and only fall back to the IP for anonymous sends.
+function submitterIdentity(submission: PendingSubmission): { label: string; detail: string | null } {
+  const handle =
+    submission.submitterCommunityUsername ||
+    submission.submitterDiscordUsername ||
+    submission.submitterDiscordId ||
+    "";
+  if (handle) {
+    return {
+      label: handle,
+      detail: submission.submitterCommunityUsername && submission.submitterDiscordUsername
+        ? `Discord: ${submission.submitterDiscordUsername}`
+        : null,
+    };
+  }
+  return { label: submission.submitterIp ?? "", detail: null };
 }
 
 function numberValue(row: DataRow, ...keys: string[]) {
@@ -313,6 +346,7 @@ export function AdminPage() {
   const [assignRecordFilter, setAssignRecordFilter] = useState("");
   const [assignSetupId, setAssignSetupId] = useState("");
   const [assignSetupFilter, setAssignSetupFilter] = useState("");
+  const [longestRecordId, setLongestRecordId] = useState("");
   const [mapName, setMapName] = useState("");
   const [mapSpecial, setMapSpecial] = useState(false);
   const [vehicleName, setVehicleName] = useState("");
@@ -366,6 +400,10 @@ export function AdminPage() {
     queryFn: () => getPublicData("tuning-setups")
   });
   const recordsQuery = useQuery({ queryKey: ["admin", "records"], queryFn: getAdminRecords });
+  const longestRecordQuery = useQuery({
+    queryKey: ["admin", "longest-record"],
+    queryFn: getAdminLongestRecord
+  });
   const pendingQuery = useQuery({ queryKey: ["admin", "pending"], queryFn: getPendingSubmissions });
   const newsQuery = useQuery({ queryKey: ["news", 20], queryFn: () => getNews(20) });
   const changelogQuery = useQuery({ queryKey: ["changelog"], queryFn: () => getChangelog(200) });
@@ -405,6 +443,15 @@ export function AdminPage() {
       }
     }
   }, [recordForm.playerId, playersQuery.data]);
+  useEffect(() => {
+    const selected = longestRecordQuery.data;
+    if (selected?.set && selected.recordId != null) {
+      setLongestRecordId(String(selected.recordId));
+    } else if (!selected?.set) {
+      setLongestRecordId("");
+    }
+  }, [longestRecordQuery.data]);
+
   const filterRecordOptions = (records: AdminRecord[], filter: string) =>
     records.filter((record) => recordLabel(record).toLowerCase().includes(filter.toLowerCase()));
 
@@ -524,6 +571,30 @@ export function AdminPage() {
       setAssignRecordId("");
       setAssignSetupId("");
     }, "Tuning setup assigned.");
+  }
+
+  async function handleSetLongestRecord(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const recordId = Number(longestRecordId);
+    if (!recordId) {
+      return;
+    }
+    await runAction(async () => {
+      await setLongestRecordAdmin(recordId);
+    }, "Longest standing record set.");
+  }
+
+  async function handleClearLongestRecord() {
+    const confirmed = window.confirm(
+      "Clear the longest standing record? The stats page will fall back to the automatic pick until a new one is set."
+    );
+    if (!confirmed) {
+      return;
+    }
+    await runAction(async () => {
+      await clearLongestRecordAdmin();
+      setLongestRecordId("");
+    }, "Longest standing record cleared.");
   }
 
   async function handleAddMap(event: FormEvent<HTMLFormElement>) {
@@ -1073,6 +1144,48 @@ export function AdminPage() {
         </form>
         <p id="assign-message" />
       </div>
+
+      <div className="form-container">
+        <h2>Longest Standing Record</h2>
+        <form id="longest-record-form" onSubmit={handleSetLongestRecord}>
+          <label>Current setting</label>
+          <p className="frontend-muted">
+            {longestRecordQuery.isLoading
+              ? "Loading..."
+              : longestRecordQuery.data?.set
+                ? `${longestRecordQuery.data.distance ?? 0} - ${longestRecordQuery.data.mapName ?? "?"} - ${
+                    longestRecordQuery.data.vehicleName ?? "?"
+                  } - ${longestRecordQuery.data.playerName ?? "?"} — set by ${longestRecordQuery.data.setBy || "?"}`
+                : "None set. The stats page shows the automatic pick until one is set."}
+          </p>
+          <label>Record (current records only)</label>
+          <select
+            id="longest-record-select"
+            required
+            value={longestRecordId}
+            onChange={(event) => setLongestRecordId(event.target.value)}
+          >
+            <option value="">Select a record</option>
+            {(recordsQuery.data ?? []).map((record) => (
+              <option key={record.idRecord} value={record.idRecord}>
+                {recordLabel(record)}
+              </option>
+            ))}
+          </select>
+          <div className="admin-actions">
+            <button type="submit">Set as Longest Standing Record</button>
+            <button
+              type="button"
+              onClick={handleClearLongestRecord}
+              className="button-ghost"
+              disabled={!longestRecordQuery.data?.set}
+            >
+              Clear
+            </button>
+          </div>
+        </form>
+        <p id="longest-record-message" />
+      </div>
         </>
       )}
 
@@ -1201,13 +1314,15 @@ export function AdminPage() {
                   <th>Country</th>
                   <th>Tuning Parts</th>
                   <th>Echo Part</th>
-                  <th>IP</th>
+                  <th>Submitter</th>
                   <th>When</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {(pendingQuery.data?.pending ?? []).map((submission) => (
+                {(pendingQuery.data?.pending ?? []).map((submission) => {
+                  const submitter = submitterIdentity(submission);
+                  return (
                   <tr key={submission.id}>
                     <td>{submission.id}</td>
                     <td>{submission.mapName}</td>
@@ -1217,8 +1332,13 @@ export function AdminPage() {
                     <td>{submission.playerCountry}</td>
                     <td>{submission.tuningParts}</td>
                     <td>{(submission as Record<string, unknown>).echoAffectedPartName as string ?? ""}</td>
-                    <td>{submission.submitterIp ?? ""}</td>
-                    <td>{submission.submitted_at}</td>
+                    <td>
+                      {submitter.label}
+                      {submitter.detail && (
+                        <span className="admin-submitter-detail"> {submitter.detail}</span>
+                      )}
+                    </td>
+                    <td>{formatDateTime(submission.submitted_at) ?? ""}</td>
                     <td className="admin-table-actions">
                       <button
                         type="button"
@@ -1239,7 +1359,8 @@ export function AdminPage() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -1615,7 +1736,7 @@ export function AdminPage() {
                 {(backupsQuery.data?.backups ?? []).map((backup) => (
                   <tr key={backup.name}>
                     <td>{backup.name}</td>
-                    <td>{backup.size}</td>
+                    <td>{formatBytes(backup.size)}</td>
                     <td>{backup.mtime}</td>
                     <td className="admin-table-actions">
                       <a className="admin-button-link" href={backupDownloadUrl(backup.name)}>

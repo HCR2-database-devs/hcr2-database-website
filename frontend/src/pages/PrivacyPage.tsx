@@ -40,7 +40,7 @@ export function PrivacyPage() {
         <ul>
           <li>
             Your chosen community username, plus a record of previous usernames to enforce the
-            30-day username change cooldown
+            7-day username change cooldown
           </li>
           <li>Your profile bio, if provided</li>
           <li>Your country, if provided</li>

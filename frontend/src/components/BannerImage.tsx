@@ -11,7 +11,7 @@ export function BannerImage({ communityId, bannerUpdatedAt, className = "", alt 
   const src = communityBannerUrl(communityId, bannerUpdatedAt);
 
   if (!src) {
-    return <div className={`community-banner-placeholder ${className}`.trim()} aria-hidden="true" />;
+    return <img className={className} src="/img/defaultbanner.svg" alt={alt} loading="lazy" />;
   }
 
   return <img className={className} src={src} alt={alt} loading="lazy" />;

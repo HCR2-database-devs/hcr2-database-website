@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 
+import { REPO_URL } from "../lib/communityInfo";
+
 export function Footer() {
   return (
     <footer id="footer" className="site-footer">
@@ -13,7 +15,7 @@ export function Footer() {
         <p className="github-meta">
           <a
             id="github-link"
-            href="https://github.com/HCR2-database-devs/hcr2-database-website"
+            href={REPO_URL}
             target="_blank"
             rel="noopener noreferrer"
           >

@@ -1,12 +1,13 @@
 import { Link } from "react-router-dom";
 
+import { CopyProfileLinkButton } from "../components/CopyProfileLinkButton";
 import { LinkedHcr2AccountSection } from "../components/hcr2Link/LinkedHcr2AccountSection";
 import { ProfileSettingsSection } from "../components/ProfileSettingsSection";
 import { UserAvatar } from "../components/UserAvatar";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { useCanUseFeature } from "../lib/features";
 import { formatMemberSince } from "../lib/format";
-import { communityAvatar, communityDisplayName } from "../services/community";
+import { communityAvatar, communityDisplayName, discordAvatarUrl } from "../services/community";
 
 export function AccountPage() {
   const { data: authStatus, isLoading } = useAuthStatus();
@@ -47,7 +48,7 @@ export function AccountPage() {
 
   const community = authStatus.community;
   const displayName = communityDisplayName(community) || authStatus.username || authStatus.id || "HCR2 user";
-  const avatarUrl = authStatus.avatar ?? communityAvatar(community) ?? null;
+  const avatarUrl = discordAvatarUrl(authStatus.avatar ?? communityAvatar(community), authStatus.id);
   const memberSince = formatMemberSince(community?.created_at);
   const needsOnboarding = community !== undefined && community !== null && !community.username;
 
@@ -114,9 +115,12 @@ export function AccountPage() {
         </dl>
 
         {community && canViewProfile && (
-          <Link className="button account-view-profile" to={`/community/${community.id}`}>
-            View my public profile
-          </Link>
+          <div className="account-profile-actions">
+            <Link className="button account-view-profile" to={`/community/${community.id}`}>
+              View my public profile
+            </Link>
+            <CopyProfileLinkButton communityId={community.id} />
+          </div>
         )}
       </div>
 

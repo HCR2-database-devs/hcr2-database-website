@@ -1,6 +1,7 @@
+import secrets
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, Request
 
 from app.core.config import Settings, get_settings
 from app.repositories.changelog import PostgresChangelogRepository
@@ -13,17 +14,39 @@ from app.repositories.public_data import PostgresPublicDataRepository
 from app.services.activity_log_service import ActivityLogService
 from app.services.admin_service import AdminService
 from app.services.auth_service import AuthService
+from app.services.avatar_probe import avatar_reachable
 from app.services.changelog_service import ChangelogService
 from app.services.community_account_service import CommunityAccountService
 from app.services.community_moderation_service import CommunityModerationService
 from app.services.community_notification_service import CommunityNotificationService
+from app.services.community_share_service import CommunityShareService
 from app.services.hcr2_link_service import Hcr2LinkService
 from app.services.news_service import NewsService
 from app.services.public_data_service import PublicDataService
 from app.services.public_submission_service import PublicSubmissionService
+from app.services.share_service import ShareService
 from app.services.stats_service import StatsService
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
+
+
+def get_api_key(request: Request) -> str | None:
+    return request.query_params.get("api_key") or request.headers.get("X-API-Key")
+
+
+def api_key_authorized(request: Request, settings: SettingsDep) -> bool:
+    """Return True when the caller supplied a key listed in ``API_KEYS``.
+
+    Comparison is constant-time. Returns a bool rather than raising so each
+    route can pick its own error shape.
+    """
+    api_key = get_api_key(request)
+    if not api_key:
+        return False
+    return any(secrets.compare_digest(api_key, candidate) for candidate in settings.api_keys)
+
+
+ApiKeyAuthorizedDep = Annotated[bool, Depends(api_key_authorized)]
 
 
 def get_public_data_service() -> PublicDataService:
@@ -92,4 +115,16 @@ def get_hcr2_link_service(settings: SettingsDep) -> Hcr2LinkService:
         settings=settings,
         activity_log=get_activity_log_service(),
         notification_service=get_community_notification_service(),
+    )
+
+
+def get_share_service() -> ShareService:
+    return ShareService()
+
+
+def get_community_share_service(settings: SettingsDep) -> CommunityShareService:
+    return CommunityShareService(
+        community_service=get_community_account_service(),
+        site_url=settings.public_site_url,
+        avatar_check=avatar_reachable,
     )

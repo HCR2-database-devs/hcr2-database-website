@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS longest_standing_record;

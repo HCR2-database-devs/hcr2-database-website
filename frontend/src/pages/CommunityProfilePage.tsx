@@ -4,8 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 
 import { BannerImage } from "../components/BannerImage";
 import { BetaBadge } from "../components/BetaBadge";
+import { BugReportNotice } from "../components/BugReportNotice";
 import { CountryFlag } from "../components/CountryFlag";
+import { CopyProfileLinkButton } from "../components/CopyProfileLinkButton";
 import { FeatureGate } from "../components/FeatureGate";
+import { PlannedFeatures } from "../components/PlannedFeatures";
 import { ReportProfileModal } from "../components/ReportProfileModal";
 import { RequireAuth } from "../components/RequireAuth";
 import { UserAvatar } from "../components/UserAvatar";
@@ -13,7 +16,7 @@ import { useAuthStatus } from "../hooks/useAuthStatus";
 import { countryName } from "../lib/countries";
 import { useCanUseFeature } from "../lib/features";
 import { formatMemberSince } from "../lib/format";
-import { communityDisplayName } from "../services/community";
+import { communityDisplayName, discordAvatarUrl } from "../services/community";
 import { getCommunityProfile } from "../services/community";
 
 export function CommunityProfilePage() {
@@ -118,7 +121,7 @@ function CommunityProfileContent() {
 
       <div className="community-profile-card">
         <div className="community-profile-head">
-          <UserAvatar avatarUrl={profile.discord_avatar} name={displayName} size={88} />
+          <UserAvatar avatarUrl={discordAvatarUrl(profile.discord_avatar)} name={displayName} size={88} />
           <div className="community-profile-copy">
             <h1>
               {displayName}
@@ -132,11 +135,18 @@ function CommunityProfileContent() {
               <p className="community-profile-discord">Discord: @{profile.discord_username}</p>
             )}
           </div>
-          {canReport && (
-            <button className="button-ghost community-report-btn" type="button" onClick={() => setReportOpen(true)}>
-              Report Profile
-            </button>
-          )}
+          <div className="community-profile-actions">
+            <CopyProfileLinkButton communityId={profile.id} />
+            {canReport && (
+              <button
+                className="button-ghost community-report-btn"
+                type="button"
+                onClick={() => setReportOpen(true)}
+              >
+                Report Profile
+              </button>
+            )}
+          </div>
         </div>
 
         <dl className="community-profile-details">
@@ -203,7 +213,19 @@ function CommunityProfileContent() {
             {lastUpdated ? <> · Last updated {lastUpdated}</> : null}.
           </p>
         )}
+
+        <BugReportNotice className="community-profile-bug-note" />
       </div>
+
+      <section className="profile-roadmap" aria-labelledby="profile-roadmap-heading">
+        <p className="eyebrow">What's next</p>
+        <h2 id="profile-roadmap-heading">What we're planning to add</h2>
+        <p>
+          The community section is new, so this is the shortlist. Nothing here is promised yet, but
+          it's the order we're working through it.
+        </p>
+        <PlannedFeatures />
+      </section>
 
       {reportOpen && (
         <ReportProfileModal

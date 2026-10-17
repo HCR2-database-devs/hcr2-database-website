@@ -45,6 +45,12 @@ export type CommunityProfileUpdate = {
   show_hcr2_player_name?: boolean;
 };
 
+export type AdminProfileUpdate = CommunityProfileUpdate & {
+  username?: string | null;
+  override_bad_words?: boolean;
+  note?: string | null;
+};
+
 export type UsernameUpdate = {
   username: string;
 };
@@ -166,6 +172,27 @@ export type UsernameHistoryEntry = {
   username: string;
   changed_by_admin: string;
   changed_at: string;
+  override_bad_words?: boolean;
+  note?: string | null;
+};
+
+export type CommunityConfig = {
+  username_change_cooldown_days: number;
+  banner_change_cooldown_days: number;
+};
+
+export type AdminUsernameMatch = {
+  community_user_id: number;
+  username: string;
+  category: string;
+  term: string;
+};
+
+export type AdminUsernameAuditResponse = {
+  matches: AdminUsernameMatch[];
+  count: number;
+  limit: number;
+  offset: number;
 };
 
 export type FeatureName =
@@ -245,6 +272,11 @@ export type PendingSubmission = {
   playerCountry?: string | null;
   tuningParts?: string | null;
   submitterIp?: string | null;
+  submitterCommunityUserId?: number | null;
+  submitterCommunityUsername?: string | null;
+  submitterDiscordUsername?: string | null;
+  submitterDiscordId?: string | null;
+  echoAffectedPartName?: string | null;
   status: string;
   submitted_at: string;
   mapName?: string | null;
@@ -299,6 +331,15 @@ export type PaginatedRecordsResponse = {
   total: number;
   limit: number;
   offset: number;
+};
+
+export type HomeSummary = {
+  records: number;
+  mythic_records: number;
+  players: number;
+  maps: number;
+  vehicles: number;
+  random_records: DataRow[];
 };
 
 export type ActivityLogEntry = {
@@ -608,3 +649,17 @@ export const HCR2_APPOINTMENT_STATUSES: { value: string; label: string }[] = [
   { value: "awaiting_decision", label: "Awaiting decision" },
   { value: "cancelled", label: "Cancelled" }
 ];
+
+export type LongestRecordResponse = {
+  set: boolean;
+  recordId?: number | null;
+  distance?: number | null;
+  mapName?: string | null;
+  vehicleName?: string | null;
+  playerName?: string | null;
+};
+
+export type AdminLongestRecordResponse = LongestRecordResponse & {
+  setBy?: string | null;
+  setAt?: string | null;
+};

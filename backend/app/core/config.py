@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Annotated, Any
 from urllib.parse import quote_plus
 
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -48,6 +48,14 @@ class Settings(BaseSettings):
     db_connect_timeout: int = Field(default=5, validation_alias="DB_CONNECT_TIMEOUT")
 
     auth_shared_secret: str | None = Field(default=None, validation_alias="AUTH_SHARED_SECRET")
+    submission_rate_limit_hmac_secret: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "SUBMISSION_RATE_LIMIT_HMAC_SECRET",
+            "SUBMISSION_RATE_LIMIT_SECRET",
+            "submission_rate_limit_hmac_secret",
+        ),
+    )
     allowed_discord_ids: Annotated[list[str], NoDecode] = Field(
         default_factory=list,
         validation_alias="ALLOWED_DISCORD_IDS",
@@ -69,29 +77,33 @@ class Settings(BaseSettings):
         validation_alias="CORS_ORIGINS",
     )
 
+    # Absolute public origin, used to build share/embed URLs that Discord and
+    # other crawlers can fetch. Must not include a trailing slash.
+    public_site_url: str = Field(default="https://hcr2.xyz", validation_alias="PUBLIC_SITE_URL")
+
     # Feature flags. Valid values: DISABLED, BETA, ENABLED (see app/core/features.py).
     feature_discord_accounts: str = Field(
-        default="BETA",
+        default="ENABLED",
         validation_alias="FEATURE_DISCORD_ACCOUNTS",
     )
     feature_community_profiles: str = Field(
-        default="BETA",
+        default="ENABLED",
         validation_alias="FEATURE_COMMUNITY_PROFILES",
     )
     feature_profile_customization: str = Field(
-        default="BETA",
+        default="ENABLED",
         validation_alias="FEATURE_PROFILE_CUSTOMIZATION",
     )
     feature_community_members: str = Field(
-        default="BETA",
+        default="ENABLED",
         validation_alias="FEATURE_COMMUNITY_MEMBERS",
     )
     feature_profile_reporting: str = Field(
-        default="BETA",
+        default="ENABLED",
         validation_alias="FEATURE_PROFILE_REPORTING",
     )
     feature_community_notifications: str = Field(
-        default="BETA",
+        default="ENABLED",
         validation_alias="FEATURE_COMMUNITY_NOTIFICATIONS",
     )
     # Phase 4 ships in BETA: linking is reviewed by a human, so it starts
@@ -103,8 +115,12 @@ class Settings(BaseSettings):
     )
 
     username_change_cooldown_days: int = Field(
-        default=30,
+        default=7,
         validation_alias="USERNAME_CHANGE_COOLDOWN_DAYS",
+    )
+    banner_change_cooldown_days: int = Field(
+        default=7,
+        validation_alias="BANNER_CHANGE_COOLDOWN_DAYS",
     )
 
     # Phase 4: HCR2 player account linking.
@@ -195,11 +211,12 @@ class Settings(BaseSettings):
     def hcr2_link_code_secret(self) -> str:
         """HMAC pepper for hashing verification code tokens.
 
-        Reuses the auth secret so no new secret variable is required. A
-        missing value still produces a working (if unkeyed) hash, which keeps
-        local development simple.
+        Reuses the existing rate-limit secret and falls back to the auth
+        secret, so no new secret variable is required. A missing value still
+        produces a working (if unkeyed) hash, which keeps local development
+        simple.
         """
-        return self.auth_shared_secret or ""
+        return self.submission_rate_limit_hmac_secret or self.auth_shared_secret or ""
 
     @field_validator(
         "allowed_discord_ids",

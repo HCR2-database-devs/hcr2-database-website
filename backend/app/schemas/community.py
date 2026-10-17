@@ -49,43 +49,10 @@ class UsernameUpdate(BaseModel):
     username: str = ""
 
 
-class MemberSummary(BaseModel):
-    id: int
-    username: str | None = None
-    discord_username: str | None = None
-    discord_avatar: str | None = None
-    created_at: datetime
-    updated_at: datetime
-    bio: str | None = None
-    country: str | None = None
-    favorite_vehicle_id: int | None = None
-    favorite_vehicle_name: str | None = None
-    favorite_map_id: int | None = None
-    favorite_map_name: str | None = None
-    banner_updated_at: datetime | None = None
-
-
-class MemberListResponse(BaseModel):
-    members: list[MemberSummary]
-    count: int
-    limit: int
-    offset: int
-    search: str | None = None
-    sort: str
-
-
 class CommunityReportCreate(BaseModel):
     category: str
     reason: str = ""
     h_captcha_response: str = ""
-
-
-class CommunityReportResult(BaseModel):
-    id: int
-    community_user_id: int
-    category: str
-    status: str
-    created_at: datetime
 
 
 class AdminProfileUpdate(BaseModel):
@@ -101,14 +68,14 @@ class AdminProfileUpdate(BaseModel):
     show_discord_username: bool = False
     show_discord_avatar: bool = False
     username: str | None = None
+    override_bad_words: bool = False
+    note: str | None = None
 
 
-class UsernameHistoryEntry(BaseModel):
-    id: int
-    community_user_id: int
-    username: str
-    changed_by_admin: str
-    changed_at: datetime
+class AdminUsernameRequest(BaseModel):
+    username: str = ""
+    override_bad_words: bool = False
+    note: str | None = None
 
 
 class AdminNote(BaseModel):

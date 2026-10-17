@@ -168,7 +168,7 @@ function CommunityPageContent() {
               Previous
             </button>
             <span className="community-pagination-info">
-              {count === 0 ? 0 : offset + 1}-{Math.min(offset + members.length, count)} of {count}
+              {count === 0 ? "0 profiles" : `${offset + 1}-${Math.min(offset + members.length, count)} of ${count} profiles`}
             </span>
             <button
               className="button-ghost"

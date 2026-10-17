@@ -10,12 +10,13 @@ import {
   CountryWithFlag,
   formatDistance,
   MapWithIcon,
-  setupPartsLabel,
+  normalizeCountryDisplay,
   TuningPartWithIcon,
   TuningPartsIcons,
   VehicleWithIcon
 } from "../lib/legacyDisplay";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { compareCountryNames } from "../lib/countries";
 import { exportRecords, getPublicData, getRecordsPaginated } from "../services/publicData";
 import type { DataRow, PaginatedRecordsResponse, PublicDataView, RecordFilters } from "../types/api";
 import { emptyRecordFilters } from "../types/api";
@@ -145,7 +146,17 @@ function MultiDropdown({ id, buttonLabel, title, options, selected, onToggle, on
 }
 
 function buildCsv(rows: DataRow[]) {
-  const headers = ["Distance", "Map Name", "Vehicle Name", "Player Name", "Country"];
+  const headers = [
+    "Distance",
+    "Map Name",
+    "Vehicle Name",
+    "Player Name",
+    "Country",
+    "Notes",
+    "Tuning Parts",
+    "Echo Affected Part",
+    "Is Mythic"
+  ];
   const escapeCell = (value: unknown) => {
     const text = asText(value);
     if (text.includes(",") || text.includes('"') || text.includes("\n")) {
@@ -154,7 +165,17 @@ function buildCsv(rows: DataRow[]) {
     return text;
   };
   const csvRows = rows.map((row) =>
-    [row.distance, row.map_name, row.vehicle_name, row.player_name, row.player_country].map(escapeCell).join(",")
+    [
+      row.distance,
+      row.map_name,
+      row.vehicle_name,
+      row.player_name,
+      row.player_country,
+      row.questionable_reason,
+      row.tuning_parts,
+      row.echoAffectedPart,
+      row.isMythic
+    ].map(escapeCell).join(",")
   );
   return [headers.join(","), ...csvRows].join("\n");
 }
@@ -185,7 +206,19 @@ function RecordsFilters({
   onExport: () => void;
   isExporting: boolean;
 }) {
+  const [tuningLimitNotice, setTuningLimitNotice] = useState(false);
+
+  useEffect(() => {
+    if (!tuningLimitNotice) return;
+    const timer = window.setTimeout(() => setTuningLimitNotice(false), 2500);
+    return () => window.clearTimeout(timer);
+  }, [tuningLimitNotice]);
+
   function toggleList(current: string[], value: string, key: keyof RecordFilters) {
+    if (key === "tuningParts" && !current.includes(value) && current.length >= 4) {
+      setTuningLimitNotice(true);
+      return;
+    }
     const next = current.includes(value) ? current.filter((i) => i !== value) : [...current, value];
     onChange({ [key]: next });
   }
@@ -235,13 +268,20 @@ function RecordsFilters({
           />
           <MultiDropdown
             id="tuning"
-            buttonLabel="Tuning"
+            buttonLabel={
+              filters.tuningParts.length > 0 ? `Tuning (${filters.tuningParts.length}/4)` : "Tuning"
+            }
             title="Tuning Parts"
             options={tuningOptions.map((item) => ({ value: item, label: <TuningPartWithIcon name={item} /> }))}
             selected={filters.tuningParts}
             onToggle={(value) => toggleList(filters.tuningParts, value, "tuningParts")}
             onClear={() => onChange({ tuningParts: [] })}
           />
+          {tuningLimitNotice && (
+            <span role="status" className="filter-hint">
+              You can select up to 4 tuning parts.
+            </span>
+          )}
         </div>
 
         <select
@@ -316,7 +356,13 @@ function PlayerFilters({
   const [countries, setCountries] = useState<string[]>([]);
   const [recordCountOp, setRecordCountOp] = useState("");
   const [recordCountValue, setRecordCountValue] = useState("");
-  const countryOptions = useMemo(() => [...new Set(rows.map((row) => asText(row.country)).filter(Boolean))].sort(), [rows]);
+  const countryOptions = useMemo(
+    () =>
+      [...new Set(rows.map((row) => normalizeCountryDisplay(row.country)).filter((item): item is string => Boolean(item)))].sort(
+        compareCountryNames
+      ),
+    [rows],
+  );
 
   const filteredRows = useMemo(() => {
     const countValue = Number(recordCountValue);
@@ -324,7 +370,9 @@ function PlayerFilters({
       const name = asText(row.namePlayer);
       const count = recordCounts[name] ?? 0;
       const matchesSearch = !search || name.toLowerCase().includes(search.toLowerCase());
-      const matchesCountry = countries.length === 0 || countries.includes(asText(row.country));
+      const rowCountry = normalizeCountryDisplay(row.country);
+      const matchesCountry =
+        countries.length === 0 || (rowCountry !== null && countries.includes(rowCountry));
       let matchesCount = true;
       if (recordCountOp === "gte" && !Number.isNaN(countValue)) {
         matchesCount = count >= countValue;
@@ -355,7 +403,10 @@ function PlayerFilters({
         id="country"
         buttonLabel="Countries"
         title="Countries"
-        options={countryOptions.map((country) => ({ value: country, label: country }))}
+        options={countryOptions.map((country) => ({
+          value: country,
+          label: <CountryWithFlag country={country} />
+        }))}
         selected={countries}
         onToggle={(value) =>
           setCountries((current) =>
@@ -404,6 +455,24 @@ const VIRTUAL_TABLE_HEIGHT = "72vh";
 const MOBILE_BREAKPOINT = "(max-width: 720px)";
 const SHARE_LINK_AUTO_LOAD_CAP = 60;
 
+// Column widths in px, matching the .public-records-table / .virtual-players-table
+// nth-child rules in app.css. Declared here as <col> elements too because Chrome
+// recomputes the intrinsic width of position: sticky <th> cells independently of
+// the table's fixed column widths while scrolling — a <colgroup> pins the column
+// widths at the table level so the sticky header can't drift out of sync with the body.
+const RECORDS_COL_WIDTHS = [100, 155, 105, 190, 190, 190, 160, 140, 140];
+const PLAYERS_COL_WIDTHS = [100, 220, 160, 140];
+
+function ColGroup({ widths }: { widths: number[] }) {
+  return (
+    <colgroup>
+      {widths.map((width, index) => (
+        <col key={index} style={{ width }} />
+      ))}
+    </colgroup>
+  );
+}
+
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
   useEffect(() => {
@@ -415,18 +484,46 @@ function useMediaQuery(query: string): boolean {
   return matches;
 }
 
-function ShareButton({ shareUrl }: { shareUrl: string }) {
-  const [copied, setCopied] = useState(false);
+import { shareCardImageUrl } from "../services/api";
 
-  const handleCopy = useCallback(() => {
-    navigator.clipboard?.writeText(shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }, [shareUrl]);
+function ShareButton({ recordId, shareUrl }: { recordId: string; shareUrl: string }) {
+  const [state, setState] = useState<"idle" | "loading" | "copied" | "done">("idle");
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+
+  const pngUrl = shareCardImageUrl(recordId);
+
+  const handleDownload = useCallback(async () => {
+    if (blobUrl) {
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `hcr2-record-${recordId}.png`;
+      a.click();
+      return;
+    }
+    setState("loading");
+    try {
+      const response = await fetch(pngUrl, { credentials: "include" });
+      if (!response.ok) {
+        throw new Error(`Failed to load share image (${response.status})`);
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      setBlobUrl(url);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `hcr2-record-${recordId}.png`;
+      a.click();
+      setState("done");
+    } catch {
+      setState("copied");
+      navigator.clipboard?.writeText(shareUrl);
+    }
+    setTimeout(() => setState("idle"), 2500);
+  }, [blobUrl, pngUrl, recordId, shareUrl]);
 
   return (
-    <button className="share-btn" type="button" onClick={handleCopy}>
-      {copied ? "Copied!" : "Copy"}
+    <button className="share-btn" type="button" onClick={handleDownload}>
+      {state === "loading" ? "Generating…" : state === "done" ? "Saved!" : state === "copied" ? "Link copied" : "Share"}
     </button>
   );
 }
@@ -468,7 +565,7 @@ function recordRow(item: DataRow, index: number, onNote: (note: string) => void,
         <CountryWithFlag country={item.player_country} />
       </td>
       <td data-label="Share">
-        <ShareButton shareUrl={shareUrl} />
+        <ShareButton recordId={recordId} shareUrl={shareUrl} />
       </td>
     </tr>
   );
@@ -632,6 +729,7 @@ function VirtualRecordsTable({
         style={{ maxHeight: VIRTUAL_TABLE_HEIGHT }}
       >
         <table className="public-records-table">
+          <ColGroup widths={RECORDS_COL_WIDTHS} />
           <thead>
             <tr>
               <th>Distance</th>
@@ -696,7 +794,8 @@ function VirtualPlayersTable({
         className="table-scroll table-scroll--virtual"
         style={{ maxHeight: VIRTUAL_TABLE_HEIGHT }}
       >
-        <table>
+        <table className="virtual-players-table">
+          <ColGroup widths={PLAYERS_COL_WIDTHS} />
           <thead>
             <tr>
               <th>Player ID</th>

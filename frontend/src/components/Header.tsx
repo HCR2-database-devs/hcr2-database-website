@@ -6,6 +6,7 @@ import { NotificationBell } from "./NotificationBell";
 import { PublicSubmitModal } from "./PublicSubmitModal";
 import { UserAvatar } from "./UserAvatar";
 import { BetaBadge } from "./BetaBadge";
+import { discordAvatarUrl } from "../services/community";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { useDarkMode } from "../hooks/useDarkMode";
 import { useCanUseFeature } from "../lib/features";
@@ -102,7 +103,10 @@ export function Header() {
     authStatus?.username ??
     authStatus?.id ??
     null;
-  const avatarUrl = authStatus?.avatar ?? authStatus?.community?.discord_avatar ?? null;
+  const avatarUrl = discordAvatarUrl(
+    authStatus?.avatar ?? authStatus?.community?.discord_avatar,
+    authStatus?.id
+  );
 
   return (
     <>
