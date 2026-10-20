@@ -22,6 +22,7 @@ type Hcr2LinkWizardProps = {
   onContinue: () => void;
   continueLabel: string;
   continueDisabled?: boolean;
+  backDisabled?: boolean;
   busy?: boolean;
   error: string;
   notice: string;
@@ -39,6 +40,7 @@ export function Hcr2LinkWizard({
   onContinue,
   continueLabel,
   continueDisabled = false,
+  backDisabled = false,
   busy = false,
   error,
   notice
@@ -74,7 +76,12 @@ export function Hcr2LinkWizard({
         {error && <p className="frontend-error">{error}</p>}
 
         <div className="hcr2-wizard-actions">
-          <button className="button-ghost" type="button" onClick={onBack} disabled={busy}>
+          <button
+            className="button-ghost"
+            type="button"
+            onClick={onBack}
+            disabled={busy || backDisabled}
+          >
             Back
           </button>
           <button

@@ -103,6 +103,8 @@ function CommunityProfileContent() {
   const isOwner = profile.is_owner || authStatus?.community?.id === profile.id;
   const canReport = authStatus?.logged === true && !isOwner && canReportFeature;
   const lastUpdated = profile.updated_at ? formatMemberSince(profile.updated_at) : null;
+  const showDiscordIdentity = profile.show_discord_username && Boolean(profile.discord_username);
+  const showHcr2Identity = Boolean(profile.hcr2_player_name);
 
   return (
     <div className="page-container community-profile-page">
@@ -128,12 +130,38 @@ function CommunityProfileContent() {
               <BetaBadge feature="community_profiles" />
               {isOwner && <span className="profile-owner-badge">You</span>}
             </h1>
+            {(showDiscordIdentity || showHcr2Identity) && (
+              <p className="community-profile-identity">
+                {showDiscordIdentity && (
+                  <>
+                    <span className="community-profile-identity-label">Discord</span>
+                    <span>@{profile.discord_username}</span>
+                  </>
+                )}
+                {showDiscordIdentity && showHcr2Identity && (
+                  <span className="community-profile-identity-sep" aria-hidden="true">
+                    ·
+                  </span>
+                )}
+                {showHcr2Identity && (
+                  <>
+                    <span className="community-profile-identity-label">HCR2</span>
+                    <strong className="community-profile-hcr2-name">
+                      {profile.hcr2_player_name}
+                    </strong>
+                    <span className="status-pill status-pill--verified">Verified</span>
+                    {profile.hcr2_link_verified_at && (
+                      <span className="frontend-muted community-profile-hcr2-since">
+                        {formatMemberSince(profile.hcr2_link_verified_at)}
+                      </span>
+                    )}
+                  </>
+                )}
+              </p>
+            )}
             <p className="community-profile-meta">
               hcr2.xyz #{profile.id} · Member since {memberSince ?? "unknown"}
             </p>
-            {profile.show_discord_username && profile.discord_username && (
-              <p className="community-profile-discord">Discord: @{profile.discord_username}</p>
-            )}
           </div>
           <div className="community-profile-actions">
             <CopyProfileLinkButton communityId={profile.id} />
@@ -150,25 +178,6 @@ function CommunityProfileContent() {
         </div>
 
         <dl className="community-profile-details">
-          {profile.hcr2_player_name && (
-            <div className="community-profile-hcr2-row">
-              <dt>Linked HCR2 player name</dt>
-              <dd>
-                <span className="status-pill status-pill--verified">Verified</span>{" "}
-                <strong>{profile.hcr2_player_name}</strong>
-                {profile.hcr2_link_verified_at && (
-                  <span className="frontend-muted">
-                    {" "}
-                    · verified {formatMemberSince(profile.hcr2_link_verified_at)}
-                  </span>
-                )}
-                <span className="frontend-muted">
-                  {" "}
-                  · Records matching this player name are not claimed as this member&apos;s work.
-                </span>
-              </dd>
-            </div>
-          )}
           {profile.show_country && profile.country && (
             <div>
               <dt>Country</dt>
@@ -201,7 +210,9 @@ function CommunityProfileContent() {
             !profile.show_favorite_map &&
             !profile.hcr2_player_name && (
               <div>
-                <dd>This member has not shared any extra details yet.</dd>
+                <dd className="community-profile-details-empty">
+                This member has not shared any extra details yet.
+              </dd>
               </div>
             )}
         </dl>

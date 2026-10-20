@@ -277,7 +277,7 @@ export function LinkedHcr2AccountSection({
           <ul className="hcr2-method-list">
             <li>You must leave your current team to do this.</li>
             <li>Does not work with the Chinese version of HCR2.</li>
-            <li>You will join the designated team and send a generated code in its in-game chat.</li>
+            <li>You will join the Hcr2 team we created and send a generated code in its in-game chat.</li>
             <li>An administrator reviews your request manually.</li>
           </ul>
           {config?.team.available ? (
@@ -307,7 +307,7 @@ export function LinkedHcr2AccountSection({
           <ul className="hcr2-method-list">
             <li>Join our Discord server using the invite link.</li>
             <li>
-              DM {config?.discord.owner_handles.join(", ") || "the site owner"} to arrange a time.
+              DM {config?.discord.owner_handles.join(" or ") || "the site owner"} to arrange a time.
             </li>
             <li>In the call, share your screen showing your HCR2 account and the player name.</li>
             <li>
@@ -349,10 +349,9 @@ export function LinkedHcr2AccountSection({
             </li>
             <li>Drive that distance with a jeep in Countryside Adventure.</li>
             <li>
-              Turn the run into a challenge on playhcr.com and send the link to it. It has to start
-              with <code>{challengePrefix}</code>
+              Create challenge about run and send the link to it.
             </li>
-            <li>An administrator opens your challenge and compares the distance before approving.</li>
+            <li>An administrator opens your challenge and checks your driver profile.</li>
           </ul>
           {config?.challenge.available ? (
             <button
@@ -408,8 +407,7 @@ export function LinkedHcr2AccountSection({
         )}
         <div className="hcr2-warn-stack">
           <p className="hcr2-warn">
-            Leave your current team before joining the verification team. You cannot be in two
-            teams at once.
+            Leave your current team before joining the verification team.
           </p>
           <p className="hcr2-warn">This method does not work with the Chinese version of HCR2.</p>
         </div>
@@ -477,7 +475,7 @@ export function LinkedHcr2AccountSection({
 
       <section className="hcr2-verify-section">
         <h4>2. Contact {config?.discord.owner_handles.join(", ") || "the site owner"}</h4>
-        <p>Send them a direct message containing:</p>
+        <p>Send one of them a direct message containing:</p>
         <ul className="hcr2-method-list">
           <li>
             Your hcr2.xyz community username: <strong>{communityUsername ?? "(not set)"}</strong>
@@ -486,7 +484,7 @@ export function LinkedHcr2AccountSection({
             The HCR2 player name you selected:{" "}
             <strong>{liveRequest?.player_name ?? selected?.name_player ?? "(not selected)"}</strong>
           </li>
-          <li>That you want to complete Phase 4 screen-share verification.</li>
+          <li>That you want to complete screen-share verification.</li>
         </ul>
         <ClaimButton
           label="I've contacted the owner"
@@ -504,7 +502,7 @@ export function LinkedHcr2AccountSection({
         <p className="hcr2-discord-explainer">
           At the agreed time, join a voice call with the owner and share your screen showing
           your HCR2 account and the player name you&apos;re linking. You don&apos;t need a
-          microphone and you don&apos;t need to speak. Just share your screen so the owner can
+          microphone and you don&apos;t need to speak. Just share your screen so staff can
           check that you control the account.
         </p>
         <p className="frontend-muted">
@@ -553,7 +551,7 @@ export function LinkedHcr2AccountSection({
       <section className="hcr2-verify-section">
         <h4>2. Send your challenge link</h4>
         <p>
-          Turn the run into a challenge on playhcr.com and paste the link to it here. It has to
+          Make challenge about run and paste the link to it here. It has to
           start with <code>{challengePrefix}</code>
         </p>
         <label className="hcr2-challenge-field">
@@ -589,7 +587,7 @@ export function LinkedHcr2AccountSection({
           </p>
         )}
         <p className="form-hint">
-          An administrator opens the challenge and checks that the distance matches the one above.
+          An administrator opens the challenge and checks your driver profile.
           Sending a link does not link your name on its own.
         </p>
       </section>
@@ -787,7 +785,7 @@ export function LinkedHcr2AccountSection({
 
       {submitted && (
         <p className="hcr2-status-banner is-submitted">
-          <strong>Submitted — awaiting admin review.</strong> An administrator will check your
+          <strong>Submitted! awaiting admin review.</strong> An administrator will check your
           verification and decide. Nothing has been verified automatically.
         </p>
       )}
@@ -828,8 +826,15 @@ export function LinkedHcr2AccountSection({
               onBack={() => {
                 setError("");
                 setNotice("");
-                setStepOverride(Math.max(0, Math.min(stepIndex, steps.length - 1) - 1));
+                const clamped = Math.min(stepIndex, steps.length - 1);
+                if (clamped === 0) {
+                  setSelected(null);
+                  setNameConfirmed(false);
+                  return;
+                }
+                setStepOverride(clamped - 1);
               }}
+              backDisabled={stepIndex === 0 && !selected}
               onContinue={handleContinue}
               continueLabel={stepIndex === 3 ? "Submit for review" : "Continue"}
               continueDisabled={!canContinue()}
