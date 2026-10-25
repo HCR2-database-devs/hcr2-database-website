@@ -29,12 +29,10 @@ function formRequest<T>(path: string, body: FormData) {
   });
 }
 
-function withOptionalIcon(nameKey: string, name: string, icon?: File | null) {
+function withWebpIcon(nameKey: string, name: string, icon: File) {
   const body = new FormData();
   body.append(nameKey, name);
-  if (icon && icon.size > 0) {
-    body.append("icon", icon);
-  }
+  body.append("icon", icon);
   return body;
 }
 
@@ -58,18 +56,18 @@ export function assignTuningSetup(body: unknown) {
   return jsonRequest<SuccessResponse>("/api/v1/admin/records/tuning-setup", "PATCH", body);
 }
 
-export function addMap(name: string, icon?: File | null, special: boolean = false) {
-  const body = withOptionalIcon("mapName", name, icon);
+export function addMap(name: string, icon: File, special: boolean = false) {
+  const body = withWebpIcon("mapName", name, icon);
   body.append("special", special ? "1" : "0");
   return formRequest<SuccessResponse>("/api/v1/admin/maps/form", body);
 }
 
-export function addVehicle(name: string, icon?: File | null) {
-  return formRequest<SuccessResponse>("/api/v1/admin/vehicles/form", withOptionalIcon("vehicleName", name, icon));
+export function addVehicle(name: string, icon: File) {
+  return formRequest<SuccessResponse>("/api/v1/admin/vehicles/form", withWebpIcon("vehicleName", name, icon));
 }
 
-export function addTuningPart(name: string, icon?: File | null) {
-  return formRequest<SuccessResponse>("/api/v1/admin/tuning-parts/form", withOptionalIcon("partName", name, icon));
+export function addTuningPart(name: string, icon: File) {
+  return formRequest<SuccessResponse>("/api/v1/admin/tuning-parts/form", withWebpIcon("partName", name, icon));
 }
 
 export function addTuningSetup(partIds: number[], echoAffectedPartId?: number | null) {

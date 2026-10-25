@@ -195,9 +195,18 @@ function recordLabel(record: AdminRecord) {
   } - ${record.player_name ?? "Unknown"}`;
 }
 
-function optionalIcon(form: HTMLFormElement) {
+function requiredWebpIcon(form: HTMLFormElement) {
   const icon = new FormData(form).get("icon");
-  return icon instanceof File && icon.size > 0 ? icon : null;
+  if (!(icon instanceof File) || icon.size === 0) {
+    throw new Error("Upload a WebP photo.");
+  }
+  if (!icon.name.toLowerCase().endsWith(".webp")) {
+    throw new Error("The photo must be a .webp file.");
+  }
+  if (icon.type && icon.type !== "image/webp") {
+    throw new Error("The photo must be a WebP image.");
+  }
+  return icon;
 }
 
 function applyMarkup(
@@ -600,9 +609,8 @@ export function AdminPage() {
   async function handleAddMap(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-    const icon = optionalIcon(form);
     await runAction(async () => {
-      await addMap(mapName, icon, mapSpecial);
+      await addMap(mapName, requiredWebpIcon(form), mapSpecial);
       setMapName("");
       setMapSpecial(false);
       form.reset();
@@ -612,9 +620,8 @@ export function AdminPage() {
   async function handleAddVehicle(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-    const icon = optionalIcon(form);
     await runAction(async () => {
-      await addVehicle(vehicleName, icon);
+      await addVehicle(vehicleName, requiredWebpIcon(form));
       setVehicleName("");
       form.reset();
     }, "Vehicle added.");
@@ -623,9 +630,8 @@ export function AdminPage() {
   async function handleAddPart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-    const icon = optionalIcon(form);
     await runAction(async () => {
-      await addTuningPart(partName, icon);
+      await addTuningPart(partName, requiredWebpIcon(form));
       setPartName("");
       form.reset();
     }, "Tuning part added.");
@@ -1196,10 +1202,10 @@ export function AdminPage() {
         <form id="add-vehicle-form" onSubmit={handleAddVehicle} encType="multipart/form-data">
           <label>Vehicle Name</label>
           <input id="vehicle-name-input" type="text" required placeholder="e.g., Jeep" value={vehicleName} onChange={(event) => setVehicleName(event.target.value)} />
-          <label>Icon (SVG - optional)</label>
-          <input id="vehicle-icon-input" name="icon" type="file" accept=".svg,image/svg+xml" />
+          <label>Photo (WebP - required)</label>
+          <input id="vehicle-icon-input" name="icon" type="file" accept=".webp,image/webp" required />
           <small className="form-hint">
-            Upload a .svg icon file. Will be saved as: vehicle_name.svg
+            Upload a .webp photo. Will be saved as: vehicle_name.webp
           </small>
           <button type="submit">Add Vehicle</button>
         </form>
@@ -1220,10 +1226,10 @@ export function AdminPage() {
             />
             Special Map
           </label>
-          <label>Icon (SVG - optional)</label>
-          <input id="map-icon-input" name="icon" type="file" accept=".svg,image/svg+xml" />
+          <label>Photo (WebP - required)</label>
+          <input id="map-icon-input" name="icon" type="file" accept=".webp,image/webp" required />
           <small className="form-hint">
-            Upload a .svg icon file. Will be saved as: map_name.svg
+            Upload a .webp photo. Will be saved as: map_name.webp
           </small>
           <button type="submit">Add Map</button>
         </form>
@@ -1235,10 +1241,10 @@ export function AdminPage() {
         <form id="add-tuning-part-form" onSubmit={handleAddPart} encType="multipart/form-data">
           <label>Tuning Part Name</label>
           <input id="tuning-part-name-input" type="text" required placeholder="e.g., Turbo" value={partName} onChange={(event) => setPartName(event.target.value)} />
-          <label>Icon (SVG - optional)</label>
-          <input id="tuning-part-icon-input" name="icon" type="file" accept=".svg,image/svg+xml" />
+          <label>Photo (WebP - required)</label>
+          <input id="tuning-part-icon-input" name="icon" type="file" accept=".webp,image/webp" required />
           <small className="form-hint">
-            Upload a .svg icon file. Will be saved as: part_name.svg
+            Upload a .webp photo. Will be saved as: part_name.webp
           </small>
           <button type="submit">Add Tuning Part</button>
         </form>

@@ -427,10 +427,24 @@ a:hover {
   display: flex;
 }
 
-.nav-dropdown-menu .nav-link {
+.nav-dropdown-menu--right {
+  left: auto;
+  right: 0;
+}
+
+.nav-dropdown-menu .nav-link,
+.nav-dropdown-menu .nav-action {
   justify-content: flex-start;
   white-space: nowrap;
   width: 100%;
+}
+
+.account-menu-wrapper .nav-dropdown-menu {
+  min-width: 170px;
+}
+
+.header-action-divider {
+  display: none;
 }
 
 .notification-bell {
@@ -770,6 +784,14 @@ h4 {
 h1 {
   font-size: clamp(40px, 6vw, 76px);
   max-width: 920px;
+}
+
+#home-title {
+  font-size: clamp(40px, 5.5vw, 65px);
+}
+
+.hero-title-line {
+  white-space: nowrap;
 }
 
 h2 {
@@ -3299,6 +3321,10 @@ tbody tr:hover {
     flex-wrap: wrap;
   }
 
+  .header-inner .header-desktop-only {
+    display: none !important;
+  }
+
   .mobile-menu-btn {
     display: inline-flex;
     margin-left: auto;
@@ -3368,16 +3394,12 @@ tbody tr:hover {
 @media (min-width: 1061px) {
   .header-inner {
     align-items: center;
-    column-gap: 24px;
+    column-gap: 16px;
     display: grid;
-    grid-template-areas:
-      "brand actions"
-      "nav nav";
-    grid-template-columns: minmax(0, 1fr) auto;
-    min-height: 0;
+    grid-template-areas: "brand nav actions";
+    grid-template-columns: auto minmax(0, 1fr) auto;
     padding-bottom: 10px;
     padding-top: 10px;
-    row-gap: 10px;
   }
 
   .header-inner .branding {
@@ -3386,15 +3408,21 @@ tbody tr:hover {
     justify-self: start;
   }
 
-  .header-inner .mobile-menu-btn {
+  .header-inner .brand-subtitle {
     display: none;
+  }
+
+  .header-inner .mobile-menu-btn,
+  .header-inner .header-mobile-only {
+    display: none !important;
   }
 
   .header-inner .header-nav {
     display: contents;
   }
 
-  .header-inner .nav-links {
+  .header-inner .nav-links,
+  .header-inner .header-actions {
     background: linear-gradient(180deg, rgba(15, 24, 72, 0.82), rgba(7, 11, 38, 0.92));
     border: 2px solid rgba(105, 227, 255, 0.24);
     border-radius: var(--radius-sm);
@@ -3402,31 +3430,42 @@ tbody tr:hover {
       inset 0 1px 0 rgba(255, 255, 255, 0.06),
       0 4px 0 rgba(3, 7, 24, 0.48);
     gap: 2px;
-    grid-area: nav;
-    justify-self: center;
     padding: 4px;
   }
 
+  .header-inner .nav-links {
+    grid-area: nav;
+    justify-self: center;
+  }
+
   .header-inner .header-actions {
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-wrap: nowrap;
     grid-area: actions;
     justify-content: flex-end;
     justify-self: end;
   }
 
   .header-inner .nav-links > .nav-link,
-  .header-inner .nav-links > .nav-dropdown-wrapper > .nav-dropdown-toggle {
+  .header-inner .nav-links > .nav-dropdown-wrapper > .nav-dropdown-toggle,
+  .header-inner .header-actions .nav-action,
+  .header-inner .header-actions .theme-toggle {
     background: transparent;
     border-color: transparent;
     box-shadow: none;
     min-height: 32px;
-    padding: 0 13px;
+    padding: 0 12px;
     text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
   }
 
+  .header-inner .nav-links > .nav-dropdown-wrapper > .nav-dropdown-toggle,
+  .header-inner .header-actions .nav-dropdown-toggle {
+    padding-right: 10px;
+  }
+
   .header-inner .nav-links > .nav-link:hover,
-  .header-inner .nav-links > .nav-dropdown-wrapper > .nav-dropdown-toggle:hover {
+  .header-inner .nav-links > .nav-dropdown-wrapper > .nav-dropdown-toggle:hover,
+  .header-inner .header-actions .nav-action:hover,
+  .header-inner .header-actions .theme-toggle:hover {
     background: var(--surface);
     border-color: var(--outline);
     box-shadow: var(--shadow-inset), 0 2px 0 rgba(3, 7, 24, 0.58);
@@ -3441,6 +3480,51 @@ tbody tr:hover {
     border-color: var(--outline);
     box-shadow: var(--shadow-inset), 0 2px 0 rgba(5, 38, 21, 0.72);
     color: #ffffff;
+  }
+
+  .header-inner .header-actions .nav-action--primary {
+    background: var(--gloss), var(--button-gradient);
+    border-color: var(--outline);
+    box-shadow: var(--shadow-inset), 0 2px 0 rgba(5, 38, 21, 0.72);
+    color: #ffffff;
+    font-weight: 900;
+  }
+
+  .header-inner .header-actions .nav-action--primary:hover {
+    background: var(--gloss), linear-gradient(180deg, #b8ff79 0%, #34e45a 48%, #15963a 100%);
+    border-color: var(--outline);
+    box-shadow: var(--shadow-inset), 0 2px 0 rgba(5, 38, 21, 0.82), 0 0 18px rgba(73, 255, 117, 0.3);
+  }
+
+  .header-inner .header-action-divider {
+    align-self: stretch;
+    background: rgba(105, 227, 255, 0.24);
+    display: block;
+    margin: 3px;
+    width: 1px;
+  }
+}
+
+@media (min-width: 1061px) and (max-width: 1179px) {
+  .header-inner {
+    column-gap: 10px;
+  }
+
+  .header-inner .nav-links > .nav-link,
+  .header-inner .nav-links > .nav-dropdown-wrapper > .nav-dropdown-toggle,
+  .header-inner .header-actions .nav-action,
+  .header-inner .header-actions .theme-toggle {
+    padding-left: 9px;
+    padding-right: 9px;
+  }
+
+  .header-inner .nav-links > .nav-dropdown-wrapper > .nav-dropdown-toggle,
+  .header-inner .header-actions .nav-dropdown-toggle {
+    padding-right: 8px;
+  }
+
+  .header-inner .header-actions .account-chip {
+    max-width: 130px;
   }
 }
 
@@ -3502,6 +3586,10 @@ tbody tr:hover {
 
   h1 {
     font-size: clamp(34px, 11vw, 50px);
+  }
+
+  #home-title {
+    font-size: clamp(28px, 9.3vw, 50px);
   }
 
   .home-page,
@@ -4484,18 +4572,10 @@ tbody tr:hover {
   color: var(--text-strong);
 }
 
-.member-card-banner {
-  aspect-ratio: 3 / 1;
-  background: var(--gloss), var(--button-gradient);
-  border-bottom: 2px solid var(--outline);
-  object-fit: cover;
-  width: 100%;
-}
-
 .member-card-body {
   display: flex;
   gap: 12px;
-  padding: 14px 16px 0;
+  padding: 16px 16px 0;
 }
 
 .member-card-copy {

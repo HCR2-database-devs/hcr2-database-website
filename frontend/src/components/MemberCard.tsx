@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 
-import { BannerImage } from "./BannerImage";
 import { CountryFlag } from "./CountryFlag";
 import { UserAvatar } from "./UserAvatar";
 import { countryName } from "../lib/countries";
@@ -12,11 +11,6 @@ export function MemberCard({ member }: { member: CommunityMember }) {
   const displayName = communityDisplayName(member);
   return (
     <Link className="member-card" to={`/community/${member.id}`}>
-      <BannerImage
-        communityId={member.id}
-        bannerUpdatedAt={member.banner_updated_at}
-        className="member-card-banner"
-      />
       <div className="member-card-body">
         <UserAvatar avatarUrl={discordAvatarUrl(member.discord_avatar)} name={displayName} size={48} />
         <div className="member-card-copy">

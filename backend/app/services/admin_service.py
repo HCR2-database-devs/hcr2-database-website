@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import re
 import stat
+from io import BytesIO
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from PIL import Image, UnidentifiedImageError
 from psycopg import sql
 
 from app.core.config import REPO_ROOT
@@ -592,11 +594,11 @@ class AdminService:
         content: bytes | None,
     ) -> str:
         if not content:
-            return ""
-        self._validate_svg_icon(filename, content_type, content)
+            raise AdminServiceError("A WebP photo is required.")
+        self._validate_webp_icon(filename, content_type, content)
         target_dir = REPO_ROOT / "frontend" / "public" / "img" / folder
         target_dir.mkdir(parents=True, exist_ok=True)
-        target = target_dir / f"{self._asset_slug(item_name)}.svg"
+        target = target_dir / f"{self._asset_slug(item_name)}.webp"
         target.write_bytes(content)
         return f"Icon uploaded: {target.name}"
 
@@ -606,8 +608,7 @@ class AdminService:
         content_type: str | None,
         content: bytes | None,
     ) -> None:
-        if content:
-            self._validate_svg_icon(filename, content_type, content)
+        self._validate_webp_icon(filename, content_type, content)
 
     def add_tuning_setup(
         self, payload: AddTuningSetupRequest, admin_username: str = ""
@@ -1218,21 +1219,37 @@ class AdminService:
         row = cursor.fetchone()
         return str(row["name"]) if row else "Unknown"
 
-    def _validate_svg_icon(
+    def _validate_webp_icon(
         self,
         filename: str | None,
         content_type: str | None,
-        content: bytes,
+        content: bytes | None,
     ) -> None:
-        if len(content) > 500_000:
-            raise AdminServiceError("Icon file is too large.")
-        if filename and not filename.lower().endswith(".svg"):
-            raise AdminUnsupportedMediaError("Only SVG icon uploads are supported.")
-        if content_type and content_type not in {"image/svg+xml", "application/octet-stream"}:
-            raise AdminUnsupportedMediaError("Only SVG icon uploads are supported.")
-        preview = content[:1024].lstrip().lower()
-        if b"<svg" not in preview and not preview.startswith(b"<?xml"):
-            raise AdminUnsupportedMediaError("The uploaded icon does not look like an SVG file.")
+        if not content:
+            raise AdminServiceError("A WebP photo is required.")
+        if len(content) > 2_000_000:
+            raise AdminServiceError("Icon file is too large (max 2 MB).")
+        if filename and not filename.lower().endswith(".webp"):
+            raise AdminUnsupportedMediaError("Only WebP icon uploads are supported.")
+        if content_type and content_type not in {
+            "image/webp",
+            "application/octet-stream",
+            "binary/octet-stream",
+        }:
+            raise AdminUnsupportedMediaError("Only WebP icon uploads are supported.")
+        try:
+            with Image.open(BytesIO(content)) as image:
+                if image.format != "WEBP":
+                    raise AdminUnsupportedMediaError(
+                        "The uploaded photo does not look like a WebP image."
+                    )
+                image.verify()
+        except AdminServiceError:
+            raise
+        except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError) as exc:
+            raise AdminUnsupportedMediaError(
+                "The uploaded photo does not look like a valid WebP image."
+            ) from exc
 
     def _asset_slug(self, name: str) -> str:
         slug = re.sub(r"\s+", "_", name.strip().lower())

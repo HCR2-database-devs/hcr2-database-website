@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 
 import { NewsModal } from "./NewsModal";
@@ -17,16 +18,19 @@ type NavItem = {
   feature?: "community_members";
 };
 
-const navItems: NavItem[] = [
+type DropdownId = "browse" | "records" | "account";
+
+const browseNavItems: NavItem[] = [
   { label: "Maps", to: "/maps" },
   { label: "Vehicles", to: "/vehicles" },
   { label: "Players", to: "/players" },
-  { label: "Tuning", to: "/tuning-parts" },
+  { label: "Tuning", to: "/tuning-parts" }
+];
+
+const primaryNavItems: NavItem[] = [
   { label: "Community", to: "/community", feature: "community_members" },
   { label: "Stats", to: "/stats" }
 ];
-
-const recordsIndex = navItems.findIndex((item) => item.to === "/players") + 1;
 
 function navClassName({ isActive }: { isActive: boolean }) {
   return `nav-link${isActive ? " is-active" : ""}`;
@@ -43,19 +47,28 @@ export function Header() {
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [isNewsOpen, setNewsOpen] = useState(false);
   const [isSubmitOpen, setSubmitOpen] = useState(false);
-  const [isRecordsOpen, setRecordsOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<DropdownId | null>(null);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileMenuRef = useRef<HTMLElement>(null);
+  const browseRef = useRef<HTMLDivElement>(null);
   const recordsRef = useRef<HTMLDivElement>(null);
+  const accountRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  const isBrowseActive = browseNavItems.some(
+    (item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)
+  );
   const isRecordsActive = location.pathname === "/records" || location.pathname.startsWith("/records");
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (recordsRef.current && !recordsRef.current.contains(e.target as Node)) {
-        setRecordsOpen(false);
+      const target = e.target as Node;
+      const isInsideDropdown = [browseRef, recordsRef, accountRef].some((ref) =>
+        ref.current?.contains(target)
+      );
+      if (!isInsideDropdown) {
+        setOpenDropdown(null);
       }
     }
     document.addEventListener("mousedown", handleClick);
@@ -71,7 +84,7 @@ export function Header() {
         return;
       }
       setMenuOpen(false);
-      setRecordsOpen(false);
+      setOpenDropdown(null);
     }
 
     document.addEventListener("mousedown", handleOutsideMobileMenu);
@@ -82,29 +95,53 @@ export function Header() {
     };
   }, [isMenuOpen]);
 
-  function handleRecordsEnter() {
+  function handleDropdownEnter(id: DropdownId) {
     if (!canUseHover()) return;
     if (closeTimer.current) clearTimeout(closeTimer.current);
-    setRecordsOpen(true);
+    setOpenDropdown(id);
   }
 
-  function handleRecordsLeave() {
+  function handleDropdownLeave() {
     if (!canUseHover()) return;
     if (closeTimer.current) clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(() => setRecordsOpen(false), 200);
+    closeTimer.current = setTimeout(() => setOpenDropdown(null), 200);
   }
 
-  function closeMobileMenu() {
+  function toggleDropdown(id: DropdownId) {
+    setOpenDropdown((current) => (current === id ? null : id));
+  }
+
+  function handleDropdownKeyDown(event: ReactKeyboardEvent, id: DropdownId) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleDropdown(id);
+    } else if (event.key === "Escape") {
+      setOpenDropdown(null);
+    }
+  }
+
+  function closeMenus() {
     setMenuOpen(false);
-    setRecordsOpen(false);
+    setOpenDropdown(null);
   }
 
-  function renderNavLink(item: NavItem) {
+  function handleLogout() {
+    window.location.href = "/auth/logout.php";
+  }
+
+  function renderNavLink(item: NavItem, mobileOnly = false) {
     if (item.feature === "community_members" && !canUseCommunity) {
       return null;
     }
     return (
-      <NavLink key={item.to} to={item.to} className={navClassName} onClick={closeMobileMenu}>
+      <NavLink
+        key={item.to}
+        to={item.to}
+        className={({ isActive }) =>
+          `${navClassName({ isActive })}${mobileOnly ? " header-mobile-only" : ""}`
+        }
+        onClick={closeMenus}
+      >
         {item.label}
         {item.feature === "community_members" && (
           <BetaBadge feature="community_members" className="nav-beta-badge" />
@@ -128,7 +165,7 @@ export function Header() {
     <>
       <header className="site-header">
         <div className="header-inner">
-          <Link className="branding" to="/" onClick={closeMobileMenu} aria-label="HCR2 Adventure Records home">
+          <Link className="branding" to="/" onClick={closeMenus} aria-label="HCR2 Adventure Records home">
             <img
               src="/img/hcrdatabaselogo-96.webp"
               alt="HCR2 Adventure Records"
@@ -155,7 +192,10 @@ export function Header() {
             type="button"
             aria-expanded={isMenuOpen}
             aria-controls="mobile-menu"
-            onClick={() => setMenuOpen((open) => !open)}
+            onClick={() => {
+              setMenuOpen((open) => !open);
+              setOpenDropdown(null);
+            }}
           >
             <span aria-hidden="true">Menu</span>
             <span className="sr-only">Toggle navigation</span>
@@ -168,62 +208,83 @@ export function Header() {
             aria-label="Primary navigation"
           >
             <div className="nav-links">
-              {navItems.slice(0, recordsIndex).map(renderNavLink)}
               <div
-                className="nav-dropdown-wrapper"
-                ref={recordsRef}
-                onMouseEnter={handleRecordsEnter}
-                onMouseLeave={handleRecordsLeave}
+                className="nav-dropdown-wrapper header-desktop-only"
+                ref={browseRef}
+                onMouseEnter={() => handleDropdownEnter("browse")}
+                onMouseLeave={handleDropdownLeave}
               >
                 <span
-                  className={`nav-link nav-dropdown-toggle${isRecordsActive ? " is-active" : ""}${
-                    isRecordsOpen ? " is-open" : ""
+                  className={`nav-link nav-dropdown-toggle${isBrowseActive ? " is-active" : ""}${
+                    openDropdown === "browse" ? " is-open" : ""
                   }`}
                   role="button"
                   tabIndex={0}
-                  aria-expanded={isRecordsOpen}
+                  aria-expanded={openDropdown === "browse"}
+                  aria-controls="browse-nav-menu"
+                  onClick={() => toggleDropdown("browse")}
+                  onMouseEnter={() => handleDropdownEnter("browse")}
+                  onKeyDown={(event) => handleDropdownKeyDown(event, "browse")}
+                >
+                  Browse
+                </span>
+                <div
+                  id="browse-nav-menu"
+                  className={`nav-dropdown-menu${openDropdown === "browse" ? " is-open" : ""}`}
+                  onMouseEnter={() => handleDropdownEnter("browse")}
+                  onMouseLeave={handleDropdownLeave}
+                >
+                  {browseNavItems.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      className={navClassName}
+                      onClick={closeMenus}
+                    >
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+
+              {browseNavItems.map((item) => renderNavLink(item, true))}
+
+              <div
+                className="nav-dropdown-wrapper"
+                ref={recordsRef}
+                onMouseEnter={() => handleDropdownEnter("records")}
+                onMouseLeave={handleDropdownLeave}
+              >
+                <span
+                  className={`nav-link nav-dropdown-toggle${isRecordsActive ? " is-active" : ""}${
+                    openDropdown === "records" ? " is-open" : ""
+                  }`}
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={openDropdown === "records"}
                   aria-controls="records-nav-menu"
-                  onClick={() => setRecordsOpen((prev) => !prev)}
-                  onMouseEnter={handleRecordsEnter}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setRecordsOpen((prev) => !prev);
-                    }
-                  }}
+                  onClick={() => toggleDropdown("records")}
+                  onMouseEnter={() => handleDropdownEnter("records")}
+                  onKeyDown={(event) => handleDropdownKeyDown(event, "records")}
                 >
                   Records
                 </span>
                 <div
                   id="records-nav-menu"
-                  className={`nav-dropdown-menu${isRecordsOpen ? " is-open" : ""}`}
-                  onMouseEnter={handleRecordsEnter}
-                  onMouseLeave={handleRecordsLeave}
+                  className={`nav-dropdown-menu${openDropdown === "records" ? " is-open" : ""}`}
+                  onMouseEnter={() => handleDropdownEnter("records")}
+                  onMouseLeave={handleDropdownLeave}
                 >
-                  <NavLink
-                    to="/records"
-                    end
-                    className={navClassName}
-                    onClick={() => {
-                      closeMobileMenu();
-                      setRecordsOpen(false);
-                    }}
-                  >
+                  <NavLink to="/records" end className={navClassName} onClick={closeMenus}>
                     Normal
                   </NavLink>
-                  <NavLink
-                    to="/records/mythic"
-                    className={navClassName}
-                    onClick={() => {
-                      closeMobileMenu();
-                      setRecordsOpen(false);
-                    }}
-                  >
+                  <NavLink to="/records/mythic" className={navClassName} onClick={closeMenus}>
                     Mythic
                   </NavLink>
                 </div>
               </div>
-              {navItems.slice(recordsIndex).map(renderNavLink)}
+
+              {primaryNavItems.map((item) => renderNavLink(item))}
             </div>
 
             <div className="header-actions">
@@ -231,7 +292,7 @@ export function Header() {
                 className="nav-action nav-action--primary"
                 type="button"
                 onClick={() => {
-                  closeMobileMenu();
+                  closeMenus();
                   setSubmitOpen(true);
                 }}
               >
@@ -242,7 +303,7 @@ export function Header() {
                   className="nav-action"
                   type="button"
                   onClick={() => {
-                    closeMobileMenu();
+                    closeMenus();
                     setNewsOpen(true);
                   }}
                 >
@@ -250,6 +311,8 @@ export function Header() {
                 </button>
                 <span className="news-indicator" style={{ display: "none" }} />
               </span>
+
+              <span className="header-action-divider" aria-hidden="true" />
 
               {!authStatus?.logged && (
                 <button
@@ -265,16 +328,58 @@ export function Header() {
                 </button>
               )}
 
+              {authStatus?.logged && <NotificationBell />}
+
               {authStatus?.logged && (
-                <NotificationBell />
+                <div
+                  className="nav-dropdown-wrapper account-menu-wrapper header-desktop-only"
+                  ref={accountRef}
+                >
+                  <button
+                    id="account-menu-btn"
+                    type="button"
+                    className={`nav-action account-chip nav-dropdown-toggle${
+                      openDropdown === "account" ? " is-open" : ""
+                    }`}
+                    aria-label="Account menu"
+                    aria-haspopup="menu"
+                    aria-expanded={openDropdown === "account"}
+                    aria-controls="account-nav-menu"
+                    onClick={() => toggleDropdown("account")}
+                    onKeyDown={(event) => handleDropdownKeyDown(event, "account")}
+                  >
+                    <UserAvatar avatarUrl={avatarUrl} name={displayName} size={20} />
+                    <span>{displayName}</span>
+                  </button>
+                  <div
+                    id="account-nav-menu"
+                    className={`nav-dropdown-menu nav-dropdown-menu--right${
+                      openDropdown === "account" ? " is-open" : ""
+                    }`}
+                    role="menu"
+                    aria-label="Account"
+                  >
+                    <Link to="/account" className="nav-action" role="menuitem" onClick={closeMenus}>
+                      My account
+                    </Link>
+                    {authStatus?.allowed && (
+                      <NavLink to="/admin" className={navClassName} role="menuitem" onClick={closeMenus}>
+                        Admin
+                      </NavLink>
+                    )}
+                    <button type="button" className="nav-action" role="menuitem" onClick={handleLogout}>
+                      Logout
+                    </button>
+                  </div>
+                </div>
               )}
 
               {authStatus?.logged && (
                 <Link
                   id="account-btn"
                   to="/account"
-                  className="nav-action account-chip"
-                  onClick={closeMobileMenu}
+                  className="nav-action account-chip header-mobile-only"
+                  onClick={closeMenus}
                 >
                   <UserAvatar avatarUrl={avatarUrl} name={displayName} size={20} />
                   <span>{displayName}</span>
@@ -282,7 +387,12 @@ export function Header() {
               )}
 
               {authStatus?.allowed && (
-                <NavLink id="admin-btn" to="/admin" className="nav-action" onClick={closeMobileMenu}>
+                <NavLink
+                  id="admin-btn"
+                  to="/admin"
+                  className="nav-action header-mobile-only"
+                  onClick={closeMenus}
+                >
                   Admin
                 </NavLink>
               )}
@@ -290,11 +400,9 @@ export function Header() {
               {authStatus?.logged && (
                 <button
                   id="logout-btn"
-                  className="nav-action"
+                  className="nav-action header-mobile-only"
                   type="button"
-                  onClick={() => {
-                    window.location.href = "/auth/logout.php";
-                  }}
+                  onClick={handleLogout}
                 >
                   Logout
                 </button>

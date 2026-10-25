@@ -457,7 +457,7 @@ export function HomePage() {
         <div className="home-hero__copy">
           <p className="eyebrow">Unofficial HCR2 Adventure Database</p>
           <h1 id="home-title">
-            Hill Climb Racing 2
+            <span className="hero-title-line">Hill Climb Racing 2</span>
             <br />
             Adventure Records.
           </h1>
