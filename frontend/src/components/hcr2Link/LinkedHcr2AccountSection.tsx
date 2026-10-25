@@ -440,7 +440,7 @@ export function LinkedHcr2AccountSection({
             busy={busy}
             blockedHint={!visibilityConfirmed ? "Tick the box above first." : undefined}
             onClaim={() =>
-              claim(() => confirmHcr2CodeSent(true), "Thanks. Continue to submit your request.")
+              claim(() => confirmHcr2CodeSent(visibilityConfirmed), "Thanks. Continue to submit your request.")
             }
           />
         </section>

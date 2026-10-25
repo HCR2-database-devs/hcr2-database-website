@@ -1,6 +1,6 @@
 import type { SyntheticEvent } from "react";
 
-import { COUNTRIES, COUNTRY_ALIASES } from "./countries";
+import { COUNTRIES, COUNTRY_ALIASES, flagUrl } from "./countries";
 
 const countryDisplayNames: Record<string, string> = Object.fromEntries(
   COUNTRIES.map((country) => [country.code, country.name])
@@ -120,11 +120,19 @@ export function iconSlug(name: unknown): string {
     .replace(/[^a-z0-9_-]/g, "");
 }
 
-function fallbackToPng(event: SyntheticEvent<HTMLImageElement>, folder: string, name: string) {
+export function iconUrl(folder: string, name: unknown) {
+  return `/img/${folder}/${iconSlug(name)}.webp`;
+}
+
+function fallbackIcon(event: SyntheticEvent<HTMLImageElement>, folder: string, name: string) {
   const image = event.currentTarget;
-  const pngSource = `/img/${folder}/${iconSlug(name)}.png`;
+  const slug = iconSlug(name);
+  if (image.src.endsWith(".webp")) {
+    image.src = `/img/${folder}/${slug}.svg`;
+    return;
+  }
   if (!image.src.endsWith(".png")) {
-    image.src = pngSource;
+    image.src = `/img/${folder}/${slug}.png`;
     return;
   }
   image.style.display = "none";
@@ -136,9 +144,13 @@ export function MapWithIcon({ name }: { name: unknown }) {
     <span className="map-cell" title={text}>
       <img
         className="map-icon"
-        src={`/img/map_icons/${iconSlug(text)}.svg`}
+        src={iconUrl("map_icons", text)}
         alt={`${text} icon`}
-        onError={(event) => fallbackToPng(event, "map_icons", text)}
+        width={24}
+        height={24}
+        loading="lazy"
+        decoding="async"
+        onError={(event) => fallbackIcon(event, "map_icons", text)}
       />
       <span className="cell-text">{text}</span>
     </span>
@@ -151,9 +163,13 @@ export function VehicleWithIcon({ name }: { name: unknown }) {
     <span className="vehicle-cell" title={text}>
       <img
         className="vehicle-icon"
-        src={`/img/vehicle_icons/${iconSlug(text)}.svg`}
+        src={iconUrl("vehicle_icons", text)}
         alt={`${text} icon`}
-        onError={(event) => fallbackToPng(event, "vehicle_icons", text)}
+        width={24}
+        height={24}
+        loading="lazy"
+        decoding="async"
+        onError={(event) => fallbackIcon(event, "vehicle_icons", text)}
       />
       <span className="cell-text">{text}</span>
     </span>
@@ -169,10 +185,14 @@ export function TuningPartWithIcon({ name }: { name: unknown }) {
     <span className="tuning-part-cell">
       <img
         className="tuning-part-icon"
-        src={`/img/tuning_parts_icons/${iconSlug(text)}.svg`}
+        src={iconUrl("tuning_parts_icons", text)}
         alt={`${text} icon`}
         title={text}
-        onError={(event) => fallbackToPng(event, "tuning_parts_icons", text)}
+        width={22}
+        height={22}
+        loading="lazy"
+        decoding="async"
+        onError={(event) => fallbackIcon(event, "tuning_parts_icons", text)}
       />{" "}
       {text}
     </span>
@@ -190,10 +210,14 @@ export function TuningPartsIcons({ parts }: { parts: unknown }) {
         <img
           key={part}
           className="tuning-part-icon"
-          src={`/img/tuning_parts_icons/${iconSlug(part)}.svg`}
+          src={iconUrl("tuning_parts_icons", part)}
           alt={`${part} icon`}
           title={part}
-          onError={(event) => fallbackToPng(event, "tuning_parts_icons", part)}
+          width={22}
+          height={22}
+          loading="lazy"
+          decoding="async"
+          onError={(event) => fallbackIcon(event, "tuning_parts_icons", part)}
         />
       ))}
     </>
@@ -242,13 +266,22 @@ export function normalizeCountryDisplay(country: unknown): string | null {
 export function CountryWithFlag({ country }: { country: unknown }) {
   const text = asText(country);
   const code = getCountryCode(text);
+  const src = code && code !== "question" ? flagUrl(code) : null;
   if (!text) {
     return null;
   }
   return (
     <span className="country-cell" title={text}>
-      {code && code !== "question" && (
-        <img className="country-flag" src={`https://flagcdn.com/${code}.svg`} alt={`${text} flag`} />
+      {src && (
+        <img
+          className="country-flag"
+          src={src}
+          alt={`${text} flag`}
+          width={20}
+          height={15}
+          loading="lazy"
+          decoding="async"
+        />
       )}
       {code === "question" && <span className="country-flag">?</span>}
       <span className="cell-text">{text}</span>

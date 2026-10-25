@@ -224,6 +224,34 @@ server {
     root /var/www/hcr2.xyz/frontend/dist;
     index index.html;
 
+    gzip on;
+    gzip_vary on;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css application/json application/javascript application/xml image/svg+xml;
+
+    # Enable these only if the Nginx Brotli module is installed.
+    # brotli on;
+    # brotli_comp_level 5;
+    # brotli_types text/plain text/css application/json application/javascript application/xml image/svg+xml;
+
+    # Vite fingerprints everything under /assets/, so cache it forever.
+    location /assets/ {
+        try_files $uri =404;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    # Static images change rarely; cache them for 30 days. Use a prefix
+    # location so API paths ending in .png are still proxied below.
+    location ^~ /img/ {
+        try_files $uri =404;
+        add_header Cache-Control "public, max-age=2592000";
+    }
+
+    location = /index.html {
+        add_header Cache-Control "no-cache";
+    }
+
     location / {
         try_files $uri $uri/ /index.html;
     }

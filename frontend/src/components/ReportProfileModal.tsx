@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { loadHcaptcha } from "../lib/hcaptcha";
 import { getHcaptchaSitekey } from "../services/publicData";
 import { reportCommunityProfile } from "../services/community";
 import type { ReportCategory } from "../types/api";
@@ -38,16 +39,20 @@ export function ReportProfileModal({ profileId, profileName, onClose, onReported
   });
 
   useEffect(() => {
-    if (!sitekey.data?.sitekey || !widgetRef.current || hcaptchaWidgetId.current !== null) {
+    const sitekeyValue = sitekey.data?.sitekey;
+    if (!sitekeyValue || !widgetRef.current || hcaptchaWidgetId.current !== null) {
       return undefined;
     }
 
+    let cancelled = false;
+    let timer: ReturnType<typeof setInterval> | undefined;
+
     const renderWidget = () => {
-      if (!widgetRef.current || !window.hcaptcha?.render || !sitekey.data?.sitekey) {
+      if (!widgetRef.current || !window.hcaptcha?.render) {
         return false;
       }
       hcaptchaWidgetId.current = window.hcaptcha.render(widgetRef.current, {
-        sitekey: sitekey.data.sitekey,
+        sitekey: sitekeyValue,
         theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
         callback(token) {
           const input = document.getElementById("h-captcha-response") as HTMLInputElement | null;
@@ -65,17 +70,29 @@ export function ReportProfileModal({ profileId, profileName, onClose, onReported
       return true;
     };
 
-    if (renderWidget()) {
-      return undefined;
-    }
+    loadHcaptcha()
+      .then(() => {
+        if (cancelled || renderWidget()) {
+          return;
+        }
+        timer = window.setInterval(() => {
+          if (renderWidget()) {
+            window.clearInterval(timer);
+          }
+        }, 200);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMessage("Could not load hCaptcha. Please try again.");
+        }
+      });
 
-    const timer = window.setInterval(() => {
-      if (renderWidget()) {
+    return () => {
+      cancelled = true;
+      if (timer) {
         window.clearInterval(timer);
       }
-    }, 200);
-
-    return () => window.clearInterval(timer);
+    };
   }, [sitekey.data?.sitekey]);
 
   const report = useMutation({

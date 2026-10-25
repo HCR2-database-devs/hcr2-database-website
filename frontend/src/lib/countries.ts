@@ -45,5 +45,5 @@ export function countryName(code?: string | null): string | null {
 
 export function flagUrl(code?: string | null): string | null {
   if (!code) return null;
-  return `https://flagcdn.com/${code}.svg`;
+  return `https://flagcdn.com/w40/${code}.png`;
 }

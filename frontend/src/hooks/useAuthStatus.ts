@@ -6,6 +6,7 @@ export function useAuthStatus() {
   return useQuery({
     queryKey: ["auth-status"],
     queryFn: getAuthStatus,
-    refetchInterval: 30_000
+    staleTime: 60_000,
+    refetchInterval: (query) => (query.state.data?.logged ? 60_000 : false)
   });
 }

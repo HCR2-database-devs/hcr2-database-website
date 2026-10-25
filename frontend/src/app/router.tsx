@@ -2,6 +2,7 @@ import { lazy } from "react";
 import { createBrowserRouter } from "react-router-dom";
 
 import { App } from "./App";
+import { RootLayout } from "./RootLayout";
 
 const AccountPage = lazy(() => import("../pages/AccountPage").then((m) => ({ default: m.AccountPage })));
 const AdminPage = lazy(() => import("../pages/AdminPage").then((m) => ({ default: m.AdminPage })));
@@ -24,29 +25,34 @@ const TermsOfServicePage = lazy(() =>
 
 export const router = createBrowserRouter([
   {
-    path: "/",
-    element: <App />,
+    element: <RootLayout />,
     children: [
-      { index: true, element: <HomePage /> },
-      { path: "account", element: <AccountPage /> },
-      { path: "onboarding", element: <OnboardingPage /> },
-      { path: "maps", element: <DataViewPage view="maps" /> },
-      { path: "vehicles", element: <DataViewPage view="vehicles" /> },
-      { path: "players", element: <DataViewPage view="players" /> },
-      { path: "tuning-parts", element: <DataViewPage view="tuning-parts" /> },
-      { path: "tuning-setups", element: <DataViewPage view="tuning-setups" /> },
-      { path: "records", element: <DataViewPage view="records" /> },
-      { path: "records/mythic", element: <DataViewPage view="records" mythic /> },
-      { path: "stats", element: <StatsPage /> },
-      { path: "community", element: <CommunityPage /> },
-      { path: "community/:id", element: <CommunityProfilePage /> },
-      { path: "changelog", element: <ChangelogPage /> },
-      { path: "guidelines", element: <GuidelinesPage /> },
-      { path: "*", element: <NotFoundPage /> }
+      {
+        path: "/",
+        element: <App />,
+        children: [
+          { index: true, element: <HomePage /> },
+          { path: "account", element: <AccountPage /> },
+          { path: "onboarding", element: <OnboardingPage /> },
+          { path: "maps", element: <DataViewPage view="maps" /> },
+          { path: "vehicles", element: <DataViewPage view="vehicles" /> },
+          { path: "players", element: <DataViewPage view="players" /> },
+          { path: "tuning-parts", element: <DataViewPage view="tuning-parts" /> },
+          { path: "tuning-setups", element: <DataViewPage view="tuning-setups" /> },
+          { path: "records", element: <DataViewPage view="records" /> },
+          { path: "records/mythic", element: <DataViewPage view="records" mythic /> },
+          { path: "stats", element: <StatsPage /> },
+          { path: "community", element: <CommunityPage /> },
+          { path: "community/:id", element: <CommunityProfilePage /> },
+          { path: "changelog", element: <ChangelogPage /> },
+          { path: "guidelines", element: <GuidelinesPage /> },
+          { path: "*", element: <NotFoundPage /> }
+        ]
+      },
+      { path: "/admin", element: <AdminPage /> },
+      { path: "/privacy", element: <PrivacyPage /> },
+      { path: "/terms", element: <TermsOfServicePage /> },
+      { path: "/maintenance", element: <MaintenancePage /> }
     ]
-  },
-  { path: "/admin", element: <AdminPage /> },
-  { path: "/privacy", element: <PrivacyPage /> },
-  { path: "/terms", element: <TermsOfServicePage /> },
-  { path: "/maintenance", element: <MaintenancePage /> }
+  }
 ]);

@@ -37,7 +37,7 @@ export function ClaimButton({
       <button
         className={claimed ? "button-ghost" : "button"}
         type="button"
-        disabled={busy || claimed}
+        disabled={busy || claimed || Boolean(blockedHint)}
         aria-pressed={claimed}
         onClick={onClaim}
       >

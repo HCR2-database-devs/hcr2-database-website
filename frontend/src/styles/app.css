@@ -73,18 +73,13 @@
 }
 
 html {
-  background: var(--canvas);
+  background: var(--canvas-deep);
   min-width: 320px;
   text-rendering: optimizeLegibility;
 }
 
 body {
-  background:
-    linear-gradient(180deg, rgba(5, 7, 28, 0.34), rgba(4, 5, 18, 0.6)),
-    repeating-linear-gradient(120deg, rgba(113, 234, 255, 0.07) 0 1px, transparent 1px 94px),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 84px),
-    linear-gradient(135deg, #16146d 0%, #15115a 32%, #38146e 62%, #071033 100%);
-  background-attachment: fixed;
+  background: transparent;
   color: var(--text);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -106,7 +101,11 @@ body {
 #root::before {
   background:
     linear-gradient(110deg, transparent 0 24%, rgba(75, 224, 255, 0.12) 29%, transparent 38%),
-    linear-gradient(290deg, transparent 0 54%, rgba(255, 211, 77, 0.08) 60%, transparent 70%);
+    linear-gradient(290deg, transparent 0 54%, rgba(255, 211, 77, 0.08) 60%, transparent 70%),
+    linear-gradient(180deg, rgba(5, 7, 28, 0.34), rgba(4, 5, 18, 0.6)),
+    repeating-linear-gradient(120deg, rgba(113, 234, 255, 0.07) 0 1px, transparent 1px 94px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 84px),
+    linear-gradient(135deg, #16146d 0%, #15115a 32%, #38146e 62%, #071033 100%);
   content: "";
   inset: 0;
   pointer-events: none;
@@ -137,9 +136,7 @@ textarea {
     background-color var(--transition),
     border-color var(--transition),
     color var(--transition),
-    opacity var(--transition),
-    transform var(--transition),
-    box-shadow var(--transition);
+    opacity var(--transition);
 }
 
 button {
@@ -178,6 +175,15 @@ a:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
   .donator-banner__names {
     animation: none;
     white-space: normal;
@@ -207,7 +213,6 @@ a:hover {
   position: sticky;
   top: 0;
   z-index: 50;
-  backdrop-filter: blur(16px);
 }
 
 .header-inner {
@@ -594,6 +599,7 @@ a:hover {
     flex: 1 1 100%;
     flex-direction: column;
     gap: 6px;
+    order: 10;
     position: static;
   }
 
@@ -3361,24 +3367,80 @@ tbody tr:hover {
 
 @media (min-width: 1061px) {
   .header-inner {
-    min-height: 92px;
-    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 24px;
+    display: grid;
+    grid-template-areas:
+      "brand actions"
+      "nav nav";
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 0;
+    padding-bottom: 10px;
+    padding-top: 10px;
+    row-gap: 10px;
   }
 
   .header-inner .branding {
-    align-self: flex-start;
+    align-self: center;
+    grid-area: brand;
+    justify-self: start;
+  }
+
+  .header-inner .mobile-menu-btn {
+    display: none;
   }
 
   .header-inner .header-nav {
-    flex: 1 1 auto;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    display: contents;
   }
 
-  .header-inner .nav-links,
+  .header-inner .nav-links {
+    background: linear-gradient(180deg, rgba(15, 24, 72, 0.82), rgba(7, 11, 38, 0.92));
+    border: 2px solid rgba(105, 227, 255, 0.24);
+    border-radius: var(--radius-sm);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 4px 0 rgba(3, 7, 24, 0.48);
+    gap: 2px;
+    grid-area: nav;
+    justify-self: center;
+    padding: 4px;
+  }
+
   .header-inner .header-actions {
     flex-wrap: wrap;
+    gap: 6px;
+    grid-area: actions;
     justify-content: flex-end;
+    justify-self: end;
+  }
+
+  .header-inner .nav-links > .nav-link,
+  .header-inner .nav-links > .nav-dropdown-wrapper > .nav-dropdown-toggle {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    min-height: 32px;
+    padding: 0 13px;
+    text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  .header-inner .nav-links > .nav-link:hover,
+  .header-inner .nav-links > .nav-dropdown-wrapper > .nav-dropdown-toggle:hover {
+    background: var(--surface);
+    border-color: var(--outline);
+    box-shadow: var(--shadow-inset), 0 2px 0 rgba(3, 7, 24, 0.58);
+    transform: none;
+  }
+
+  .header-inner .nav-links > .nav-link.is-active,
+  .header-inner .nav-links > .nav-link.is-active:hover,
+  .header-inner .nav-links > .nav-dropdown-wrapper > .nav-dropdown-toggle.is-active,
+  .header-inner .nav-links > .nav-dropdown-wrapper > .nav-dropdown-toggle.is-active:hover {
+    background: var(--gloss), var(--button-gradient);
+    border-color: var(--outline);
+    box-shadow: var(--shadow-inset), 0 2px 0 rgba(5, 38, 21, 0.72);
+    color: #ffffff;
   }
 }
 

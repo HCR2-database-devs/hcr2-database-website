@@ -8,5 +8,15 @@ type CountryFlagProps = {
 export function CountryFlag({ code, className = "" }: CountryFlagProps) {
   const url = flagUrl(code);
   if (!url) return null;
-  return <img className={`country-flag ${className}`.trim()} src={url} alt="" loading="lazy" />;
+  return (
+    <img
+      className={`country-flag ${className}`.trim()}
+      src={url}
+      alt=""
+      width={20}
+      height={15}
+      loading="lazy"
+      decoding="async"
+    />
+  );
 }

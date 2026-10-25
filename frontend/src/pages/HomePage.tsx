@@ -6,7 +6,7 @@ import { AdSlot } from "../components/AdSlot";
 import { DonatorBanner } from "../components/DonatorBanner";
 import { PlannedFeatures } from "../components/PlannedFeatures";
 import { REPO_URL } from "../lib/communityInfo";
-import { asText, formatDistance, iconSlug, TuningPartsIcons } from "../lib/legacyDisplay";
+import { asText, formatDistance, iconSlug, iconUrl, TuningPartsIcons } from "../lib/legacyDisplay";
 import { getHomeSummary } from "../services/publicData";
 import type { DataRow } from "../types/api";
 
@@ -160,10 +160,19 @@ function LiveStatsSection() {
             <div className="featured-record__main">
               <img
                 className="featured-record__vehicle"
-                src={`/img/vehicle_icons/${iconSlug(featured.vehicle_name)}.svg`}
+                src={iconUrl("vehicle_icons", featured.vehicle_name)}
                 alt=""
+                width={76}
+                height={76}
+                loading="lazy"
+                decoding="async"
                 onError={(event) => {
-                  event.currentTarget.style.display = "none";
+                  const image = event.currentTarget;
+                  if (image.src.endsWith(".webp")) {
+                    image.src = `/img/vehicle_icons/${iconSlug(featured.vehicle_name)}.svg`;
+                  } else {
+                    image.style.display = "none";
+                  }
                 }}
               />
               <div className="featured-record__distance">
@@ -175,10 +184,19 @@ function LiveStatsSection() {
               <span className="map-cell">
                 <img
                   className="map-icon"
-                  src={`/img/map_icons/${iconSlug(featured.map_name)}.svg`}
+                  src={iconUrl("map_icons", featured.map_name)}
                   alt=""
+                  width={24}
+                  height={24}
+                  loading="lazy"
+                  decoding="async"
                   onError={(event) => {
-                    event.currentTarget.style.display = "none";
+                    const image = event.currentTarget;
+                    if (image.src.endsWith(".webp")) {
+                      image.src = `/img/map_icons/${iconSlug(featured.map_name)}.svg`;
+                    } else {
+                      image.style.display = "none";
+                    }
                   }}
                 />
                 {asText(featured.map_name)}
@@ -234,12 +252,12 @@ function BrowseSection() {
       </div>
       <div className="browse-grid">
         <Link to="/maps" className="browse-card feature-card">
-          <img src="/img/map_icons/countryside.svg" alt="" className="browse-card__icon" />
+          <img src="/img/map_icons/countryside.webp" alt="" className="browse-card__icon" loading="lazy" decoding="async" onError={(event) => { if (event.currentTarget.src.endsWith(".webp")) event.currentTarget.src = "/img/map_icons/countryside.svg"; }} />
           <h3 className="browse-card__title">Maps</h3>
           <p className="browse-card__desc">All adventure maps and their records</p>
         </Link>
         <Link to="/vehicles" className="browse-card feature-card">
-          <img src="/img/vehicle_icons/hill_climber.svg" alt="" className="browse-card__icon" />
+          <img src="/img/vehicle_icons/hill_climber.webp" alt="" className="browse-card__icon" loading="lazy" decoding="async" onError={(event) => { if (event.currentTarget.src.endsWith(".webp")) event.currentTarget.src = "/img/vehicle_icons/hill_climber.svg"; }} />
           <h3 className="browse-card__title">Vehicles</h3>
           <p className="browse-card__desc">Browse records by vehicle</p>
         </Link>
@@ -249,7 +267,7 @@ function BrowseSection() {
           <p className="browse-card__desc">See who holds the most records</p>
         </Link>
         <Link to="/tuning-parts" className="browse-card feature-card">
-          <img src="/img/tuning_parts_icons/nitro.svg" alt="" className="browse-card__icon" />
+          <img src="/img/tuning_parts_icons/nitro.webp" alt="" className="browse-card__icon" loading="lazy" decoding="async" onError={(event) => { if (event.currentTarget.src.endsWith(".webp")) event.currentTarget.src = "/img/tuning_parts_icons/nitro.svg"; }} />
           <h3 className="browse-card__title">Tuning</h3>
           <p className="browse-card__desc">Setups and tuning part usage</p>
         </Link>
@@ -457,7 +475,19 @@ export function HomePage() {
           </div>
         </div>
         <div className="home-hero__asset" aria-hidden="true">
-          <img src="/img/hcrdatabaselogo.png" alt="" />
+          <img
+            src="/img/hcrdatabaselogo-512.webp"
+            alt=""
+            width={512}
+            height={512}
+            decoding="async"
+            fetchPriority="high"
+            onError={(event) => {
+              if (!event.currentTarget.src.endsWith(".png")) {
+                event.currentTarget.src = "/img/hcrdatabaselogo-512.png";
+              }
+            }}
+          />
         </div>
       </section>
 

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AdSlot } from "../components/AdSlot";
 import { BarChart, LineChart } from "../components/StatsCharts";
 import type { BarChartPoint, LineChartPoint } from "../components/StatsCharts";
+import { flagUrl } from "../lib/countries";
 import {
   asText,
   formatDate,
@@ -80,7 +81,17 @@ function CountryFlag({ country }: { country: string }) {
   if (code === "question") {
     return <span className="country-flag">?</span>;
   }
-  return <img className="country-flag" src={`https://flagcdn.com/${code}.svg`} alt={`${country} flag`} />;
+  return (
+    <img
+      className="country-flag"
+      src={flagUrl(code) ?? ""}
+      alt={`${country} flag`}
+      width={20}
+      height={15}
+      loading="lazy"
+      decoding="async"
+    />
+  );
 }
 
 function TableFrame({ children }: { children: ReactNode }) {

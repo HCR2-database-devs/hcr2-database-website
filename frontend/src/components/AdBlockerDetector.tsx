@@ -41,8 +41,17 @@ export function AdBlockerDetector() {
       <div className="adblock-overlay__card">
         <img
           className="adblock-overlay__icon"
-          src="/img/hcrdatabaselogo.png"
+          src="/img/hcrdatabaselogo-96.webp"
           alt=""
+          width={96}
+          height={96}
+          loading="lazy"
+          decoding="async"
+          onError={(event) => {
+            if (!event.currentTarget.src.endsWith(".png")) {
+              event.currentTarget.src = "/img/hcrdatabaselogo-96.png";
+            }
+          }}
         />
         <h2>Ad blocker detected</h2>
         <p>

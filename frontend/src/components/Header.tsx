@@ -26,6 +26,8 @@ const navItems: NavItem[] = [
   { label: "Stats", to: "/stats" }
 ];
 
+const recordsIndex = navItems.findIndex((item) => item.to === "/players") + 1;
+
 function navClassName({ isActive }: { isActive: boolean }) {
   return `nav-link${isActive ? " is-active" : ""}`;
 }
@@ -97,6 +99,20 @@ export function Header() {
     setRecordsOpen(false);
   }
 
+  function renderNavLink(item: NavItem) {
+    if (item.feature === "community_members" && !canUseCommunity) {
+      return null;
+    }
+    return (
+      <NavLink key={item.to} to={item.to} className={navClassName} onClick={closeMobileMenu}>
+        {item.label}
+        {item.feature === "community_members" && (
+          <BetaBadge feature="community_members" className="nav-beta-badge" />
+        )}
+      </NavLink>
+    );
+  }
+
   const displayName =
     authStatus?.community?.username ??
     authStatus?.community?.discord_username ??
@@ -113,7 +129,19 @@ export function Header() {
       <header className="site-header">
         <div className="header-inner">
           <Link className="branding" to="/" onClick={closeMobileMenu} aria-label="HCR2 Adventure Records home">
-            <img src="/img/hcrdatabaselogo.png" alt="HCR2 Adventure Records" id="logo" />
+            <img
+              src="/img/hcrdatabaselogo-96.webp"
+              alt="HCR2 Adventure Records"
+              id="logo"
+              width={48}
+              height={48}
+              decoding="async"
+              onError={(event) => {
+                if (!event.currentTarget.src.endsWith(".png")) {
+                  event.currentTarget.src = "/img/hcrdatabaselogo-96.png";
+                }
+              }}
+            />
             <span className="brand-copy">
               <span className="brand-title">HCR2 Records</span>
               <span className="brand-subtitle">Unofficial community database</span>
@@ -140,19 +168,7 @@ export function Header() {
             aria-label="Primary navigation"
           >
             <div className="nav-links">
-              {navItems.map((item) => {
-                if (item.feature === "community_members" && !canUseCommunity) {
-                  return null;
-                }
-                return (
-                  <NavLink key={item.to} to={item.to} className={navClassName} onClick={closeMobileMenu}>
-                    {item.label}
-                    {item.feature === "community_members" && (
-                      <BetaBadge feature="community_members" className="nav-beta-badge" />
-                    )}
-                  </NavLink>
-                );
-              })}
+              {navItems.slice(0, recordsIndex).map(renderNavLink)}
               <div
                 className="nav-dropdown-wrapper"
                 ref={recordsRef}
@@ -207,6 +223,7 @@ export function Header() {
                   </NavLink>
                 </div>
               </div>
+              {navItems.slice(recordsIndex).map(renderNavLink)}
             </div>
 
             <div className="header-actions">
@@ -243,7 +260,7 @@ export function Header() {
                     window.location.href = "https://auth.hcr2.xyz/login";
                   }}
                 >
-                  <img className="discord-logo" src="/img/Discord-Symbol-Blurple.png" alt="" />
+                  <img className="discord-logo" src="/img/Discord-Symbol-Blurple.png" alt="" width={18} height={14} loading="lazy" decoding="async" />
                   <span>Discord</span>
                 </button>
               )}

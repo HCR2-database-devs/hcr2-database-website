@@ -3,29 +3,13 @@ import type { FormEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { loadHcaptcha } from "../lib/hcaptcha";
 import { getHcaptchaSitekey, getPublicData } from "../services/publicData";
 import { submitPublicRecord } from "../services/submissions";
 
 type PublicSubmitModalProps = {
   onClose: () => void;
 };
-
-declare global {
-  interface Window {
-    hcaptcha?: {
-      render: (
-        container: HTMLElement,
-        options: {
-          sitekey: string;
-          theme?: string;
-          callback?: (token: string) => void;
-          "expired-callback"?: () => void;
-        }
-      ) => string | number;
-      reset?: (widgetId?: string | number) => void;
-    };
-  }
-}
 
 // Tuning part IDs that cannot be the echo-affected part (mirrors backend ECHO_EXCLUDED_PART_IDS)
 const ECHO_EXCLUDED_PART_IDS = new Set([26, 2, 14, 13, 7, 18, 16, 17, 25]);
@@ -85,17 +69,20 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
   );
 
   useEffect(() => {
-    if (!sitekey.data?.sitekey || !widgetRef.current || hcaptchaWidgetId.current !== null) {
+    const sitekeyValue = sitekey.data?.sitekey;
+    if (!sitekeyValue || !widgetRef.current || hcaptchaWidgetId.current !== null) {
       return undefined;
     }
 
-    let attempts = 0;
+    let cancelled = false;
+    let timer: ReturnType<typeof setInterval> | undefined;
+
     const renderWidget = () => {
-      if (!widgetRef.current || !window.hcaptcha?.render || !sitekey.data?.sitekey) {
+      if (!widgetRef.current || !window.hcaptcha?.render) {
         return false;
       }
       hcaptchaWidgetId.current = window.hcaptcha.render(widgetRef.current, {
-        sitekey: sitekey.data.sitekey,
+        sitekey: sitekeyValue,
         theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
         callback(token) {
           const input = document.getElementById("h-captcha-response") as HTMLInputElement | null;
@@ -113,18 +100,31 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
       return true;
     };
 
-    if (renderWidget()) {
-      return undefined;
-    }
+    loadHcaptcha()
+      .then(() => {
+        if (cancelled || renderWidget()) {
+          return;
+        }
+        let attempts = 0;
+        timer = window.setInterval(() => {
+          attempts += 1;
+          if (renderWidget() || attempts >= 30) {
+            window.clearInterval(timer);
+          }
+        }, 200);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMessage("Could not load hCaptcha. Please try again.");
+        }
+      });
 
-    const timer = window.setInterval(() => {
-      attempts += 1;
-      if (renderWidget() || attempts >= 30) {
+    return () => {
+      cancelled = true;
+      if (timer) {
         window.clearInterval(timer);
       }
-    }, 200);
-
-    return () => window.clearInterval(timer);
+    };
   }, [sitekey.data?.sitekey]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
