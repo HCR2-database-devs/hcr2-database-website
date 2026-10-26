@@ -15,9 +15,32 @@ import { UserAvatar } from "../components/UserAvatar";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { countryName } from "../lib/countries";
 import { useCanUseFeature } from "../lib/features";
+import type { ReactNode } from "react";
 import { formatMemberSince } from "../lib/format";
 import { communityDisplayName, discordAvatarUrl } from "../services/community";
 import { getCommunityProfile } from "../services/community";
+
+function renderProfileLinks(text: string) {
+  const regex = /https:\/\/playhcr\.com\/(?:challenge\?id=[^\s<>"]+|invite\?id=[^\s<>"]+|track\?id=[^\s<>"]+|invite\?groupid=[^\s<>"]+)/gi;
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    parts.push(
+      <a key={match.index} href={match[0]} target="_blank" rel="noopener noreferrer">
+        {match[0]}
+      </a>
+    );
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  return parts.length ? parts : text;
+}
 
 export function CommunityProfilePage() {
   return (
@@ -189,7 +212,7 @@ function CommunityProfileContent() {
           {profile.show_bio && profile.bio && (
             <div className="community-profile-bio-row">
               <dt>Bio</dt>
-              <dd>{profile.bio}</dd>
+              <dd>{renderProfileLinks(profile.bio)}</dd>
             </div>
           )}
           {profile.show_favorite_vehicle && profile.favorite_vehicle_name && (
