@@ -157,7 +157,7 @@ function AdminProfileForm({
               )}
             </p>
             <p className="admin-profile-meta">
-              hcr2.xyz #{profile.id} · {profile.admin_disabled ? "Disabled" : "Active"} · {profile.open_reports} open
+              hcr2.xyz #{profile.id} · Discord ID {profile.discord_id} · {profile.admin_disabled ? "Disabled" : "Active"} · {profile.open_reports} open
               report{profile.open_reports === 1 ? "" : "s"}
             </p>
           </div>

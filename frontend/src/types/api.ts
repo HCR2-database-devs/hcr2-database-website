@@ -99,6 +99,7 @@ export type CommunityReportResult = {
 
 export type AdminCommunityProfile = {
   id: number;
+  discord_id: string;
   username?: string | null;
   discord_username: string;
   discord_avatar?: string | null;

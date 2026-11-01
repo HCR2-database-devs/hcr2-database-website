@@ -95,8 +95,12 @@ class ChangelogPayload(AdminPayload):
     fixed: list[str] = []
 
 
-class UpdateChangelogRequest(ChangelogPayload):
-    id: int
+class UpdateChangelogRequest(AdminPayload):
+    version: str
+    title: str | None = None
+    added: list[str] = []
+    changed: list[str] = []
+    fixed: list[str] = []
 
 
 class DeleteChangelogRequest(AdminPayload):

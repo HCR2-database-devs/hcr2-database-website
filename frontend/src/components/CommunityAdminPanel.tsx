@@ -176,7 +176,7 @@ export function CommunityAdminPanel() {
                         <span className="admin-profile-row-sub"> ({profile.discord_username})</span>
                       )}
                     </span>
-                    <span className="admin-profile-row-meta">#{profile.id}</span>
+                    <span className="admin-profile-row-meta">#{profile.id} · {profile.discord_id}</span>
                     <span className="admin-profile-row-meta">
                       {profile.admin_disabled ? "Disabled" : profile.profile_public ? "Public" : "Private"}
                     </span>
