@@ -5,6 +5,7 @@ import type {
   CommunityMemberListResponse,
   CommunityProfileUpdate,
   CommunityReportResult,
+  DeleteCommunityAccountResult,
   ReportCategory,
   UsernameUpdate
 } from "../types/api";
@@ -144,6 +145,12 @@ export async function compressBannerFile(
 
 export function removeCommunityBanner() {
   return jsonRequest<CommunityAccount>("/api/v1/community/profile/banner", "DELETE");
+}
+
+export function deleteCommunityAccount() {
+  return jsonRequest<DeleteCommunityAccountResult>("/api/v1/community/me", "DELETE", {
+    confirmation: "DELETE"
+  });
 }
 
 export type CommunityMembersParams = {

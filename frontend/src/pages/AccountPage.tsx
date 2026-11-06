@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import { CopyProfileLinkButton } from "../components/CopyProfileLinkButton";
+import { DeleteAccountSection } from "../components/DeleteAccountSection";
 import { LinkedHcr2AccountSection } from "../components/hcr2Link/LinkedHcr2AccountSection";
 import { ProfileSettingsSection } from "../components/ProfileSettingsSection";
 import { UserAvatar } from "../components/UserAvatar";
@@ -135,6 +136,8 @@ export function AccountPage() {
           discordUsername={community.discord_username}
         />
       )}
+
+      {community && <DeleteAccountSection key={`delete-${community.id}`} />}
     </div>
   );
 }

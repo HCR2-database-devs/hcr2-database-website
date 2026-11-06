@@ -118,6 +118,11 @@ export type CommunityReportResult = {
   created_at: string;
 };
 
+export type DeleteCommunityAccountResult = {
+  success: boolean;
+  deleted: boolean;
+};
+
 export type AdminCommunityProfile = {
   id: number;
   discord_id: string;

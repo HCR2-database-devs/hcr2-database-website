@@ -99,6 +99,8 @@ class CommunityUserRepository(Protocol):
 
     def get_banner(self, user_id: int) -> dict[str, Any] | None: ...
 
+    def delete_account(self, discord_id: str) -> dict[str, Any] | None: ...
+
     def list_world_records_for_player(self, player_id: int) -> list[dict[str, Any]]: ...
 
     def list_members(
@@ -395,6 +397,95 @@ class PostgresCommunityUserRepository:
                 )
                 row = cursor.fetchone()
                 return dict(row) if row is not None else None
+
+    def delete_account(self, discord_id: str) -> dict[str, Any] | None:
+        """Delete a community account while preserving records for its linked player.
+
+        Most related rows (profile data, banner, username history, notifications,
+        reports, HCR2 links and verification requests) cascade from
+        ``community_user``. Submission rows use ``ON DELETE SET NULL`` so that
+        unattributed public records survive; delete the attributed rows first so
+        account deletion also removes the member's own submissions.
+        """
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT id FROM community_user WHERE discord_id = %(discord_id)s FOR UPDATE",
+                    {"discord_id": discord_id},
+                )
+                row = cursor.fetchone()
+                if row is None:
+                    return None
+                user_id = int(row["id"])
+
+                cursor.execute(
+                    """
+                    SELECT player_id
+                    FROM hcr2_account_link
+                    WHERE community_user_id = %(user_id)s
+                      AND status = 'active'
+                    ORDER BY approved_at DESC NULLS LAST, id DESC
+                    LIMIT 1
+                    """,
+                    {"user_id": user_id},
+                )
+                link_row = cursor.fetchone()
+                linked_player_id = int(link_row["player_id"]) if link_row else None
+
+                cursor.execute(
+                    """
+                    DELETE FROM pending_submission
+                    WHERE submitter_community_user_id = %(user_id)s
+                    """,
+                    {"user_id": user_id},
+                )
+                pending_deleted = int(cursor.rowcount)
+
+                if linked_player_id is None:
+                    cursor.execute(
+                        """
+                        DELETE FROM world_record
+                        WHERE submitter_community_user_id = %(user_id)s
+                        """,
+                        {"user_id": user_id},
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        DELETE FROM world_record
+                        WHERE submitter_community_user_id = %(user_id)s
+                          AND id_player IS DISTINCT FROM %(linked_player_id)s
+                        """,
+                        {"user_id": user_id, "linked_player_id": linked_player_id},
+                    )
+                records_deleted = int(cursor.rowcount)
+
+                linked_records_preserved = 0
+                if linked_player_id is not None:
+                    cursor.execute(
+                        """
+                        SELECT count(*)::int AS count
+                        FROM world_record
+                        WHERE submitter_community_user_id = %(user_id)s
+                          AND id_player = %(linked_player_id)s
+                        """,
+                        {"user_id": user_id, "linked_player_id": linked_player_id},
+                    )
+                    preserved_row = cursor.fetchone()
+                    linked_records_preserved = (
+                        int(preserved_row["count"]) if preserved_row is not None else 0
+                    )
+
+                cursor.execute(
+                    "DELETE FROM community_user WHERE id = %(user_id)s",
+                    {"user_id": user_id},
+                )
+                return {
+                    "account_id": user_id,
+                    "pending_submissions_deleted": pending_deleted,
+                    "records_deleted": records_deleted,
+                    "linked_records_preserved": linked_records_preserved,
+                }
 
     def get_banner(self, user_id: int) -> dict[str, Any] | None:
         with open_connection(self._config) as connection:

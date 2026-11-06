@@ -12,6 +12,7 @@ from app.api.dependencies import (
     get_public_submission_service,
 )
 from app.api.responses import DATABASE_ERROR_TYPES, database_error_response, error_response
+from app.api.session_cookies import clear_session_cookies
 from app.api.submission import handle_public_submission
 from app.core.config import Settings, get_settings
 from app.schemas.admin import (
@@ -506,22 +507,7 @@ def compatibility_auth_logout(
         return RedirectResponse(url="/", status_code=302)
 
     response = RedirectResponse(url="/", status_code=302)
-    response.delete_cookie(
-        "PHPSESSID",
-        path="/",
-        domain=".hcr2.xyz",
-        secure=True,
-        httponly=True,
-        samesite="lax",
-    )
-    response.delete_cookie(
-        "WC_TOKEN",
-        path="/",
-        domain=".hcr2.xyz",
-        secure=True,
-        httponly=True,
-        samesite="lax",
-    )
+    clear_session_cookies(response)
     return response
 
 

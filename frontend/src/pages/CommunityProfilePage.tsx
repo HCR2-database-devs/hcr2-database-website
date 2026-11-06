@@ -17,9 +17,17 @@ import { countryName } from "../lib/countries";
 import { useCanUseFeature } from "../lib/features";
 import type { ReactNode } from "react";
 import { formatMemberSince } from "../lib/format";
-import { formatDistance } from "../lib/legacyDisplay";
+import {
+  asText,
+  formatDistance,
+  iconSlug,
+  iconUrl,
+  MapWithIcon,
+  TuningPartsIcons
+} from "../lib/legacyDisplay";
 import { communityDisplayName, discordAvatarUrl } from "../services/community";
 import { getCommunityProfile } from "../services/community";
+import type { CommunityHcr2Record } from "../types/api";
 
 function renderProfileLinks(text: string) {
   const regex = /https:\/\/playhcr\.com\/(?:challenge\?id=[^\s<>"]+|invite\?id=[^\s<>"]+|track\?id=[^\s<>"]+|invite\?groupid=[^\s<>"]+)/gi;
@@ -41,6 +49,76 @@ function renderProfileLinks(text: string) {
     parts.push(text.slice(lastIndex));
   }
   return parts.length ? parts : text;
+}
+
+function ProfileRecordStatus({ record }: { record: CommunityHcr2Record }) {
+  if (String(record.questionable) === "1") {
+    return (
+      <span
+        className="status-pill status-pill--questionable"
+        title={asText(record.questionable_reason) || "Questionable: unverified run"}
+      >
+        Questionable
+      </span>
+    );
+  }
+  if (record.isMythic === true) {
+    return (
+      <span className="status-pill status-pill--mythic" title="Mythic record (Echo or Amplifier part)">
+        Mythic
+      </span>
+    );
+  }
+  return <span className="status-pill status-pill--verified">Verified</span>;
+}
+
+function ProfileRecordWidget({ record }: { record: CommunityHcr2Record }) {
+  const echoPart = asText(record.echoAffectedPart);
+  const hasTuning = asText(record.tuning_parts).trim().length > 0;
+
+  return (
+    <article className="community-record-widget">
+      <div className="community-record-widget__head">
+        <MapWithIcon name={record.map_name} />
+        <ProfileRecordStatus record={record} />
+      </div>
+      <div className="community-record-widget__main">
+        <img
+          className="community-record-widget__vehicle"
+          src={iconUrl("vehicle_icons", record.vehicle_name)}
+          alt=""
+          width={58}
+          height={58}
+          loading="lazy"
+          decoding="async"
+          onError={(event) => {
+            const image = event.currentTarget;
+            if (image.src.endsWith(".webp")) {
+              image.src = `/img/vehicle_icons/${iconSlug(record.vehicle_name)}.svg`;
+            } else {
+              image.style.display = "none";
+            }
+          }}
+        />
+        <div className="community-record-widget__distance">
+          <strong>{formatDistance(record.distance)}</strong>
+          <span>meters</span>
+        </div>
+      </div>
+      <div className="community-record-widget__meta">
+        <span className="community-record-widget__vehicle-name">
+          {asText(record.vehicle_name)}
+        </span>
+        <span className="community-record-widget__player">{asText(record.player_name)}</span>
+      </div>
+      {(hasTuning || echoPart) && (
+        <div className="community-record-widget__tuning">
+          <TuningPartsIcons parts={record.tuning_parts} />
+          {echoPart && <span className="echo-affected-badge">Echo → {echoPart}</span>}
+        </div>
+      )}
+    </article>
+  );
 }
 
 export function CommunityProfilePage() {
@@ -241,27 +319,18 @@ function CommunityProfileContent() {
             )}
         </dl>
 
-        {isOwner || showHcr2Identity ? (
+        {showHcr2Identity ? (
           <section
             className="community-profile-records"
             aria-labelledby="community-profile-records-heading"
           >
             <h2 id="community-profile-records-heading">World Records</h2>
             {profile.hcr2_records && profile.hcr2_records.length > 0 ? (
-              <ul className="community-profile-records-list">
+              <div className="community-record-widgets">
                 {profile.hcr2_records.map((record) => (
-                  <li key={record.idRecord} className="community-profile-record">
-                    <span className="community-profile-record-map">{record.map_name}</span>
-                    <span className="community-profile-record-vehicle">{record.vehicle_name}</span>
-                    <span className="community-profile-record-distance">
-                      {formatDistance(record.distance)}
-                    </span>
-                    {record.isMythic ? (
-                      <span className="status-pill status-pill--verified">Mythic</span>
-                    ) : null}
-                  </li>
+                  <ProfileRecordWidget key={record.idRecord} record={record} />
                 ))}
-              </ul>
+              </div>
             ) : (
               <p className="community-profile-details-empty">
                 {isOwner

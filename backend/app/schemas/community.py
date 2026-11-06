@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -53,6 +53,10 @@ class CommunityProfileUpdate(BaseModel):
 
 class UsernameUpdate(BaseModel):
     username: str = ""
+
+
+class DeleteCommunityAccountRequest(BaseModel):
+    confirmation: Literal["DELETE"]
 
 
 class CommunityReportCreate(BaseModel):

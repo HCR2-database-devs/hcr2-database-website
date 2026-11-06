@@ -190,6 +190,18 @@ class FakeCommunityAccountService:
         user["banner_updated_at"] = None
         return user
 
+    def delete_account(self, discord_id: str) -> dict[str, Any] | None:
+        user = self.get_account(discord_id)
+        if user is None:
+            return None
+        self.users.pop(user["id"], None)
+        self.banners.pop(user["id"], None)
+        return {
+            "account_id": user["id"],
+            "pending_submissions_deleted": 0,
+            "records_deleted": 0,
+        }
+
     def list_members(self, **_: Any) -> dict[str, Any]:
         rows = [user for user in self.users.values() if user["profile_public"]]
         return {
@@ -468,6 +480,68 @@ def test_me_returns_account_when_logged_in() -> None:
     response = client.get("/api/v1/community/me", cookies=_cookie("user-a"))
     assert response.status_code == 200
     assert response.json()["discord_username"] == "Name user-a"
+
+
+def test_delete_me_requires_login() -> None:
+    client, _ = _client()
+    response = client.request(
+        "DELETE",
+        "/api/v1/community/me",
+        json={"confirmation": "DELETE"},
+    )
+    assert response.status_code == 401
+
+
+def test_delete_me_requires_exact_confirmation() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+
+    response = client.request(
+        "DELETE",
+        "/api/v1/community/me",
+        json={"confirmation": "delete"},
+        cookies=_cookie("user-a"),
+    )
+
+    assert response.status_code == 422
+    assert community.get_account("user-a") is not None
+
+
+def test_delete_me_deletes_account_and_clears_session() -> None:
+    client, community = _client()
+    community.add_user("user-a")
+
+    response = client.request(
+        "DELETE",
+        "/api/v1/community/me",
+        json={"confirmation": "DELETE"},
+        cookies=_cookie("user-a"),
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"success": True, "deleted": True}
+    assert community.get_account("user-a") is None
+    cookie_headers = response.headers.get_list("set-cookie")
+    assert len(cookie_headers) == 4
+    assert all("Max-Age=0" in header for header in cookie_headers)
+    assert sum("WC_TOKEN=" in header for header in cookie_headers) == 2
+    assert sum("PHPSESSID=" in header for header in cookie_headers) == 2
+    assert sum("Domain=.hcr2.xyz" in header for header in cookie_headers) == 2
+    assert sum("Domain=" not in header for header in cookie_headers) == 2
+
+
+def test_delete_me_is_safe_when_no_community_account_exists() -> None:
+    client, _ = _client()
+
+    response = client.request(
+        "DELETE",
+        "/api/v1/community/me",
+        json={"confirmation": "DELETE"},
+        cookies=_cookie("new-user"),
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"success": True, "deleted": False}
 
 
 def test_update_profile_requires_login() -> None:

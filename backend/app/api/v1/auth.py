@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 
 from app.api.dependencies import get_auth_service, get_community_account_service
+from app.api.session_cookies import clear_session_cookies
 from app.core.config import Settings, get_settings
 from app.core.features import FEATURE_FIELDS, can_use_feature, get_feature_state
 from app.services.auth_service import AuthService
@@ -55,20 +56,5 @@ def _resolve_community(
 @router.get("/auth/logout")
 def auth_logout() -> RedirectResponse:
     response = RedirectResponse(url="/", status_code=302)
-    response.delete_cookie(
-        "PHPSESSID",
-        path="/",
-        domain=".hcr2.xyz",
-        secure=True,
-        httponly=True,
-        samesite="lax",
-    )
-    response.delete_cookie(
-        "WC_TOKEN",
-        path="/",
-        domain=".hcr2.xyz",
-        secure=True,
-        httponly=True,
-        samesite="lax",
-    )
+    clear_session_cookies(response)
     return response

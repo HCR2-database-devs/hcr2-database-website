@@ -8,12 +8,14 @@ from app.api.dependencies import (
     get_community_account_service,
     get_community_moderation_service,
 )
+from app.api.session_cookies import clear_session_cookies
 from app.core.config import Settings, get_settings
 from app.core.features import can_use_feature
 from app.schemas.community import (
     CommunityAccount,
     CommunityProfileUpdate,
     CommunityReportCreate,
+    DeleteCommunityAccountRequest,
     UsernameUpdate,
 )
 from app.services.auth_service import AuthService
@@ -104,6 +106,20 @@ def community_me(
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     return account
+
+
+@router.delete("/me", response_model=None)
+def delete_community_account(
+    payload: DeleteCommunityAccountRequest,
+    request: Request,
+    auth_service: AuthServiceDep,
+    community_service: CommunityAccountServiceDep,
+) -> Any:
+    status = _require_user(request, auth_service)
+    result = community_service.delete_account(str(status["id"]))
+    response = JSONResponse({"success": True, "deleted": result is not None})
+    clear_session_cookies(response)
+    return response
 
 
 @router.get("/members", response_model=None)

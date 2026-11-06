@@ -481,6 +481,14 @@ def test_public_profile_hides_world_records_when_the_linked_name_is_hidden() -> 
     assert profile["hcr2_records"] == []
     assert profile["hcr2_beaten_record_count"] == 0
 
+    owner_profile = service.get_public_profile(1, viewer_discord_id="123")
+
+    assert owner_profile is not None
+    assert owner_profile["hcr2_player_name"] is None
+    assert owner_profile["hcr2_link_verified_at"] is None
+    assert owner_profile["hcr2_records"] == []
+    assert owner_profile["hcr2_beaten_record_count"] == 0
+
 
 def test_list_members_trims_hidden_fields() -> None:
     service, repository = _make_service()
@@ -775,3 +783,69 @@ def test_repository_banner_update_uses_atomic_cooldown_condition(monkeypatch) ->
     assert "banner_updated_at IS NULL" in cursor.sql
     assert "banner_updated_at <= CURRENT_TIMESTAMP" in cursor.sql
     assert cursor.params["cooldown_days"] == 7
+
+
+def test_repository_delete_account_removes_attributed_submissions_first(monkeypatch) -> None:
+    class FakeCursor:
+        def __init__(self) -> None:
+            self.queries: list[str] = []
+            self.rowcount = 0
+            self.sql = ""
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return None
+
+        def execute(self, sql: str, params: dict[str, Any]) -> None:
+            self.sql = " ".join(sql.split())
+            self.queries.append(self.sql)
+            if "DELETE FROM pending_submission" in sql:
+                self.rowcount = 2
+            elif "DELETE FROM world_record" in sql:
+                self.rowcount = 3
+            elif "DELETE FROM community_user" in sql:
+                self.rowcount = 1
+
+        def fetchone(self) -> dict[str, int] | None:
+            if "SELECT id FROM community_user" in self.sql:
+                return {"id": 42}
+            if "FROM hcr2_account_link" in self.sql:
+                return {"player_id": 99}
+            if "SELECT count(*)::int AS count" in self.sql:
+                return {"count": 4}
+            return None
+
+    class FakeConnection:
+        def __init__(self, cursor: FakeCursor) -> None:
+            self._cursor = cursor
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return None
+
+        def cursor(self) -> FakeCursor:
+            return self._cursor
+
+    cursor = FakeCursor()
+    monkeypatch.setattr(
+        "app.repositories.community_user.open_connection",
+        lambda _: FakeConnection(cursor),
+    )
+
+    result = PostgresCommunityUserRepository().delete_account("123")
+
+    assert result == {
+        "account_id": 42,
+        "pending_submissions_deleted": 2,
+        "records_deleted": 3,
+        "linked_records_preserved": 4,
+    }
+    delete_order = [query for query in cursor.queries if query.startswith("DELETE")]
+    assert "DELETE FROM pending_submission" in delete_order[0]
+    assert "DELETE FROM world_record" in delete_order[1]
+    assert "id_player IS DISTINCT FROM" in delete_order[1]
+    assert delete_order[2].startswith("DELETE FROM community_user")

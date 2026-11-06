@@ -171,6 +171,9 @@ class CommunityAccountService:
             discord_avatar=discord_avatar_url(discord_id, discord_avatar),
         )
 
+    def delete_account(self, discord_id: str) -> dict[str, Any] | None:
+        return self.repository.delete_account(discord_id)
+
     def set_username(
         self,
         discord_id: str,
@@ -299,7 +302,7 @@ class CommunityAccountService:
         if not is_owner and account["username"] is None:
             return None
         profile = _public_profile(account, is_owner)
-        records, beaten_record_count = self._hcr2_world_records(account, is_owner)
+        records, beaten_record_count = self._hcr2_world_records(account)
         profile["hcr2_records"] = records
         profile["hcr2_beaten_record_count"] = beaten_record_count
         return profile
@@ -358,15 +361,16 @@ class CommunityAccountService:
         }
 
     def _hcr2_world_records(
-        self, account: dict[str, Any], is_owner: bool
+        self, account: dict[str, Any]
     ) -> tuple[list[dict[str, Any]], int]:
         """Current world records and beaten-record count for the linked name.
 
         Returns an empty list while the member has no linked player name, or
-        before they have made the linked name visible. The owner always sees
-        their own records, exactly like the rest of the owner-only fields.
+        while they have hidden the linked name. The toggle applies to the owner
+        too: viewing your own public profile shows the same records the public
+        would see. Manage the link from the account page instead.
         """
-        shown = is_owner or bool(account.get("show_hcr2_player_name", True))
+        shown = bool(account.get("show_hcr2_player_name", True))
         if not shown or not account.get("hcr2_player_name"):
             return [], 0
         player_id = account.get("hcr2_player_id")
@@ -379,6 +383,7 @@ class CommunityAccountService:
 
 
 def _public_profile(account: dict[str, Any], is_owner: bool) -> dict[str, Any]:
+    show_hcr2 = bool(account.get("show_hcr2_player_name", True))
     profile = {
         "id": account["id"],
         "username": account["username"],
@@ -409,18 +414,12 @@ def _public_profile(account: dict[str, Any], is_owner: bool) -> dict[str, Any]:
         "show_favorite_map": account["show_favorite_map"],
         "show_discord_username": account["show_discord_username"],
         "show_discord_avatar": account["show_discord_avatar"],
-        "show_hcr2_player_name": bool(account.get("show_hcr2_player_name", True)),
+        "show_hcr2_player_name": show_hcr2,
         # Phase 4. Only ever the name of the account this profile linked, not a
         # claim about who set any historical record that happens to match it.
-        "hcr2_player_name": (
-            account.get("hcr2_player_name")
-            if (is_owner or account.get("show_hcr2_player_name", True))
-            else None
-        ),
+        "hcr2_player_name": account.get("hcr2_player_name") if show_hcr2 else None,
         "hcr2_link_verified_at": (
-            account.get("hcr2_link_verified_at")
-            if (is_owner or account.get("show_hcr2_player_name", True))
-            else None
+            account.get("hcr2_link_verified_at") if show_hcr2 else None
         ),
         "admin_disabled": account["admin_disabled"],
         "is_owner": is_owner,
