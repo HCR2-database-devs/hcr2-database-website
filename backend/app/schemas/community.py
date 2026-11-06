@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -28,6 +29,11 @@ class CommunityAccount(BaseModel):
     show_hcr2_player_name: bool = True
     admin_disabled: bool = False
     banner_updated_at: datetime | None = None
+    hcr2_player_name: str | None = None
+    hcr2_player_id: int | None = None
+    hcr2_link_verified_at: datetime | None = None
+    hcr2_records: list[dict[str, Any]] = []
+    hcr2_beaten_record_count: int = 0
 
 
 class CommunityProfileUpdate(BaseModel):

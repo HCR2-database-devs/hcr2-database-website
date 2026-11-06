@@ -21,6 +21,9 @@ PROFILE_COLUMNS = """
     (SELECT l.player_name FROM hcr2_account_link l
      WHERE l.community_user_id = community_user.id AND l.status = 'active'
      ORDER BY l.approved_at DESC NULLS LAST, l.id DESC LIMIT 1) AS hcr2_player_name,
+    (SELECT l.player_id FROM hcr2_account_link l
+     WHERE l.community_user_id = community_user.id AND l.status = 'active'
+     ORDER BY l.approved_at DESC NULLS LAST, l.id DESC LIMIT 1) AS hcr2_player_id,
     -- AT TIME ZONE 'UTC' promotes the naive UTC column to timestamptz so the
     -- value serializes with an explicit offset. Without it this field reaches
     -- the browser as e.g. '2026-10-16T14:45:08.681936', which JavaScript
@@ -95,6 +98,8 @@ class CommunityUserRepository(Protocol):
     def clear_banner(self, discord_id: str) -> dict[str, Any] | None: ...
 
     def get_banner(self, user_id: int) -> dict[str, Any] | None: ...
+
+    def list_world_records_for_player(self, player_id: int) -> list[dict[str, Any]]: ...
 
     def list_members(
         self,
@@ -416,6 +421,51 @@ class PostgresCommunityUserRepository:
                     "public": bool(banner["profile_public"]) and not bool(banner["admin_disabled"]),
                     "discord_id": str(banner["discord_id"]),
                 }
+
+    def list_world_records_for_player(self, player_id: int) -> list[dict[str, Any]]:
+        """All world records ever achieved by one player, current and superseded."""
+        with open_connection(self._config) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT
+                        wr.id_record AS "idRecord",
+                        wr.id_map AS "idMap",
+                        wr.id_vehicle AS "idVehicle",
+                        wr.id_player AS "idPlayer",
+                        wr.distance,
+                        wr.current,
+                        wr.questionable,
+                        wr.is_mythic AS "isMythic",
+                        COALESCE(wr.questionable_reason, '') AS questionable_reason,
+                        m.name_map AS map_name,
+                        v.name_vehicle AS vehicle_name,
+                        p.name_player AS player_name,
+                        COALESCE(p.country, '') AS player_country,
+                        string_agg(
+                            tp.name_tuning_part, ', ' ORDER BY tp.name_tuning_part
+                        ) AS tuning_parts,
+                        echo_part.name_tuning_part AS "echoAffectedPart"
+                    FROM world_record AS wr
+                    JOIN map AS m ON wr.id_map = m.id_map
+                    JOIN vehicle AS v ON wr.id_vehicle = v.id_vehicle
+                    LEFT JOIN player AS p ON wr.id_player = p.id_player
+                    LEFT JOIN tuning_setup_part tsp ON wr.id_tuning_setup = tsp.id_tuning_setup
+                    LEFT JOIN tuning_part tp ON tsp.id_tuning_part = tp.id_tuning_part
+                    LEFT JOIN tuning_setup ts ON wr.id_tuning_setup = ts.id_tuning_setup
+                    LEFT JOIN tuning_part echo_part
+                        ON ts.echo_affected_part_id = echo_part.id_tuning_part
+                    WHERE wr.id_player = %(player_id)s
+                    GROUP BY wr.id_record, wr.id_map, wr.id_vehicle, wr.id_player,
+                        wr.distance, wr.current, wr.id_tuning_setup, wr.questionable,
+                        wr.is_mythic, wr.questionable_reason,
+                        m.name_map, v.name_vehicle, p.name_player, p.country,
+                        echo_part.name_tuning_part, wr.created_at
+                    ORDER BY wr.id_record DESC
+                    """,
+                    {"player_id": player_id},
+                )
+                return [dict(row) for row in cursor.fetchall()]
 
     def list_members(
         self,

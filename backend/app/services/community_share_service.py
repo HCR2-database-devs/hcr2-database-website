@@ -56,6 +56,7 @@ _OG_LABELS = {
     "💬": "Bio",
     "🚗": "Favorite vehicle",
     "🗺": "Favorite map",
+    "🏆": "World record",
 }
 
 
@@ -163,6 +164,15 @@ class CommunityShareService:
         profile_url = self.profile_url(user_id)
 
         details = self._detail_lines(account)
+        profile = self.community_service.get_public_profile(user_id, viewer_discord_id=None)
+        hcr2_records = list(profile.get("hcr2_records") or []) if profile is not None else []
+        hcr2_beaten_record_count = (
+            int(profile.get("hcr2_beaten_record_count") or 0) if profile else 0
+        )
+        details += self._hcr2_record_lines(hcr2_records)
+        if hcr2_beaten_record_count:
+            beaten_text = f"{hcr2_beaten_record_count} world records have been beaten"
+            details.append(f"🏆 {_clip(beaten_text, _MAX_TEXT)}")
 
         heading = _text(f"# {username}")
         subheading = _text(f"-# {_clip(f'hcr2.xyz #{user_id} · Member since {member_since}', 200)}")
@@ -236,6 +246,17 @@ class CommunityShareService:
             lines.append(f"🚗 Favorite vehicle: {account['favorite_vehicle_name']}")
         if account["show_favorite_map"] and account["favorite_map_name"]:
             lines.append(f"🗺 Favorite map: {account['favorite_map_name']}")
+        return lines
+
+    @staticmethod
+    def _hcr2_record_lines(records: list[dict[str, Any]] | None) -> list[str]:
+        """Current world records for the linked player name, for the embed."""
+        lines: list[str] = []
+        for record in records or []:
+            map_name = str(record.get("map_name") or "Unknown map")
+            vehicle_name = str(record.get("vehicle_name") or "Unknown vehicle")
+            distance = int(record.get("distance") or 0)
+            lines.append(f"🏆 World record: {map_name} · {vehicle_name} · {distance} m")
         return lines
 
     @staticmethod

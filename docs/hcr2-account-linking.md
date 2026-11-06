@@ -293,10 +293,13 @@ nothing; only the chat does.
 
 ## Player names and record ownership
 
-The dropdown is populated exclusively from `player` rows joined to
-`world_record`. Because superseded records are retained with `current = 0`, a
-single `EXISTS` covers players who still hold a world record **and** players
-whose records are only historical.
+The dropdown is populated exclusively from `player` rows, with a `LEFT JOIN`
+to `world_record` used only to compute how many world records each player holds.
+Eligibility no longer requires a world record: any player name that exists in the
+player table can be linked, and members without any records yet can still go
+through the wizard. Because superseded records are retained with `current = 0`,
+the join is left-joined so a name that only ever held historical records stays
+eligible, and the reported record count covers current records only.
 
 The name is revalidated on the backend when the request starts, when it is
 submitted, and again when it is approved. Posting an arbitrary name straight to
@@ -309,10 +312,18 @@ If a name is already actively linked to another account, the user sees:
 
 No information about the other account is revealed.
 
-**Linking does not transfer record ownership.** The profile shows "Records
-matching this player name" and explicitly does not claim that every historical
-record under that name belongs to the linked member. Historical records are never
-rewritten or reassigned.
+**Linking does not transfer record ownership.** The profile lists the linked
+name's current records under **World Records** and separately reports how many of
+the name's records have been beaten. It does not claim that every historical
+record under that name belongs to the linked member, and historical records are
+never rewritten or reassigned.
+
+While the linked name is visible, records in the public records table link that
+player name to the member's community profile. The link is only exposed for
+active links whose member has a public, enabled profile, has chosen a community
+username, and still shows the linked name; otherwise the name is rendered as
+plain text. The same public-profile check keeps the link out of the records API
+for profiles a viewer could not open.
 
 Note that `player.name_player` is unique **case-sensitively**, so `Bob` and `bob`
 are two distinct rows. Links are keyed on a case-folded, whitespace-collapsed
@@ -348,16 +359,17 @@ See `docs/beta-testing.md`.
 
 ## Known limitations
 
-- **The dropdown does not prove ownership.** It proves a name holds a world
-  record.
+- **The dropdown does not prove ownership.** It proves a player name exists in
+  the player database.
 - **The team-chat method depends on an administrator actually reading team
   chat.** If nobody does, requests sit in the queue.
 - **The team method does not work with the Chinese version of HCR2**, because
   those servers are separate from the verification team.
 - **The team password is readable by anyone who can open the wizard.**
-- **A player whose record rows were deleted outright** is no longer eligible,
-  because the database no longer retains evidence that they ever held a world
-  record. Names with superseded (`current = 0`) history are still eligible.
+- **A player whose player row was deleted outright** is no longer eligible,
+  because the database no longer retains evidence that they ever existed. Names
+  with superseded (`current = 0`) history are still eligible while the player
+  row remains.
 - **Search uses substring matching.** The added index accelerates prefix lookups,
   but `ILIKE '%term%'` still scans. That is fine at current scale; `pg_trgm`
   would be the upgrade path if the player table grows substantially. `pg_trgm` is

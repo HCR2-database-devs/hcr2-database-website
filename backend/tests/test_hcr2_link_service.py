@@ -487,7 +487,7 @@ def test_search_only_returns_eligible_names() -> None:
     assert set(result["players"][0]) == {"id_player", "name_player", "record_count"}
 
 
-def test_start_request_rejects_a_name_with_no_world_record() -> None:
+def test_start_request_rejects_a_name_that_does_not_exist_in_the_database() -> None:
     service, *_ = _make_service()
 
     with pytest.raises(CommunityProfileError) as excinfo:

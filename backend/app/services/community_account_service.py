@@ -298,7 +298,11 @@ class CommunityAccountService:
             return None
         if not is_owner and account["username"] is None:
             return None
-        return _public_profile(account, is_owner)
+        profile = _public_profile(account, is_owner)
+        records, beaten_record_count = self._hcr2_world_records(account, is_owner)
+        profile["hcr2_records"] = records
+        profile["hcr2_beaten_record_count"] = beaten_record_count
+        return profile
 
     def get_api_profile(self, discord_id: str) -> dict[str, Any] | None:
         """Full profile for API-key consumers, keyed by Discord ID.
@@ -352,6 +356,26 @@ class CommunityAccountService:
             "search": search,
             "sort": sort,
         }
+
+    def _hcr2_world_records(
+        self, account: dict[str, Any], is_owner: bool
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Current world records and beaten-record count for the linked name.
+
+        Returns an empty list while the member has no linked player name, or
+        before they have made the linked name visible. The owner always sees
+        their own records, exactly like the rest of the owner-only fields.
+        """
+        shown = is_owner or bool(account.get("show_hcr2_player_name", True))
+        if not shown or not account.get("hcr2_player_name"):
+            return [], 0
+        player_id = account.get("hcr2_player_id")
+        if player_id is None:
+            return [], 0
+        rows = self.repository.list_world_records_for_player(int(player_id))
+        current = [row for row in rows if int(row.get("current") or 0) == 1]
+        beaten_record_count = sum(1 for row in rows if int(row.get("current") or 0) != 1)
+        return current, beaten_record_count
 
 
 def _public_profile(account: dict[str, Any], is_owner: bool) -> dict[str, Any]:

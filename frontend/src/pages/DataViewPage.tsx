@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { AdSlot } from "../components/AdSlot";
 import {
@@ -528,10 +528,17 @@ function ShareButton({ recordId, shareUrl }: { recordId: string; shareUrl: strin
   );
 }
 
-function recordRow(item: DataRow, index: number, onNote: (note: string) => void, shareBasePath = "/records") {
+function recordRow(
+  item: DataRow,
+  index: number,
+  onNote: (note: string) => void,
+  shareBasePath = "/records",
+) {
   const recordId = asText(item.idRecord ?? item.record_id ?? item.idrecord);
   const note = asText(item.questionable_reason ?? item.questionableReason);
   const mapName = asText(item.map_name);
+  const playerName = asText(item.player_name);
+  const communityId = Number(item.community_user_id ?? 0);
   const shareUrl = `${window.location.origin}${shareBasePath}?recordId=${encodeURIComponent(recordId)}&map=${encodeURIComponent(mapName)}`;
   return (
     <tr key={recordId || index} data-record-id={recordId}>
@@ -560,7 +567,13 @@ function recordRow(item: DataRow, index: number, onNote: (note: string) => void,
           <span className="echo-affected-badge">Echo → {asText(item.echoAffectedPart ?? item.echo_affected_part)}</span>
         )}
       </td>
-      <td data-label="Player">{asText(item.player_name)}</td>
+      <td data-label="Player">
+        {communityId > 0 ? (
+          <Link to={`/community/${communityId}`}>{playerName}</Link>
+        ) : (
+          playerName
+        )}
+      </td>
       <td data-label="Country">
         <CountryWithFlag country={item.player_country} />
       </td>

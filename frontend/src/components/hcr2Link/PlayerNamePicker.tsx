@@ -18,7 +18,7 @@ type PlayerNamePickerProps = {
  *
  * Free typing is impossible: the list only ever offers names returned by
  * `GET /community/hcr2-link/players`, which are exactly the names that hold or
- * have held an Adventure world record. The backend revalidates the choice on
+ * exist in the records database. The backend revalidates the choice on
  * submit and on approval, so this is a usability affordance rather than the
  * security boundary.
  */
@@ -96,7 +96,7 @@ export function PlayerNamePicker({ value, onSelect, disabled = false }: PlayerNa
         <p className="hcr2-player-selected">
           <strong>{value}</strong>
           <span className="frontend-muted">
-            Selected from the records database. Only names with an Adventure world record are
+            Selected from the records database. Only names that exist in the player database are
             listed.
           </span>
         </p>

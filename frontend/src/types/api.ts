@@ -27,7 +27,28 @@ export type CommunityAccount = {
   banner_updated_at?: string | null;
   is_owner?: boolean;
   hcr2_player_name?: string | null;
+  hcr2_player_id?: number | null;
   hcr2_link_verified_at?: string | null;
+  hcr2_records?: CommunityHcr2Record[];
+  hcr2_beaten_record_count?: number;
+};
+
+export type CommunityHcr2Record = {
+  idRecord: number;
+  idMap?: number | null;
+  idVehicle?: number | null;
+  idPlayer?: number | null;
+  distance: number;
+  current: number;
+  questionable?: number | null;
+  isMythic?: boolean;
+  questionable_reason?: string | null;
+  map_name?: string | null;
+  vehicle_name?: string | null;
+  player_name?: string | null;
+  player_country?: string | null;
+  tuning_parts?: string | null;
+  echoAffectedPart?: string | null;
 };
 
 export type CommunityProfileUpdate = {

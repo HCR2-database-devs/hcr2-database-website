@@ -49,13 +49,21 @@ def _account(**overrides: Any) -> dict[str, Any]:
 
 
 class StubRepository:
-    def __init__(self, account: dict[str, Any] | None) -> None:
+    def __init__(
+        self,
+        account: dict[str, Any] | None,
+        records: dict[int, list[dict[str, Any]]] | None = None,
+    ) -> None:
         self.account = account
+        self.records = records or {}
 
     def get_by_id(self, user_id: int) -> dict[str, Any] | None:
         if self.account is None or self.account["id"] != user_id:
             return None
         return dict(self.account)
+
+    def list_world_records_for_player(self, player_id: int) -> list[dict[str, Any]]:
+        return [dict(row) for row in self.records.get(player_id, [])]
 
 
 def _service(account: dict[str, Any] | None = None) -> CommunityShareService:
@@ -139,6 +147,35 @@ def test_share_profile_embed_lists_public_details(client: TestClient) -> None:
     assert "🚗 Favorite vehicle: Sand Rail" in body
     assert "🗺 Favorite map: Countryside" in body
 
+
+def test_share_profile_embed_lists_world_records_for_the_linked_member() -> None:
+    record = {
+        "idRecord": 3,
+        "distance": 1234,
+        "current": 1,
+        "questionable": 0,
+        "isMythic": False,
+        "questionable_reason": "",
+        "map_name": "Countryside",
+        "vehicle_name": "Sand Rail",
+        "player_name": "Demo Driver",
+        "player_country": "fi",
+        "tuning_parts": "",
+        "echoAffectedPart": None,
+    }
+    service = CommunityShareService(
+        community_service=CommunityAccountService(
+            StubRepository(
+                _account(hcr2_player_name="Demo Driver", hcr2_player_id=7),
+                {7: [record]},
+            )
+        ),
+        site_url=SITE_URL,
+    )
+
+    embed = _parse_embed(service.profile_page(1))
+
+    assert "🏆 World record: Countryside · Sand Rail · 1234 m" in str(embed)
 
 def test_share_profile_embed_links_to_profile_and_community(client: TestClient) -> None:
     embed = _embed(client.get(SHARE_PATH))

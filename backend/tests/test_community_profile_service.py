@@ -45,6 +45,7 @@ class FakeCommunityUserRepository:
         self.next_id = 1
         self.banners: dict[int, dict[str, Any]] = {}
         self.username_conflicts: set[str] = set()
+        self.world_records: dict[int, list[dict[str, Any]]] = {}
 
     def _new_row(
         self,
@@ -200,6 +201,9 @@ class FakeCommunityUserRepository:
             "public": bool(row["profile_public"]) and not bool(row["admin_disabled"]),
             "discord_id": row["discord_id"],
         }
+
+    def list_world_records_for_player(self, player_id: int) -> list[dict[str, Any]]:
+        return [dict(row) for row in self.world_records.get(player_id, [])]
 
     def list_members(
         self,
@@ -393,6 +397,89 @@ def test_public_profile_shows_discord_username_when_toggled() -> None:
 
     assert profile["discord_username"] == "Nipa#1234"
     assert profile["discord_avatar"] == "https://cdn.discordapp.com/avatars/123/abc.png"
+
+
+def test_public_profile_returns_world_records_for_the_linked_owner() -> None:
+    service, repository = _make_service()
+    repository.ensure_account("123", "Nipa")
+    _onboard(repository, 1)
+    repository.rows[1]["hcr2_player_name"] = "Demo Driver"
+    repository.rows[1]["hcr2_player_id"] = 7
+    repository.world_records[7] = [
+        {
+            "idRecord": 3,
+            "idMap": 1,
+            "idVehicle": 2,
+            "idPlayer": 7,
+            "distance": 1234,
+            "current": 1,
+            "questionable": 0,
+            "isMythic": False,
+            "questionable_reason": "",
+            "map_name": "Countryside",
+            "vehicle_name": "Super Diesel",
+            "player_name": "Demo Driver",
+            "player_country": "fi",
+            "tuning_parts": "",
+            "echoAffectedPart": None,
+        },
+        {
+            "idRecord": 1,
+            "idMap": 1,
+            "idVehicle": 2,
+            "idPlayer": 7,
+            "distance": 900,
+            "current": 0,
+            "questionable": 0,
+            "isMythic": False,
+            "questionable_reason": "",
+            "map_name": "Countryside",
+            "vehicle_name": "Super Diesel",
+            "player_name": "Demo Driver",
+            "player_country": "fi",
+            "tuning_parts": "",
+            "echoAffectedPart": None,
+        },
+    ]
+
+    profile = service.get_public_profile(1, viewer_discord_id="123")
+
+    assert profile is not None
+    assert profile["hcr2_player_name"] == "Demo Driver"
+    assert len(profile["hcr2_records"]) == 1
+    assert profile["hcr2_records"][0]["idRecord"] == 3
+    assert profile["hcr2_beaten_record_count"] == 1
+
+
+def test_public_profile_hides_world_records_when_the_linked_name_is_hidden() -> None:
+    service, repository = _make_service()
+    repository.ensure_account("123", "Nipa")
+    _onboard(repository, 1)
+    repository.rows[1]["hcr2_player_name"] = "Demo Driver"
+    repository.rows[1]["hcr2_player_id"] = 7
+    repository.rows[1]["show_hcr2_player_name"] = False
+    repository.world_records[7] = [
+        {
+            "idRecord": 3,
+            "distance": 1234,
+            "current": 1,
+            "questionable": 0,
+            "isMythic": False,
+            "questionable_reason": "",
+            "map_name": "Countryside",
+            "vehicle_name": "Super Diesel",
+            "player_name": "Demo Driver",
+            "player_country": "fi",
+            "tuning_parts": "",
+            "echoAffectedPart": None,
+        },
+    ]
+
+    profile = service.get_public_profile(1, viewer_discord_id="other")
+
+    assert profile is not None
+    assert profile["hcr2_records"] == []
+    assert profile["hcr2_beaten_record_count"] == 0
 
 
 def test_list_members_trims_hidden_fields() -> None:

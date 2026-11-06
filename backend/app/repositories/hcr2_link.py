@@ -14,10 +14,9 @@ Two tables back the feature:
     ``code_sent_confirmed_at``, ...) and never records an approval on its own.
 
 Player names are always resolved through :meth:`find_eligible_player`, which
-requires at least one row in ``world_record``. Because superseded records are
-retained with ``current = 0``, that single ``EXISTS`` covers both players who
-still hold a world record and players whose records were only historical. A
-name with no row at all in ``world_record`` is never eligible.
+requires the name to exist in the ``player`` table. A ``LEFT JOIN`` to
+``world_record`` only supplies the current-record count, so players who have no
+records yet and players whose records are all historical can still link.
 
 The verification code is stored twice: ``code_token_hash`` is the keyed hash
 used for any comparison, and ``code_value`` is the plaintext an administrator
@@ -208,14 +207,6 @@ def _escape_like(value: str) -> str:
     return f"%{escaped}%"
 
 
-_ELIGIBLE_PLAYER_PREDICATE = """
-    EXISTS (
-        SELECT 1 FROM world_record wr
-        WHERE wr.id_player = p.id_player
-    )
-"""
-
-
 class PostgresHcr2LinkRepository:
     def __init__(self, config: DatabaseConfig | None = None) -> None:
         self._config = config
@@ -229,14 +220,8 @@ class PostgresHcr2LinkRepository:
         limit: int,
         offset: int,
     ) -> tuple[list[dict[str, Any]], int]:
-        """Return player names that have, or ever had, an Adventure world record.
-
-        Only the canonical name and the count of *current* world records are
-        exposed. Submission data, submitter identities, IP addresses and
-        questionable flags are deliberately not part of this query: the
-        dropdown is not a record browser.
-        """
-        clauses = [_ELIGIBLE_PLAYER_PREDICATE]
+        """Return player names that exist in the database."""
+        clauses: list[str] = ["TRUE"]
         params: dict[str, Any] = {"limit": limit, "offset": offset}
         if search:
             escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
@@ -251,7 +236,7 @@ class PostgresHcr2LinkRepository:
                     SELECT p.id_player, p.name_player,
                            COUNT(*) FILTER (WHERE wr.current = 1)::int AS record_count
                     FROM player p
-                    JOIN world_record wr ON wr.id_player = p.id_player
+                    LEFT JOIN world_record wr ON wr.id_player = p.id_player
                     WHERE {where_sql}
                     GROUP BY p.id_player, p.name_player
                     ORDER BY
@@ -284,13 +269,12 @@ class PostgresHcr2LinkRepository:
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
-                    f"""
+                    """
                     SELECT p.id_player, p.name_player,
                            COUNT(*) FILTER (WHERE wr.current = 1)::int AS record_count
                     FROM player p
-                    JOIN world_record wr ON wr.id_player = p.id_player
+                    LEFT JOIN world_record wr ON wr.id_player = p.id_player
                     WHERE p.name_player = %(name)s
-                      AND {_ELIGIBLE_PLAYER_PREDICATE}
                     GROUP BY p.id_player, p.name_player
                     """,
                     {"name": name},

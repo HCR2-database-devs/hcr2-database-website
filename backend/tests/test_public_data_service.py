@@ -136,6 +136,21 @@ def test_postgres_search_records_uses_exact_main_filters_and_car_alias() -> None
     assert repository.last_params["q"] == "%proof%"
 
 
+def test_postgres_records_include_the_public_linked_community_id() -> None:
+    repository = CapturingPostgresPublicDataRepository()
+
+    repository.list_records_paginated({})
+
+    assert "AS community_user_id" in repository.last_sql
+    assert "FROM hcr2_account_link l" in repository.last_sql
+    assert "l.player_id = wr.id_player" in repository.last_sql
+    assert "l.status = 'active'" in repository.last_sql
+    assert "cu.profile_public = TRUE" in repository.last_sql
+    assert "cu.admin_disabled = FALSE" in repository.last_sql
+    assert "cu.username IS NOT NULL" in repository.last_sql
+    assert "cu.show_hcr2_player_name = TRUE" in repository.last_sql
+
+
 def test_public_data_service_preserves_missing_type_error() -> None:
     service = PublicDataService(FakePublicDataRepository())
 

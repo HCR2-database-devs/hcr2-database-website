@@ -17,6 +17,7 @@ import { countryName } from "../lib/countries";
 import { useCanUseFeature } from "../lib/features";
 import type { ReactNode } from "react";
 import { formatMemberSince } from "../lib/format";
+import { formatDistance } from "../lib/legacyDisplay";
 import { communityDisplayName, discordAvatarUrl } from "../services/community";
 import { getCommunityProfile } from "../services/community";
 
@@ -239,6 +240,48 @@ function CommunityProfileContent() {
               </div>
             )}
         </dl>
+
+        {isOwner || showHcr2Identity ? (
+          <section
+            className="community-profile-records"
+            aria-labelledby="community-profile-records-heading"
+          >
+            <h2 id="community-profile-records-heading">World Records</h2>
+            {profile.hcr2_records && profile.hcr2_records.length > 0 ? (
+              <ul className="community-profile-records-list">
+                {profile.hcr2_records.map((record) => (
+                  <li key={record.idRecord} className="community-profile-record">
+                    <span className="community-profile-record-map">{record.map_name}</span>
+                    <span className="community-profile-record-vehicle">{record.vehicle_name}</span>
+                    <span className="community-profile-record-distance">
+                      {formatDistance(record.distance)}
+                    </span>
+                    {record.isMythic ? (
+                      <span className="status-pill status-pill--verified">Mythic</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="community-profile-details-empty">
+                {isOwner
+                  ? "No world records yet. Link your HCR2 name to start tracking them here."
+                  : "This member has no world records yet."}
+              </p>
+            )}
+            {profile.hcr2_beaten_record_count ? (
+              <p className="frontend-muted community-profile-beaten">
+                {isOwner
+                  ? `You previously held ${profile.hcr2_beaten_record_count} world record${
+                      profile.hcr2_beaten_record_count === 1 ? "" : "s"
+                    } that have since been beaten.`
+                  : `This member previously held ${profile.hcr2_beaten_record_count} world record${
+                      profile.hcr2_beaten_record_count === 1 ? "" : "s"
+                    } that have since been beaten.`}
+              </p>
+            ) : null}
+          </section>
+        ) : null}
 
         {isOwner && (
           <p className="community-profile-note">

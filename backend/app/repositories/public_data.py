@@ -2,6 +2,23 @@ from typing import Any, Protocol
 
 from app.db.session import DatabaseConfig, open_connection
 
+#: Correlated lookup of the community profile linked to a record's player.
+#: Only public, enabled profiles whose owner still shows the linked name are
+#: returned, so the records table never links to a page the viewer cannot open.
+_COMMUNITY_LINK_COLUMN = """
+    (SELECT cu.id
+     FROM hcr2_account_link l
+     JOIN community_user cu ON cu.id = l.community_user_id
+     WHERE l.player_id = wr.id_player
+       AND l.status = 'active'
+       AND cu.profile_public = TRUE
+       AND cu.admin_disabled = FALSE
+       AND cu.username IS NOT NULL
+       AND cu.show_hcr2_player_name = TRUE
+     ORDER BY l.approved_at DESC NULLS LAST, l.id DESC
+     LIMIT 1) AS community_user_id
+"""
+
 
 class PublicDataRepository(Protocol):
     def list_maps(self) -> list[dict[str, Any]]: ...
@@ -100,7 +117,7 @@ class PostgresPublicDataRepository:
 
     def list_records(self) -> list[dict[str, Any]]:
         return self._fetch_all(
-            """
+            f"""
             SELECT
                 wr.id_record AS "idRecord",
                 wr.id_map AS "idMap",
@@ -116,6 +133,7 @@ class PostgresPublicDataRepository:
                 v.name_vehicle AS vehicle_name,
                 p.name_player AS player_name,
                 COALESCE(p.country, '') AS player_country,
+                {_COMMUNITY_LINK_COLUMN},
                 string_agg(tp.name_tuning_part, ', ' ORDER BY tp.name_tuning_part) AS tuning_parts,
                 echo_part.name_tuning_part AS "echoAffectedPart",
                 wr.created_at
@@ -250,6 +268,7 @@ class PostgresPublicDataRepository:
                 v.name_vehicle AS vehicle_name,
                 p.name_player AS player_name,
                 COALESCE(p.country, '') AS player_country,
+                {_COMMUNITY_LINK_COLUMN},
                 string_agg(tp.name_tuning_part, ', ' ORDER BY tp.name_tuning_part) AS tuning_parts,
                 echo_part.name_tuning_part AS "echoAffectedPart",
                 wr.created_at
@@ -351,6 +370,7 @@ class PostgresPublicDataRepository:
                 v.name_vehicle AS vehicle_name,
                 p.name_player AS player_name,
                 COALESCE(p.country, '') AS player_country,
+                {_COMMUNITY_LINK_COLUMN},
                 string_agg(tp.name_tuning_part, ', ' ORDER BY tp.name_tuning_part) AS tuning_parts,
                 echo_part.name_tuning_part AS "echoAffectedPart",
                 wr.created_at

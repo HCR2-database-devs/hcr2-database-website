@@ -119,10 +119,10 @@ NAME_TAKEN_ERROR = (
     "Please contact staff if you believe this is a mistake."
 )
 
-#: Shown for any name that is not backed by a world record.
+#: Shown for any name that does not exist in the player database.
 INELIGIBLE_NAME_ERROR = (
     "That player name is not available for linking. Pick a name from the "
-    "list of names that hold a world record."
+    "list of players in the database."
 )
 
 ACTIVITY_ENTITY_REQUEST = "hcr2_verification_request"

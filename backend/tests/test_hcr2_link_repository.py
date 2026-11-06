@@ -4,7 +4,7 @@ There is no database in the test environment, so these assert on the SQL and
 parameters handed to psycopg using a fake cursor, in the same style as
 ``tests/test_record_submission_controls.py``. What matters here is the shape of
 the statements themselves: which tables they touch, that the eligible-name
-query is anchored on ``world_record``, that approval locks and runs in a
+query is anchored on the player table, that approval locks and runs in a
 transaction, and that user input only ever arrives as bound parameters.
 """
 
@@ -158,7 +158,7 @@ def repository(monkeypatch: pytest.MonkeyPatch, cursor: _Cursor) -> PostgresHcr2
 # -- eligible player names -------------------------------------------------
 
 
-def test_eligible_name_search_is_anchored_on_world_record(
+def test_eligible_name_search_returns_names_from_the_player_table(
     repository: PostgresHcr2LinkRepository,
     cursor: _Cursor,
 ) -> None:
@@ -167,14 +167,14 @@ def test_eligible_name_search_is_anchored_on_world_record(
     listing = next(
         query for query in cursor.queries if "FROM player p" in query and "GROUP BY" in query
     )
-    # The EXISTS is what excludes names that have never had a world record.
-    eligibility = listing.split("EXISTS", 1)[1]
-    assert "FROM world_record wr" in eligibility
-    assert "wr.id_player = p.id_player" in eligibility
-    # It is deliberately not restricted to current = 1: superseded rows are
-    # retained history, so a player whose only records are historical stays
-    # eligible. Only a total absence of rows removes a name.
-    assert "current" not in eligibility.split(")", 1)[0]
+    # Eligibility is simply the name existing in the player table now; the
+    # LEFT JOIN keeps names that never held a world record selectable.
+    assert "EXISTS" not in listing
+    assert "LEFT JOIN world_record wr ON wr.id_player = p.id_player" in listing
+    # The join must be a LEFT JOIN, and the count is deliberately not restricted
+    # to current = 1: superseded rows are retained history, so a player whose
+    # only records are historical stays eligible. Only a total absence of rows
+    # removes a name.
 
 
 def test_eligible_name_search_exposes_no_submission_metadata(
@@ -224,7 +224,8 @@ def test_find_eligible_player_uses_an_exact_match(
 
     lookup = next(query for query in cursor.queries if "p.name_player =" in query)
     assert "ILIKE" not in lookup
-    assert "FROM world_record wr" in lookup
+    assert "LEFT JOIN world_record wr ON wr.id_player = p.id_player" in lookup
+    assert "EXISTS" not in lookup
 
 
 # -- code generation -------------------------------------------------------
