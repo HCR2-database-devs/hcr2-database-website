@@ -328,6 +328,9 @@ class CommunityAccountService:
         search: str | None,
         sort: str,
         country: str | None,
+        favorite_vehicle_id: int | None = None,
+        favorite_map_id: int | None = None,
+        has_hcr2: bool | None = None,
         limit: int,
         offset: int,
     ) -> dict[str, Any]:
@@ -343,11 +346,18 @@ class CommunityAccountService:
                 search = search[:MAX_SEARCH_LENGTH]
             if not search:
                 search = None
+        if favorite_vehicle_id is not None and favorite_vehicle_id < 1:
+            favorite_vehicle_id = None
+        if favorite_map_id is not None and favorite_map_id < 1:
+            favorite_map_id = None
 
         members, total = self.repository.list_members(
             search=search,
             sort=sort,
             country=country,
+            favorite_vehicle_id=favorite_vehicle_id,
+            favorite_map_id=favorite_map_id,
+            has_hcr2=has_hcr2,
             limit=limit,
             offset=offset,
         )
@@ -461,6 +471,8 @@ def _trim_member(member: dict[str, Any]) -> dict[str, Any]:
         result["discord_avatar"] = discord_avatar_url(
             member["discord_id"], member["discord_avatar"]
         )
+    if member.get("show_hcr2_player_name"):
+        result["hcr2_player_name"] = member.get("hcr2_player_name")
     return result
 
 

@@ -157,6 +157,9 @@ export type CommunityMembersParams = {
   search?: string;
   sort?: string;
   country?: string;
+  favorite_vehicle_id?: number;
+  favorite_map_id?: number;
+  has_hcr2?: boolean;
   limit?: number;
   offset?: number;
 };
@@ -166,6 +169,9 @@ export function getCommunityMembers(params: CommunityMembersParams) {
   if (params.search) query.set("q", params.search);
   if (params.sort) query.set("sort", params.sort);
   if (params.country) query.set("country", params.country);
+  if (params.favorite_vehicle_id) query.set("favorite_vehicle_id", String(params.favorite_vehicle_id));
+  if (params.favorite_map_id) query.set("favorite_map_id", String(params.favorite_map_id));
+  if (params.has_hcr2 !== undefined) query.set("has_hcr2", String(params.has_hcr2));
   query.set("limit", String(params.limit ?? 24));
   query.set("offset", String(params.offset ?? 0));
   return fetchJson<CommunityMemberListResponse>(`/api/v1/community/members?${query}`);

@@ -89,6 +89,7 @@ export type CommunityMember = {
   favorite_vehicle_name?: string | null;
   favorite_map_id?: number | null;
   favorite_map_name?: string | null;
+  hcr2_player_name?: string | null;
   banner_updated_at?: string | null;
 };
 

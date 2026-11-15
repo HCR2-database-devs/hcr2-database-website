@@ -109,6 +109,9 @@ class CommunityUserRepository(Protocol):
         search: str | None,
         sort: str,
         country: str | None,
+        favorite_vehicle_id: int | None = None,
+        favorite_map_id: int | None = None,
+        has_hcr2: bool | None = None,
         limit: int,
         offset: int,
     ) -> tuple[list[dict[str, Any]], int]: ...
@@ -119,7 +122,13 @@ def _escape_like(value: str) -> str:
     return f"%{escaped}%"
 
 
-def _public_filters(country: str | None, search: str | None) -> tuple[str, dict[str, Any]]:
+def _public_filters(
+    country: str | None,
+    search: str | None,
+    favorite_vehicle_id: int | None = None,
+    favorite_map_id: int | None = None,
+    has_hcr2: bool | None = None,
+) -> tuple[str, dict[str, Any]]:
     clauses = [
         "cu.profile_public = TRUE",
         "cu.admin_disabled = FALSE",
@@ -132,6 +141,26 @@ def _public_filters(country: str | None, search: str | None) -> tuple[str, dict[
     if search:
         clauses.append("cu.username_norm ILIKE %(pattern)s ESCAPE '\\'")
         params["pattern"] = _escape_like(search)
+    if favorite_vehicle_id is not None:
+        clauses.append(
+            "cu.show_favorite_vehicle = TRUE "
+            "AND cu.favorite_vehicle_id = %(favorite_vehicle_id)s"
+        )
+        params["favorite_vehicle_id"] = favorite_vehicle_id
+    if favorite_map_id is not None:
+        clauses.append(
+            "cu.show_favorite_map = TRUE AND cu.favorite_map_id = %(favorite_map_id)s"
+        )
+        params["favorite_map_id"] = favorite_map_id
+    if has_hcr2 is not None:
+        link_exists = """EXISTS (
+            SELECT 1 FROM hcr2_account_link l
+            WHERE l.community_user_id = cu.id AND l.status = 'active'
+        )"""
+        if has_hcr2:
+            clauses.append(f"cu.show_hcr2_player_name = TRUE AND {link_exists}")
+        else:
+            clauses.append(f"(cu.show_hcr2_player_name = FALSE OR NOT {link_exists})")
     return " AND ".join(clauses), params
 
 
@@ -578,10 +607,19 @@ class PostgresCommunityUserRepository:
         search: str | None,
         sort: str,
         country: str | None,
+        favorite_vehicle_id: int | None = None,
+        favorite_map_id: int | None = None,
+        has_hcr2: bool | None = None,
         limit: int,
         offset: int,
     ) -> tuple[list[dict[str, Any]], int]:
-        where_sql, params = _public_filters(country, search)
+        where_sql, params = _public_filters(
+            country,
+            search,
+            favorite_vehicle_id,
+            favorite_map_id,
+            has_hcr2,
+        )
         order_clause = _SORT_CLAUSES.get(sort, _SORT_CLAUSES["new"])
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
@@ -596,10 +634,14 @@ class PostgresCommunityUserRepository:
                            cu.favorite_map_id,
                            (SELECT m.name_map FROM map m
                             WHERE m.id_map = cu.favorite_map_id) AS favorite_map_name,
+                           (SELECT l.player_name FROM hcr2_account_link l
+                            WHERE l.community_user_id = cu.id AND l.status = 'active'
+                            ORDER BY l.approved_at DESC NULLS LAST, l.id DESC
+                            LIMIT 1) AS hcr2_player_name,
                            cu.show_country, cu.show_bio,
                            cu.show_favorite_vehicle, cu.show_favorite_map,
                            cu.show_discord_username, cu.show_discord_avatar,
-                           cu.banner_updated_at
+                           cu.show_hcr2_player_name, cu.banner_updated_at
                     FROM community_user cu
                     WHERE {where_sql}
                     ORDER BY {order_clause}

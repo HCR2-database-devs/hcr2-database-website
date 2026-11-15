@@ -10,6 +10,7 @@ import { RequireAuth } from "../components/RequireAuth";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { COUNTRIES } from "../lib/countries";
 import { getCommunityMembers } from "../services/community";
+import { getPublicData } from "../services/publicData";
 
 const PAGE_SIZE = 24;
 
@@ -35,6 +36,9 @@ function CommunityPageContent() {
   const [submittedSearch, setSubmittedSearch] = useState("");
   const [sort, setSort] = useState("new");
   const [country, setCountry] = useState("");
+  const [favoriteVehicleId, setFavoriteVehicleId] = useState("");
+  const [favoriteMapId, setFavoriteMapId] = useState("");
+  const [hasHcr2, setHasHcr2] = useState("");
   const [offset, setOffset] = useState(0);
 
   const needsOnboarding =
@@ -42,6 +46,58 @@ function CommunityPageContent() {
     authStatus.community !== undefined &&
     authStatus.community !== null &&
     !authStatus.community.username;
+
+  const vehiclesQuery = useQuery({
+    queryKey: ["public-data", "vehicles"],
+    queryFn: () => getPublicData("vehicles"),
+    enabled: !needsOnboarding,
+    staleTime: 5 * 60 * 1000
+  });
+
+  const mapsQuery = useQuery({
+    queryKey: ["public-data", "maps"],
+    queryFn: () => getPublicData("maps"),
+    enabled: !needsOnboarding,
+    staleTime: 5 * 60 * 1000
+  });
+
+  const membersQuery = useQuery({
+    queryKey: [
+      "community",
+      "members",
+      submittedSearch,
+      sort,
+      country,
+      favoriteVehicleId,
+      favoriteMapId,
+      hasHcr2,
+      offset
+    ],
+    queryFn: () =>
+      getCommunityMembers({
+        search: submittedSearch || undefined,
+        sort: sort || undefined,
+        country: country || undefined,
+        favorite_vehicle_id: favoriteVehicleId ? Number(favoriteVehicleId) : undefined,
+        favorite_map_id: favoriteMapId ? Number(favoriteMapId) : undefined,
+        has_hcr2: hasHcr2 === "" ? undefined : hasHcr2 === "true",
+        limit: PAGE_SIZE,
+        offset
+      }),
+    enabled: !needsOnboarding
+  });
+
+  const vehicleOptions = (vehiclesQuery.data ?? []).flatMap((row) => {
+    const id = Number(row.idVehicle);
+    const name = String(row.nameVehicle ?? "");
+    return Number.isFinite(id) && name ? [{ id, name }] : [];
+  });
+
+  const mapOptions = (mapsQuery.data ?? []).flatMap((row) => {
+    const id = Number(row.idMap);
+    const name = String(row.nameMap ?? "");
+    return Number.isFinite(id) && name ? [{ id, name }] : [];
+  });
 
   if (needsOnboarding) {
     return (
@@ -62,18 +118,6 @@ function CommunityPageContent() {
     );
   }
 
-  const membersQuery = useQuery({
-    queryKey: ["community", "members", submittedSearch, sort, country, offset],
-    queryFn: () =>
-      getCommunityMembers({
-        search: submittedSearch || undefined,
-        sort: sort || undefined,
-        country: country || undefined,
-        limit: PAGE_SIZE,
-        offset
-      })
-  });
-
   const members = membersQuery.data?.members ?? [];
   const count = membersQuery.data?.count ?? 0;
   const hasMore = offset + members.length < count;
@@ -91,6 +135,21 @@ function CommunityPageContent() {
 
   function handleCountryChange(value: string) {
     setCountry(value);
+    setOffset(0);
+  }
+
+  function handleFavoriteVehicleChange(value: string) {
+    setFavoriteVehicleId(value);
+    setOffset(0);
+  }
+
+  function handleFavoriteMapChange(value: string) {
+    setFavoriteMapId(value);
+    setOffset(0);
+  }
+
+  function handleHcr2Change(value: string) {
+    setHasHcr2(value);
     setOffset(0);
   }
 
@@ -133,6 +192,44 @@ function CommunityPageContent() {
                 {c.name}
               </option>
             ))}
+          </select>
+        </label>
+        <label>
+          Favorite vehicle
+          <select
+            value={favoriteVehicleId}
+            onChange={(event) => handleFavoriteVehicleChange(event.target.value)}
+            disabled={vehiclesQuery.isLoading}
+          >
+            <option value="">All vehicles</option>
+            {vehicleOptions.map((vehicle) => (
+              <option key={vehicle.id} value={vehicle.id}>
+                {vehicle.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Favorite map
+          <select
+            value={favoriteMapId}
+            onChange={(event) => handleFavoriteMapChange(event.target.value)}
+            disabled={mapsQuery.isLoading}
+          >
+            <option value="">All maps</option>
+            {mapOptions.map((mapOption) => (
+              <option key={mapOption.id} value={mapOption.id}>
+                {mapOption.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          HCR2
+          <select value={hasHcr2} onChange={(event) => handleHcr2Change(event.target.value)}>
+            <option value="">Any HCR2 status</option>
+            <option value="true">Linked name shown</option>
+            <option value="false">No linked name</option>
           </select>
         </label>
         <button className="button" type="submit">

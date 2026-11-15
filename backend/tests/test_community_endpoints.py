@@ -37,6 +37,7 @@ class FakeCommunityAccountService:
         self.banners: dict[int, dict[str, Any]] = {}
         self.username_audit_matches: list[dict[str, Any]] = []
         self.last_username_request: dict[str, Any] | None = None
+        self.last_members_params: dict[str, Any] | None = None
 
     def add_user(
         self,
@@ -202,7 +203,8 @@ class FakeCommunityAccountService:
             "records_deleted": 0,
         }
 
-    def list_members(self, **_: Any) -> dict[str, Any]:
+    def list_members(self, **kwargs: Any) -> dict[str, Any]:
+        self.last_members_params = kwargs
         rows = [user for user in self.users.values() if user["profile_public"]]
         return {
             "members": rows,
@@ -791,6 +793,29 @@ def test_default_members_list_allowed_for_plain_user() -> None:
     response = client.get("/api/v1/community/members", cookies=_cookie("user-a"))
     assert response.status_code == 200
     assert response.json()["count"] == 1
+
+
+def test_members_list_forwards_directory_filters() -> None:
+    client, community = _default_client()
+    community.add_user("user-a")
+
+    response = client.get(
+        "/api/v1/community/members"
+        "?favorite_vehicle_id=7&favorite_map_id=9&has_hcr2=true",
+        cookies=_cookie("user-a"),
+    )
+
+    assert response.status_code == 200
+    assert community.last_members_params == {
+        "search": None,
+        "sort": "new",
+        "country": None,
+        "favorite_vehicle_id": 7,
+        "favorite_map_id": 9,
+        "has_hcr2": True,
+        "limit": 20,
+        "offset": 0,
+    }
 
 
 def test_default_profile_allowed_for_plain_user() -> None:

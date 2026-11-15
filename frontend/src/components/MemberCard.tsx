@@ -29,6 +29,7 @@ export function MemberCard({ member }: { member: CommunityMember }) {
       <div className="member-card-favorites">
         {member.favorite_vehicle_name && <span className="chip">{member.favorite_vehicle_name}</span>}
         {member.favorite_map_name && <span className="chip">{member.favorite_map_name}</span>}
+        {member.hcr2_player_name && <span className="chip">HCR2 · {member.hcr2_player_name}</span>}
       </div>
     </Link>
   );

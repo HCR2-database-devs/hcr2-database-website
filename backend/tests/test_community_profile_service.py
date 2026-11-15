@@ -76,6 +76,8 @@ class FakeCommunityUserRepository:
             "show_favorite_map": False,
             "show_discord_username": False,
             "show_discord_avatar": False,
+            "show_hcr2_player_name": True,
+            "hcr2_player_name": None,
             "admin_disabled": False,
             "banner_content_type": None,
             "banner_updated_at": None,
@@ -211,6 +213,9 @@ class FakeCommunityUserRepository:
         search: str | None,
         sort: str,
         country: str | None,
+        favorite_vehicle_id: int | None = None,
+        favorite_map_id: int | None = None,
+        has_hcr2: bool | None = None,
         limit: int,
         offset: int,
     ) -> tuple[list[dict[str, Any]], int]:
@@ -228,6 +233,25 @@ class FakeCommunityUserRepository:
                 row
                 for row in rows
                 if search.lower() in (row.get("username_norm") or "").lower()
+            ]
+        if favorite_vehicle_id is not None:
+            rows = [
+                row
+                for row in rows
+                if row["show_favorite_vehicle"]
+                and row["favorite_vehicle_id"] == favorite_vehicle_id
+            ]
+        if favorite_map_id is not None:
+            rows = [
+                row
+                for row in rows
+                if row["show_favorite_map"] and row["favorite_map_id"] == favorite_map_id
+            ]
+        if has_hcr2 is not None:
+            rows = [
+                row
+                for row in rows
+                if bool(row["show_hcr2_player_name"] and row["hcr2_player_name"]) == has_hcr2
             ]
         rows.sort(key=lambda row: row["created_at"], reverse=True)
         total = len(rows)
@@ -581,6 +605,69 @@ def test_list_members_trims_hidden_fields() -> None:
     assert member["country"] == "fi"
     assert member["username"] == "Nipa"
     assert result["count"] == 1
+
+
+def test_list_members_filters_by_favorite_and_visible_hcr2_name() -> None:
+    service, repository = _make_service()
+    repository.ensure_account("123", "Nipa")
+    _onboard(repository, 1)
+    repository.ensure_account("456", "Racer")
+    repository.rows[2]["username"] = "Racer"
+    repository.rows[2]["username_norm"] = "racer"
+    repository.ensure_account("789", "Hidden")
+    repository.rows[3]["username"] = "Hidden"
+    repository.rows[3]["username_norm"] = "hidden"
+
+    repository.rows[1]["favorite_vehicle_id"] = 7
+    repository.rows[1]["favorite_map_id"] = 2
+    repository.rows[1]["show_favorite_vehicle"] = True
+    repository.rows[1]["show_favorite_map"] = True
+    repository.rows[1]["hcr2_player_name"] = "Nipa#HCR2"
+
+    repository.rows[2]["favorite_vehicle_id"] = 7
+    repository.rows[2]["show_favorite_vehicle"] = True
+    repository.rows[2]["hcr2_player_name"] = "Racer#HCR2"
+    repository.rows[2]["show_hcr2_player_name"] = False
+
+    result = service.list_members(
+        search=None,
+        sort="new",
+        country=None,
+        favorite_vehicle_id=7,
+        limit=20,
+        offset=0,
+    )
+    assert [m["username"] for m in result["members"]] == ["Nipa", "Racer"]
+
+    result = service.list_members(
+        search=None,
+        sort="new",
+        country=None,
+        favorite_map_id=2,
+        limit=20,
+        offset=0,
+    )
+    assert [m["username"] for m in result["members"]] == ["Nipa"]
+
+    result = service.list_members(
+        search=None,
+        sort="new",
+        country=None,
+        has_hcr2=True,
+        limit=20,
+        offset=0,
+    )
+    assert [m["username"] for m in result["members"]] == ["Nipa"]
+
+    result = service.list_members(
+        search=None,
+        sort="new",
+        country=None,
+        has_hcr2=False,
+        limit=20,
+        offset=0,
+    )
+    assert [m["username"] for m in result["members"]] == ["Racer", "Hidden"]
 
 
 def test_list_members_counts_only_onboarded_public_profiles() -> None:
