@@ -136,6 +136,24 @@ def test_postgres_search_records_uses_exact_main_filters_and_car_alias() -> None
     assert repository.last_params["q"] == "%proof%"
 
 
+def test_postgres_search_records_orders_by_unique_record_id() -> None:
+    repository = CapturingPostgresPublicDataRepository()
+
+    repository.search_records({})
+
+    assert "ORDER BY wr.id_map DESC, wr.id_record DESC" in repository.last_sql
+
+
+@pytest.mark.parametrize("sort", [None, "dist-asc", "dist-desc", "most-recent"])
+def test_postgres_paginated_records_always_use_a_unique_tiebreaker(sort: str | None) -> None:
+    repository = CapturingPostgresPublicDataRepository()
+
+    repository.list_records_paginated({"sort": sort} if sort else {})
+
+    assert "ORDER BY" in repository.last_sql
+    assert "wr.id_record DESC" in repository.last_sql.split("ORDER BY", 1)[1]
+
+
 def test_postgres_records_include_the_public_linked_community_id() -> None:
     repository = CapturingPostgresPublicDataRepository()
 

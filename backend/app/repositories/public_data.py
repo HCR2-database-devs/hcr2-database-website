@@ -151,7 +151,7 @@ class PostgresPublicDataRepository:
                 wr.is_mythic, wr.questionable_reason,
                 m.name_map, v.name_vehicle, p.name_player, p.country,
                 echo_part.name_tuning_part, wr.created_at
-            ORDER BY wr.id_map DESC
+            ORDER BY wr.id_map DESC, wr.id_record DESC
             """
         )
 
@@ -215,10 +215,10 @@ class PostgresPublicDataRepository:
 
         sort = str(filters.get("sort") or "default")
         order_by = {
-            "dist-asc": "wr.distance ASC",
-            "dist-desc": "wr.distance DESC",
+            "dist-asc": "wr.distance ASC, wr.id_record DESC",
+            "dist-desc": "wr.distance DESC, wr.id_record DESC",
             "most-recent": "wr.id_record DESC",
-        }.get(sort, "wr.id_map DESC, wr.id_vehicle ASC")
+        }.get(sort, "wr.id_map DESC, wr.id_vehicle ASC, wr.id_record DESC")
 
         is_export = filters.get("export") in {True, "true", "1"}
         if is_export:
@@ -388,7 +388,7 @@ class PostgresPublicDataRepository:
                 wr.is_mythic, wr.questionable_reason,
                 m.name_map, v.name_vehicle, p.name_player, p.country,
                 echo_part.name_tuning_part, wr.created_at
-            ORDER BY wr.id_map DESC
+            ORDER BY wr.id_map DESC, wr.id_record DESC
             LIMIT %(limit)s OFFSET %(offset)s
             """,
             params,
