@@ -45,10 +45,10 @@ def test_settings_profile_cooldowns_accept_environment_values() -> None:
     assert settings.banner_change_cooldown_days == 3
 
 
-def test_hcr2_account_linking_flag_defaults_to_beta() -> None:
+def test_hcr2_account_linking_flag_defaults_to_enabled() -> None:
     settings = Settings(_env_file=None)
 
-    assert settings.feature_hcr2_account_linking == "BETA"
+    assert settings.feature_hcr2_account_linking == "ENABLED"
 
 
 

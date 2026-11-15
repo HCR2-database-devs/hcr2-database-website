@@ -569,7 +569,9 @@ function recordRow(
       </td>
       <td data-label="Player">
         {communityId > 0 ? (
-          <Link to={`/community/${communityId}`}>{playerName}</Link>
+          <Link className="record-player-link" to={`/community/${communityId}`}>
+            {playerName}
+          </Link>
         ) : (
           playerName
         )}

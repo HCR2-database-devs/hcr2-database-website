@@ -148,10 +148,11 @@ g = b(hmac.new(s.auth_shared_secret.encode(),
 print(f'{h}.{p}.{g}')"
 ```
 
-Use `dev-beta` for `sub` to get **beta** access (Phase 4 ships `BETA`) and
+Use `dev-beta` for `sub` to test features while they are set to `BETA`, and
 `dev-admin` to get **admin** access, matching `BETA_DISCORD_IDS` and
 `ALLOWED_DISCORD_IDS` in `.env.dev.example`. Replace `sub` with `username` to
-see a display name.
+see a display name. The HCR2 linking feature is public by default, so any
+signed-in token can use it.
 
 Set it as the `WC_TOKEN` cookie in the browser:
 
@@ -160,14 +161,14 @@ Set it as the `WC_TOKEN` cookie in the browser:
 
 ## Phase 4 quick check
 
-With a `dev-beta` token signed in, open <http://localhost:5173/account> and use
-the **Linked HCR2 Account** card. To test the admin queue as well, sign in a
-second browser profile with a `dev-admin` token and open `/admin` →
-**Community** → **HCR2 account links**.
+With any signed-in token (for example `dev-beta`), open
+<http://localhost:5173/account> and use the **Linked HCR2 Account** card. To
+test the admin queue as well, sign in a second browser profile with a
+`dev-admin` token and open `/admin` → **Community** → **HCR2 account links**.
 
 Useful dev overrides:
 
-- `FEATURE_HCR2_ACCOUNT_LINKING=ENABLED` to open the feature to any signed-in
-  user.
+- `FEATURE_HCR2_ACCOUNT_LINKING=BETA` to restrict the feature to
+  `BETA_DISCORD_IDS` and admins while testing the gate.
 - `HCR2_LINK_CODE_REROLL_COOLDOWN_SECONDS=1` to iterate on the reroll flow
   without waiting 10 seconds.

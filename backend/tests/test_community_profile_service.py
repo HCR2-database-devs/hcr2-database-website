@@ -433,6 +433,7 @@ def test_public_profile_returns_world_records_for_the_linked_owner() -> None:
             "questionable": 0,
             "isMythic": False,
             "questionable_reason": "",
+            "beaten_by_other": False,
             "map_name": "Countryside",
             "vehicle_name": "Super Diesel",
             "player_name": "Demo Driver",
@@ -448,7 +449,80 @@ def test_public_profile_returns_world_records_for_the_linked_owner() -> None:
     assert profile["hcr2_player_name"] == "Demo Driver"
     assert len(profile["hcr2_records"]) == 1
     assert profile["hcr2_records"][0]["idRecord"] == 3
-    assert profile["hcr2_beaten_record_count"] == 1
+    assert profile["hcr2_beaten_record_count"] == 0
+
+
+def test_public_profile_counts_only_records_lost_to_another_player() -> None:
+    service, repository = _make_service()
+    repository.ensure_account("123", "Nipa")
+    _onboard(repository, 1)
+    repository.rows[1]["hcr2_player_name"] = "Demo Driver"
+    repository.rows[1]["hcr2_player_id"] = 7
+    base = {
+        "questionable": 0,
+        "isMythic": False,
+        "questionable_reason": "",
+        "player_name": "Demo Driver",
+        "player_country": "fi",
+        "tuning_parts": "",
+        "echoAffectedPart": None,
+    }
+    repository.world_records[7] = [
+        {
+            **base,
+            "idRecord": 5,
+            "idMap": 1,
+            "idVehicle": 2,
+            "idPlayer": 7,
+            "distance": 1400,
+            "current": 1,
+            "beaten_by_other": False,
+            "map_name": "Countryside",
+            "vehicle_name": "Super Diesel",
+        },
+        {
+            **base,
+            "idRecord": 4,
+            "idMap": 1,
+            "idVehicle": 2,
+            "idPlayer": 7,
+            "distance": 1300,
+            "current": 0,
+            "beaten_by_other": False,
+            "map_name": "Countryside",
+            "vehicle_name": "Super Diesel",
+        },
+        {
+            **base,
+            "idRecord": 3,
+            "idMap": 2,
+            "idVehicle": 2,
+            "idPlayer": 7,
+            "distance": 1200,
+            "current": 0,
+            "beaten_by_other": True,
+            "map_name": "Forest",
+            "vehicle_name": "Super Diesel",
+        },
+        {
+            **base,
+            "idRecord": 2,
+            "idMap": 2,
+            "idVehicle": 2,
+            "idPlayer": 7,
+            "distance": 1100,
+            "current": 0,
+            "beaten_by_other": True,
+            "map_name": "Forest",
+            "vehicle_name": "Super Diesel",
+        },
+    ]
+
+    profile = service.get_public_profile(1, viewer_discord_id="123")
+
+    assert profile is not None
+    assert [record["idRecord"] for record in profile["hcr2_records"]] == [5]
+    assert profile["hcr2_beaten_record_count"] == 2
 
 
 def test_public_profile_hides_world_records_when_the_linked_name_is_hidden() -> None:

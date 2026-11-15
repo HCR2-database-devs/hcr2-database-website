@@ -108,8 +108,8 @@ compare the challenge, so an administrator always makes the decision.
 All of this lives in the environment. Nothing is hardcoded in the frontend.
 
 ```
-# Feature flag. Ships as BETA; see docs/beta-testing.md.
-FEATURE_HCR2_ACCOUNT_LINKING=BETA
+# Feature flag. Public by default; see docs/beta-testing.md.
+FEATURE_HCR2_ACCOUNT_LINKING=ENABLED
 
 # Method A. Both ship empty so nothing is invented before an operator fills
 # them in. While the team name is empty the method card reads "Not configured
@@ -329,13 +329,15 @@ Note that `player.name_player` is unique **case-sensitively**, so `Bob` and `bob
 are two distinct rows. Links are keyed on a case-folded, whitespace-collapsed
 form so both spellings cannot be active at once.
 
-## Beta access
+## Feature access
 
-`FEATURE_HCR2_ACCOUNT_LINKING` defaults to `BETA`, which restricts the feature to
-`BETA_DISCORD_IDS` plus admins. Enforcement is server-side on every Phase 4
-endpoint; a direct API call from a non-tester gets `403` with `"This feature is
-currently disabled"`. Admins bypass the gate so they can always review the queue.
-See `docs/beta-testing.md`.
+`FEATURE_HCR2_ACCOUNT_LINKING` defaults to `ENABLED`, so every signed-in member
+can request a link. Operators can set it to `BETA` to restrict the feature to
+`BETA_DISCORD_IDS` plus admins, or `DISABLED` to take it offline. Enforcement is
+server-side on every Phase 4 endpoint; when the feature is restricted, a direct
+API call from someone without access gets `403` with `"This feature is currently
+disabled"`. Admins bypass the beta gate so they can always review the queue. See
+`docs/beta-testing.md`.
 
 ## Security summary
 

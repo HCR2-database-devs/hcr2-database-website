@@ -378,7 +378,11 @@ class CommunityAccountService:
             return [], 0
         rows = self.repository.list_world_records_for_player(int(player_id))
         current = [row for row in rows if int(row.get("current") or 0) == 1]
-        beaten_record_count = sum(1 for row in rows if int(row.get("current") or 0) != 1)
+        beaten_record_count = sum(
+            1
+            for row in rows
+            if int(row.get("current") or 0) != 1 and bool(row.get("beaten_by_other"))
+        )
         return current, beaten_record_count
 
 

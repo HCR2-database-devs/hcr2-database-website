@@ -519,6 +519,15 @@ class PostgresCommunityUserRepository:
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
+                    WITH ranked_world_records AS (
+                        SELECT
+                            wr.*,
+                            LEAD(wr.id_player) OVER (
+                                PARTITION BY wr.id_map, wr.id_vehicle, wr.is_mythic
+                                ORDER BY wr.id_record
+                            ) AS next_player_id
+                        FROM world_record AS wr
+                    )
                     SELECT
                         wr.id_record AS "idRecord",
                         wr.id_map AS "idMap",
@@ -529,6 +538,11 @@ class PostgresCommunityUserRepository:
                         wr.questionable,
                         wr.is_mythic AS "isMythic",
                         COALESCE(wr.questionable_reason, '') AS questionable_reason,
+                        (
+                            wr.current <> 1
+                            AND wr.next_player_id IS NOT NULL
+                            AND wr.next_player_id <> wr.id_player
+                        ) AS beaten_by_other,
                         m.name_map AS map_name,
                         v.name_vehicle AS vehicle_name,
                         p.name_player AS player_name,
@@ -537,7 +551,7 @@ class PostgresCommunityUserRepository:
                             tp.name_tuning_part, ', ' ORDER BY tp.name_tuning_part
                         ) AS tuning_parts,
                         echo_part.name_tuning_part AS "echoAffectedPart"
-                    FROM world_record AS wr
+                    FROM ranked_world_records AS wr
                     JOIN map AS m ON wr.id_map = m.id_map
                     JOIN vehicle AS v ON wr.id_vehicle = v.id_vehicle
                     LEFT JOIN player AS p ON wr.id_player = p.id_player
@@ -549,7 +563,7 @@ class PostgresCommunityUserRepository:
                     WHERE wr.id_player = %(player_id)s
                     GROUP BY wr.id_record, wr.id_map, wr.id_vehicle, wr.id_player,
                         wr.distance, wr.current, wr.id_tuning_setup, wr.questionable,
-                        wr.is_mythic, wr.questionable_reason,
+                        wr.is_mythic, wr.questionable_reason, wr.next_player_id,
                         m.name_map, v.name_vehicle, p.name_player, p.country,
                         echo_part.name_tuning_part, wr.created_at
                     ORDER BY wr.id_record DESC

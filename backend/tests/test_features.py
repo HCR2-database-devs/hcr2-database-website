@@ -10,9 +10,7 @@ from app.core.features import (
 
 _ALL_FEATURES = tuple(FEATURE_FIELDS)
 
-#: Phase 4 (HCR2 player account linking) ships restricted on purpose, because
-#: verification is reviewed by a human and the review queue has to be exercised
-#: before it is opened up. Every Phase 1-3 feature is public by default.
+#: Every feature is public by default; beta mode is opt-in per deployment.
 _ALL_BETA_FLAGS = {f"FEATURE_{name.upper()}": "BETA" for name in _ALL_FEATURES}
 
 
@@ -33,8 +31,6 @@ def test_community_features_default_to_public() -> None:
     )
 
     for feature_name in _ALL_FEATURES:
-        if feature_name is Feature.HCR2_ACCOUNT_LINKING:
-            continue
         assert get_feature_state(feature_name, settings) is FeatureState.ENABLED
         assert can_use_feature("other", feature_name, settings) is True
 
@@ -47,15 +43,15 @@ def test_every_feature_can_be_forced_to_beta() -> None:
         assert can_use_feature("other", feature_name, settings) is False
 
 
-def test_hcr2_account_linking_defaults_to_beta() -> None:
+def test_hcr2_account_linking_defaults_to_public() -> None:
     settings = Settings(
         _env_file=None,
         BETA_DISCORD_IDS="beta-user",
         ALLOWED_DISCORD_IDS="admin-user",
     )
 
-    assert get_feature_state(Feature.HCR2_ACCOUNT_LINKING, settings) is FeatureState.BETA
-    assert can_use_feature("other", Feature.HCR2_ACCOUNT_LINKING, settings) is False
+    assert get_feature_state(Feature.HCR2_ACCOUNT_LINKING, settings) is FeatureState.ENABLED
+    assert can_use_feature("other", Feature.HCR2_ACCOUNT_LINKING, settings) is True
     assert can_use_feature("beta-user", Feature.HCR2_ACCOUNT_LINKING, settings) is True
     assert can_use_feature("admin-user", Feature.HCR2_ACCOUNT_LINKING, settings) is True
 

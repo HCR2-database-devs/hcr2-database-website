@@ -64,9 +64,9 @@ FEATURE_PROFILE_CUSTOMIZATION=ENABLED
 FEATURE_COMMUNITY_MEMBERS=ENABLED
 FEATURE_PROFILE_REPORTING=ENABLED
 FEATURE_COMMUNITY_NOTIFICATIONS=ENABLED
-# Phase 4 (HCR2 player account linking) is manually reviewed, so it ships
-# restricted to BETA_DISCORD_IDS and admins. See docs/hcr2-account-linking.md.
-FEATURE_HCR2_ACCOUNT_LINKING=BETA
+# HCR2 player account linking is public. Set to BETA to restrict it to
+# BETA_DISCORD_IDS and admins. See docs/hcr2-account-linking.md.
+FEATURE_HCR2_ACCOUNT_LINKING=ENABLED
 BETA_DISCORD_IDS=
 
 # Community profile cooldowns, in days. The frontend reads these from

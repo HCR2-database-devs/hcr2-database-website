@@ -79,7 +79,7 @@ def _client(settings: Settings | None = None) -> tuple[TestClient, _Repo]:
     app.dependency_overrides[get_settings] = lambda: settings or _beta_settings()
     repository = FakeHcr2LinkRepository()
     community = FakeCommunityAccountService()
-    for discord_id in ("beta-user", "admin"):
+    for discord_id in ("beta-user", "plain-user", "admin"):
         community.add_user(discord_id)
     link_service = Hcr2LinkService(
         repository=repository,
@@ -113,6 +113,14 @@ def test_endpoints_require_a_signed_in_user() -> None:
     ):
         response = client.get(path)
         assert response.status_code == 401, path
+
+
+def test_default_flag_allows_plain_users() -> None:
+    client, _ = _client(_settings())
+
+    response = client.get("/api/v1/community/hcr2-link/status", cookies=_cookie("plain-user"))
+
+    assert response.status_code == 200
 
 
 def test_beta_access_is_enforced_server_side() -> None:

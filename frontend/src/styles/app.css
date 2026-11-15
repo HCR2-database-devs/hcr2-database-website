@@ -1956,6 +1956,19 @@ tbody tr:hover {
   table-layout: fixed;
 }
 
+.public-records-table .record-player-link {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: rgba(62, 232, 255, 0.35);
+  text-underline-offset: 2px;
+}
+
+.public-records-table .record-player-link:hover,
+.public-records-table .record-player-link:focus-visible {
+  color: var(--accent-cyan);
+  text-decoration-color: currentColor;
+}
+
 .virtual-players-table {
   table-layout: fixed;
 }

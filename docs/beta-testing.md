@@ -5,8 +5,8 @@ that **only explicitly marked** features are ever gated. Normal site updates
 (records, bug fixes, existing admin functionality) are never treated as beta
 automatically.
 
-The community features are **public**. All six flags default to `ENABLED`, so
-they work out of the box for every signed-in user without any configuration:
+All features are **public**. Every flag defaults to `ENABLED`, so they work out
+of the box for every signed-in user without any configuration:
 
 | Feature                 | Flag                              | Default |
 | ----------------------- | --------------------------------- | ------- |
@@ -16,19 +16,13 @@ they work out of the box for every signed-in user without any configuration:
 | Community Members       | `FEATURE_COMMUNITY_MEMBERS`       | ENABLED |
 | Profile Reporting       | `FEATURE_PROFILE_REPORTING`       | ENABLED |
 | Community Notifications | `FEATURE_COMMUNITY_NOTIFICATIONS` | ENABLED |
-
-Phase 4 is different. **HCR2 Account Linking defaults to `BETA`** because its
-verification is reviewed by a human and the review queue needs exercising before
-it is opened to everyone:
-
-| Feature              | Flag                           | Default |
-| -------------------- | ------------------------------ | ------- |
-| HCR2 Account Linking | `FEATURE_HCR2_ACCOUNT_LINKING` | BETA    |
+| HCR2 Account Linking    | `FEATURE_HCR2_ACCOUNT_LINKING`    | ENABLED |
 
 Community features still require a Discord login — a beta feature is open to
 beta testers and admins, not to anonymous visitors.
 
-See `docs/hcr2-account-linking.md` for the Phase 4 workflow and configuration.
+See `docs/hcr2-account-linking.md` for the HCR2 linking workflow and
+configuration.
 
 ## The three feature states
 
@@ -128,7 +122,6 @@ admin panel later will not require rewriting feature code.
   `DISABLED`, even if a caller bypasses the frontend.
 - Production env templates must list all seven `FEATURE_*` vars explicitly (see
   `DEPLOY.md`). An empty production environment otherwise relies on the code
-  defaults: `ENABLED` for the six community features, and `BETA` for
-  `FEATURE_HCR2_ACCOUNT_LINKING`. An unparseable value always fails closed to
-  `BETA`, so a typo can never publish a feature that was meant to stay
-  restricted.
+  default of `ENABLED` for every feature. An unparseable value always fails
+  closed to `BETA`, so a typo can never publish a feature that was meant to
+  stay restricted.

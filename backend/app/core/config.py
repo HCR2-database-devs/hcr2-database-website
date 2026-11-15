@@ -106,11 +106,10 @@ class Settings(BaseSettings):
         default="ENABLED",
         validation_alias="FEATURE_COMMUNITY_NOTIFICATIONS",
     )
-    # Phase 4 ships in BETA: linking is reviewed by a human, so it starts
-    # restricted to BETA_DISCORD_IDS and admins while the review queue is
-    # exercised. Promote to ENABLED once the flow is comfortable.
+    # Linking is reviewed by a human, but the flow is public: set the flag to
+    # BETA only to restrict it to BETA_DISCORD_IDS and admins again.
     feature_hcr2_account_linking: str = Field(
-        default="BETA",
+        default="ENABLED",
         validation_alias="FEATURE_HCR2_ACCOUNT_LINKING",
     )
 

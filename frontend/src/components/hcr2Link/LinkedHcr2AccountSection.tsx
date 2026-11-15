@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { BetaBadge } from "../BetaBadge";
 import { formatMemberSince } from "../../lib/format";
 import {
   cancelHcr2LinkRequest,
@@ -752,10 +751,7 @@ export function LinkedHcr2AccountSection({
 
   return (
     <div className="account-card hcr2-link-card">
-      <h1>
-        Linked HCR2 Account
-        <BetaBadge feature="hcr2_account_linking" />
-      </h1>
+      <h1>Linked HCR2 Account</h1>
 
       {link && (
         <div className="hcr2-link-current">

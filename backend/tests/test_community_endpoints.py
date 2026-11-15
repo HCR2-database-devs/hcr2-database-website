@@ -460,6 +460,7 @@ def _beta_client() -> tuple[TestClient, FakeCommunityAccountService]:
             FEATURE_COMMUNITY_MEMBERS="BETA",
             FEATURE_PROFILE_REPORTING="BETA",
             FEATURE_COMMUNITY_NOTIFICATIONS="BETA",
+            FEATURE_HCR2_ACCOUNT_LINKING="BETA",
         )
     )
 
@@ -815,14 +816,7 @@ def test_default_auth_status_reports_features_enabled() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["beta"] is False
-    # Phase 4 ships in BETA on purpose; every earlier phase is public.
-    assert body["features"]["hcr2_account_linking"] == "BETA"
-    others = {
-        name: state
-        for name, state in body["features"].items()
-        if name != "hcr2_account_linking"
-    }
-    assert set(others.values()) == {"ENABLED"}
+    assert set(body["features"].values()) == {"ENABLED"}
 
 
 def test_disabled_feature_denied_for_plain_user() -> None:
