@@ -23,7 +23,7 @@ const card = h(
     Section,
     {
       accessory: h(Thumbnail, {
-        url: "https://hcr2.xyz/img/hcrdatabaselogo.png",
+        url: "https://hcr2.xyz/img/hcrdatabaselogo-512.png",
         description: "HCR2 Database logo"
       })
     },
