@@ -1,9 +1,11 @@
+import { CookieSettings } from "../components/CookieSettings";
+
 export function PrivacyPage() {
   return (
     <main className="standalone-page">
       <div className="policy-container">
         <h1>Privacy Policy</h1>
-        <p><strong>Effective Date: 6 November 2026</strong></p>
+        <p><strong>Effective Date: 27 November 2026</strong></p>
 
         <h2>Introduction</h2>
         <p>
@@ -96,15 +98,47 @@ export function PrivacyPage() {
 
         <h3>Browser storage and cookies</h3>
         <p>
-          The site uses essential cookies and browser storage to keep you signed in and to remember
-          interface preferences. Authentication cookies are shared with our auth.hcr2.xyz login
-          service. Browser storage may remember settings such as your selected theme, dismissed
-          notices, and scroll positions.
+          The site uses one essential authentication cookie, <code>WC_TOKEN</code>. It is set by our
+          auth.hcr2.xyz login service, is HttpOnly, Secure and SameSite=Lax, and cannot be read by
+          JavaScript. It is cleared when you sign out or delete your account. It is exempt from the
+          advertising choice below because sign-in cannot work without it.
         </p>
+        <p>We use the following browser storage keys:</p>
+        <ul>
+          <li>
+            <code>darkMode</code> (localStorage) — your light/dark theme preference.
+          </li>
+          <li>
+            <code>hcr2-consent</code> (localStorage) — your advertising choice and the time it was
+            made. No advertising script loads before you choose.
+          </li>
+          <li>
+            <code>announcement:community-launch-2026-10:logged-in</code> (localStorage) and
+            <code> announcement:community-launch-2026-10:logged-out</code> (sessionStorage) — whether
+            you dismissed the community announcement.
+          </li>
+          <li>
+            <code>hcr2-scroll-positions</code> (sessionStorage) — scroll positions while you browse.
+          </li>
+          <li>
+            <code>hcr2-adblock-notice-dismissed</code> (sessionStorage) — whether you dismissed the
+            optional ad-block notice.
+          </li>
+        </ul>
         <p>
-          Third-party services described below may also set cookies or similar identifiers when
-          their features are loaded.
+          hCaptcha is loaded only when you open the record submission or profile report form. It is
+          needed to protect those forms from automated abuse and may process your IP address, browser
+          information and interaction signals under its own policy.
         </p>
+
+        <h2 id="cookie-settings">Cookie settings</h2>
+        <p>
+          Advertising is off by default. If you accept, Google AdSense and its partners may set
+          cookies or similar identifiers to serve and measure ads. If you reject, the AdSense script
+          is not loaded. Crawlers and visitors who request reduced data do not see ads or the
+          ad-block notice. You can change your choice below at any time.
+        </p>
+        <CookieSettings />
 
         <h2>How We Use Information</h2>
         <ul>
@@ -151,7 +185,8 @@ export function PrivacyPage() {
             .
           </li>
           <li>
-            <strong>Google AdSense</strong> for advertising when ads are enabled. Google and its
+            <strong>Google AdSense</strong> for advertising only when ads are enabled and you have
+            accepted ads. The AdSense script is not loaded before that choice. Google and its
             partners may use cookies or similar technologies to serve and measure ads. See{" "}
             <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer">
               How Google uses information for ads
@@ -161,6 +196,17 @@ export function PrivacyPage() {
               Google Privacy Policy
             </a>
             .
+          </li>
+          <li>
+            <strong>Discord&apos;s CDN (cdn.discordapp.com)</strong> for optional community profile
+            avatars. The browser requests those images directly from Discord when a profile with an
+            avatar is shown. We do not send your profile data to Discord through that request beyond
+            the normal information a browser sends when loading an image.
+          </li>
+          <li>
+            <strong>flagcdn.com</strong> for small country flag images. The browser requests those
+            images directly from FlagCDN when a country is shown; no script or cookie is loaded from
+            that host by this site.
           </li>
         </ul>
         <p>
@@ -284,7 +330,7 @@ export function PrivacyPage() {
         </p>
 
         <p className="policy-note">
-          <strong>Last updated: 6 November 2026</strong>
+          <strong>Last updated: 27 November 2026</strong>
         </p>
         <p>
           <a href="/">Back to site</a>
