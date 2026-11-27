@@ -117,6 +117,15 @@ CORS_ORIGINS=https://yourdomain.com
 
 Never commit `.env` to the repository.
 
+API clients should send `X-API-Key`. The `api_key` query parameter still works
+for existing integrations but is deprecated because query strings leak into
+access logs and referrers; migrate bots to the header when convenient.
+
+The backend logs unhandled exceptions with a traceback, request path, method and
+`X-Request-ID`. Query strings, cookies and headers are never logged. Include
+that response header when reporting an error so the matching log entry can be
+found with `journalctl`.
+
 ## 3. Install the Backend
 
 ```bash
@@ -181,7 +190,22 @@ Static files are output to `frontend/dist/`.
 
 ## 6. Configure Nginx
 
-Create `/etc/nginx/sites-available/hcr2`:
+Create the security-header snippet at `/etc/nginx/snippets/hcr2-security-headers.conf`
+first. Nginx `add_header` directives are not inherited into a location that
+defines its own `add_header`, so the snippet is included in every location that
+sets `Cache-Control` as well as at server level.
+
+```nginx
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "SAMEORIGIN" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()" always;
+# Report-only first: watch reports, then change to Content-Security-Policy.
+# hCaptcha is always allowed; Google AdSense entries are only used when ads are enabled.
+# frame-ancestors is ignored in report-only mode, hence X-Frame-Options above.
+add_header Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' https://js.hcaptcha.com https://*.hcaptcha.com https://pagead2.googlesyndication.com; style-src 'self' 'unsafe-inline' https://*.hcaptcha.com; img-src 'self' data: blob: https://cdn.discordapp.com https://flagcdn.com https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://googleads.g.doubleclick.net; font-src 'self' data:; connect-src 'self' https://api.hcaptcha.com https://*.hcaptcha.com https://pagead2.googlesyndication.com; frame-src 'self' https://js.hcaptcha.com https://*.hcaptcha.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
+```
 
 The `set_real_ip_from` list below is Cloudflare's complete published edge range set, verified against the official sources on 2026-10-02:
 
@@ -220,6 +244,8 @@ server {
     listen 80;
     server_name yourdomain.com;
 
+    include /etc/nginx/snippets/hcr2-security-headers.conf;
+
     # React SPA — static files
     root /var/www/hcr2.xyz/frontend/dist;
     index index.html;
@@ -239,6 +265,7 @@ server {
     location /assets/ {
         try_files $uri =404;
         add_header Cache-Control "public, max-age=31536000, immutable";
+        include /etc/nginx/snippets/hcr2-security-headers.conf;
     }
 
     # Static images change rarely; cache them for 30 days. Use a prefix
@@ -246,10 +273,12 @@ server {
     location ^~ /img/ {
         try_files $uri =404;
         add_header Cache-Control "public, max-age=2592000";
+        include /etc/nginx/snippets/hcr2-security-headers.conf;
     }
 
     location = /index.html {
         add_header Cache-Control "no-cache";
+        include /etc/nginx/snippets/hcr2-security-headers.conf;
     }
 
     location / {
@@ -257,8 +286,11 @@ server {
     }
 
     # FastAPI backend
+    # /php/* is still served by backend/app/api/compat.py for existing
+    # integrations. Do not remove it until those clients have migrated.
     location ~ ^/(api|php|auth|health)(/|$) {
         client_max_body_size 12m;
+        include /etc/nginx/snippets/hcr2-security-headers.conf;
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -270,6 +302,7 @@ server {
     # above, otherwise try_files would serve index.html and Discord would see
     # no embed metadata.
     location ~ ^/u/[0-9]+$ {
+        include /etc/nginx/snippets/hcr2-security-headers.conf;
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -288,6 +321,27 @@ JavaScript, so the SPA route alone cannot produce an embed.
 The Cloudflare ranges above are the published IPv4 and IPv6 edge ranges. Keep this list synchronized with the official Cloudflare IP list before each deployment. The origin must only be reachable through Cloudflare: restrict the host firewall or provider firewall so direct requests cannot bypass the trusted proxy layer. Uvicorn trusts only the local Nginx peer via `--forwarded-allow-ips=127.0.0.1`; do not widen that value to `*` or to client networks. Nginx overwrites `X-Forwarded-For` with the trusted client address rather than appending an untrusted incoming value.
 
 The backend uses `request.client.host` after Uvicorn applies the trusted proxy headers. It does not trust `CF-Connecting-IP` or forwarded headers directly in application code.
+
+### Tightening the CSP
+
+`Content-Security-Policy-Report-Only` logs violations without breaking the app.
+Start there and watch the browser console (or add a `report-uri`/`report-to`
+collector) for at least a deployment cycle. Check all routes with ads both
+enabled and disabled, plus the hCaptcha-backed submission and report forms.
+When there are no unexpected violations, replace the header name with
+`Content-Security-Policy` to enforce it. Keep `X-Frame-Options` until
+`frame-ancestors 'self'` has been verified in enforced mode. `style-src
+'unsafe-inline'` is needed by the current hCaptcha and inline styles; remove it
+only after verifying those integrations. If ads are permanently disabled, drop
+the `pagead2.googlesyndication.com`, `tpc.googlesyndication.com`,
+`googleads.g.doubleclick.net` and `google.com` entries from `script-src`,
+`connect-src`, `frame-src` and `img-src`.
+
+Certbot creates a second `server` block for HTTPS. Add the same
+`include /etc/nginx/snippets/hcr2-security-headers.conf;` line there; HSTS is
+only honoured over HTTPS. The `/php/*` proxy prefix stays because
+`backend/app/api/compat.py` still serves those compatibility routes, and
+external consumers have not been confirmed as migrated.
 
 Enable the site:
 
