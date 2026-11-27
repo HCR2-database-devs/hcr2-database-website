@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { useDialogAccessibility } from "../hooks/useDialogAccessibility";
 import { loadHcaptcha } from "../lib/hcaptcha";
 import { getHcaptchaSitekey } from "../services/publicData";
 import { reportCommunityProfile } from "../services/community";
@@ -25,7 +25,16 @@ type ReportProfileModalProps = {
 };
 
 export function ReportProfileModal({ profileId, profileName, onClose, onReported }: ReportProfileModalProps) {
-  useBodyScrollLock();
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  useDialogAccessibility({
+    open: true,
+    onClose,
+    containerRef: panelRef,
+    initialFocusRef: closeRef,
+    modal: true,
+    lockScroll: true,
+  });
   const [category, setCategory] = useState<ReportCategory>("other");
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState("");
@@ -122,7 +131,14 @@ export function ReportProfileModal({ profileId, profileName, onClose, onReported
 
   return (
     <div className="modal-overlay">
-      <div className="modal-panel form-container" role="dialog" aria-modal="true" aria-labelledby="report-profile-title">
+      <div
+        ref={panelRef}
+        className="modal-panel form-container"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="report-profile-title"
+        tabIndex={-1}
+      >
         <h2 id="report-profile-title">Report Profile</h2>
         <p className="report-profile-target">Reporting {profileName}</p>
         <form onSubmit={handleSubmit}>
@@ -152,7 +168,7 @@ export function ReportProfileModal({ profileId, profileName, onClose, onReported
             <button type="submit" disabled={report.isPending}>
               {report.isPending ? "Submitting..." : "Submit Report"}
             </button>
-            <button type="button" onClick={onClose}>
+            <button ref={closeRef} type="button" onClick={onClose}>
               Cancel
             </button>
           </div>

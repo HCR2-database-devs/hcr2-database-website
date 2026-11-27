@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { useDialogAccessibility } from "../hooks/useDialogAccessibility";
 import { loadHcaptcha } from "../lib/hcaptcha";
 import { getHcaptchaSitekey, getPublicData } from "../services/publicData";
 import { submitPublicRecord } from "../services/submissions";
@@ -23,7 +23,16 @@ function getName(row: Record<string, unknown>, camel: string, lower: string) {
 }
 
 export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
-  useBodyScrollLock();
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  useDialogAccessibility({
+    open: true,
+    onClose,
+    containerRef: panelRef,
+    initialFocusRef: closeRef,
+    modal: true,
+    lockScroll: true,
+  });
 
   const [selectedParts, setSelectedParts] = useState<string[]>([]);
   const [echoAffectedPartId, setEchoAffectedPartId] = useState<number | null>(null);
@@ -182,7 +191,14 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
 
   return (
     <div id="public-submit-overlay" className="modal-overlay">
-      <div className="modal-panel form-container" role="dialog" aria-modal="true" aria-labelledby="public-submit-title">
+      <div
+        ref={panelRef}
+        className="modal-panel form-container"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="public-submit-title"
+        tabIndex={-1}
+      >
         <h2 id="public-submit-title">Submit a Record (for admin review)</h2>
         <form id="public-submit-form" onSubmit={handleSubmit}>
           <input id="form-load-time" type="hidden" value={formLoadTime} readOnly />
@@ -294,7 +310,7 @@ export function PublicSubmitModal({ onClose }: PublicSubmitModalProps) {
             <button type="submit" disabled={submit.isPending}>
               Send Submission
             </button>
-            <button type="button" onClick={onClose}>
+            <button ref={closeRef} type="button" onClick={onClose}>
               Cancel
             </button>
           </div>

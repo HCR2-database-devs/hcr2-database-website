@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useRef, useState, type RefObject } from "react";
 import type { FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { BannerImage } from "./BannerImage";
 import { UserAvatar } from "./UserAvatar";
-import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { useDialogAccessibility } from "../hooks/useDialogAccessibility";
 import { COUNTRIES } from "../lib/countries";
 import {
   adminDisableProfile,
@@ -30,6 +30,8 @@ type AdminProfileFormProps = {
   onClose: () => void;
   setMessage: (message: string) => void;
   setError: (error: string) => void;
+  panelRef: RefObject<HTMLDivElement | null>;
+  closeRef: RefObject<HTMLButtonElement | null>;
 };
 
 function AdminProfileForm({
@@ -39,7 +41,9 @@ function AdminProfileForm({
   onChanged,
   onClose,
   setMessage,
-  setError
+  setError,
+  panelRef,
+  closeRef
 }: AdminProfileFormProps) {
   const queryClient = useQueryClient();
   const [username, setUsername] = useState(profile.username ?? "");
@@ -141,7 +145,14 @@ function AdminProfileForm({
 
   return (
     <div className="modal-overlay">
-      <div className="modal-panel form-container" role="dialog" aria-modal="true" aria-labelledby="admin-profile-title">
+      <div
+        ref={panelRef}
+        className="modal-panel form-container"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="admin-profile-title"
+        tabIndex={-1}
+      >
         <h2 id="admin-profile-title">Edit Community Profile</h2>
         <div className="admin-profile-summary">
           <UserAvatar
@@ -351,7 +362,7 @@ function AdminProfileForm({
             <button type="submit" disabled={saveMutation.isPending}>
               {saveMutation.isPending ? "Saving..." : "Save Changes"}
             </button>
-            <button type="button" className="button-ghost" onClick={onClose}>
+            <button ref={closeRef} type="button" className="button-ghost" onClick={onClose}>
               Close
             </button>
           </div>
@@ -370,7 +381,16 @@ type AdminProfileModalProps = {
 };
 
 export function AdminProfileModal({ profileId, onChanged, onClose }: AdminProfileModalProps) {
-  useBodyScrollLock();
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  useDialogAccessibility({
+    open: true,
+    onClose,
+    containerRef: panelRef,
+    initialFocusRef: closeRef,
+    modal: true,
+    lockScroll: true,
+  });
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const detailQuery = useQuery({
@@ -382,7 +402,7 @@ export function AdminProfileModal({ profileId, onChanged, onClose }: AdminProfil
   if (detailQuery.isLoading) {
     return (
       <div className="modal-overlay">
-        <div className="modal-panel form-container">
+        <div ref={panelRef} className="modal-panel form-container" tabIndex={-1}>
           <p>Loading profile...</p>
         </div>
       </div>
@@ -392,10 +412,10 @@ export function AdminProfileModal({ profileId, onChanged, onClose }: AdminProfil
   if (detailQuery.isError || !detailQuery.data) {
     return (
       <div className="modal-overlay">
-        <div className="modal-panel form-container">
+        <div ref={panelRef} className="modal-panel form-container" tabIndex={-1}>
           <p className="frontend-error">Could not load this profile.</p>
           <div className="frontend-modal-actions">
-            <button type="button" onClick={onClose}>
+            <button ref={closeRef} type="button" onClick={onClose}>
               Close
             </button>
           </div>
@@ -414,6 +434,8 @@ export function AdminProfileModal({ profileId, onChanged, onClose }: AdminProfil
       onClose={onClose}
       setMessage={setMessage}
       setError={setError}
+      panelRef={panelRef}
+      closeRef={closeRef}
     />
   );
 }

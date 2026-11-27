@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 
-import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { useDialogAccessibility } from "../hooks/useDialogAccessibility";
 
 const BANNER_RATIO = 3.6;
 
@@ -18,7 +18,16 @@ export function BannerCropModal({
   onConfirm,
   onCancel
 }: BannerCropModalProps) {
-  useBodyScrollLock();
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const cancelRef = useRef<HTMLButtonElement | null>(null);
+  useDialogAccessibility({
+    open: true,
+    onClose: onCancel,
+    containerRef: panelRef,
+    initialFocusRef: cancelRef,
+    modal: true,
+    lockScroll: true,
+  });
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
@@ -218,10 +227,12 @@ export function BannerCropModal({
   return (
     <div id="banner-crop-overlay" className="modal-overlay">
       <div
+        ref={panelRef}
         className="modal-panel form-container banner-crop-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="banner-crop-title"
+        tabIndex={-1}
       >
         <h2 id="banner-crop-title">Crop your banner</h2>
         <p className="banner-crop-hint">
@@ -263,7 +274,7 @@ export function BannerCropModal({
           </button>
         </div>
         <div className="frontend-modal-actions">
-          <button type="button" className="button-ghost" onClick={onCancel}>
+          <button ref={cancelRef} type="button" className="button-ghost" onClick={onCancel}>
             Cancel
           </button>
           <button type="button" className="button-ghost" onClick={() => onConfirm(file)}>
