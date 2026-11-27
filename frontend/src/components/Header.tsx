@@ -165,7 +165,12 @@ export function Header() {
     <>
       <header className="site-header">
         <div className="header-inner">
-          <Link className="branding" to="/" onClick={closeMenus} aria-label="HCR2 Adventure Records home">
+          <Link
+            className="branding"
+            to="/"
+            onClick={closeMenus}
+            aria-label="HCR2 Records — Unofficial community database home"
+          >
             <img
               src="/img/hcrdatabaselogo-96.webp"
               alt="HCR2 Adventure Records"

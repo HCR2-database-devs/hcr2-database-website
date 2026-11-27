@@ -576,7 +576,7 @@ export function StatsPage() {
         <p>Records, vehicle performance, map distribution and tuning usage in one view.</p>
       </section>
 
-      {records.isLoading && <p className="loading-state">Loading stats...</p>}
+      {records.isLoading && <p className="loading-state" role="status">Loading stats...</p>}
       {records.isError && <p className="frontend-error">Error fetching stats data from server.</p>}
       {records.data && (
         <>
@@ -681,7 +681,7 @@ export function StatsPage() {
                 History is captured from record replacements going forward.
               </span>
             </div>
-            {recordHistoryQuery.isLoading && <p className="loading-state">Loading history...</p>}
+            {recordHistoryQuery.isLoading && <p className="loading-state" role="status">Loading history...</p>}
             {recordHistoryQuery.isError && (
               <p className="frontend-error">Error loading record history.</p>
             )}
@@ -757,7 +757,12 @@ export function StatsPage() {
           <section className="stats-section">
             <div className="section-toolbar">
               <h2>Vehicle Statistics</h2>
-              <select id="vehicle-sort-select" value={vehicleSort} onChange={(event) => setVehicleSort(event.target.value)}>
+              <select
+                id="vehicle-sort-select"
+                aria-label="Sort vehicle statistics"
+                value={vehicleSort}
+                onChange={(event) => setVehicleSort(event.target.value)}
+              >
                 <option value="total-distance">Total Distance</option>
                 <option value="longest-distance">Longest Distance</option>
                 <option value="adventure-stars">Adventure Stars</option>
@@ -979,7 +984,7 @@ export function StatsPage() {
                 <option value={24}>Last 24 weeks</option>
               </select>
             </div>
-            {volumeQuery.isLoading && <p className="loading-state">Loading volume...</p>}
+            {volumeQuery.isLoading && <p className="loading-state" role="status">Loading volume...</p>}
             {volumeQuery.isError && <p className="frontend-error">Error loading submission volume.</p>}
             {volumeQuery.data && (
               <>

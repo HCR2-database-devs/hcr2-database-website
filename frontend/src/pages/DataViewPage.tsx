@@ -287,6 +287,7 @@ function RecordsFilters({
         <select
           id="sort-select"
           className="filter-select"
+          aria-label="Sort records"
           value={filters.sort}
           onChange={(e) => onChange({ sort: e.target.value })}
         >
@@ -300,6 +301,7 @@ function RecordsFilters({
           <select
             id="distance-op"
             className="filter-select"
+            aria-label="Distance comparison"
             value={filters.distanceOp}
             onChange={(e) => onChange({ distanceOp: e.target.value as RecordFilters["distanceOp"] })}
           >
@@ -415,7 +417,13 @@ function PlayerFilters({
         }
         onClear={() => setCountries([])}
       />
-      <select id="record-count-op" className="filter-select" value={recordCountOp} onChange={(event) => setRecordCountOp(event.target.value)}>
+      <select
+        id="record-count-op"
+        className="filter-select"
+        aria-label="Record count comparison"
+        value={recordCountOp}
+        onChange={(event) => setRecordCountOp(event.target.value)}
+      >
         <option value="">Record Count</option>
         <option value="gte">&gt;=</option>
         <option value="lte">&lt;=</option>
@@ -723,7 +731,7 @@ function VirtualRecordsTable({
             </tbody>
           </table>
           <div ref={sentinelRef} />
-          {isFetchingNextPage && <p className="loading-state loading-state--inline">Loading more records…</p>}
+          {isFetchingNextPage && <p className="loading-state loading-state--inline" role="status">Loading more records…</p>}
         </div>
         <p className="table-count-info">
           {rows.length} / {total} records loaded
@@ -772,7 +780,7 @@ function VirtualRecordsTable({
             )}
           </tbody>
         </table>
-        {isFetchingNextPage && <p className="loading-state loading-state--inline">Loading more records…</p>}
+        {isFetchingNextPage && <p className="loading-state loading-state--inline" role="status">Loading more records…</p>}
       </div>
       <p className="table-count-info">
         {rows.length} / {total} records loaded
@@ -1163,7 +1171,7 @@ export function DataViewPage({ view, mythic = false }: DataViewPageProps) {
         {/* ── Records view ── */}
         {view === "records" && (
           <>
-            {recordsQuery.isLoading && <p className="loading-state">Loading records…</p>}
+            {recordsQuery.isLoading && <p className="loading-state" role="status">Loading records…</p>}
             {recordsQuery.isError && <p className="frontend-error">Error fetching records from server.</p>}
             {!recordsQuery.isLoading && allRecords.length === 0 && !recordsQuery.isError && (
               <p className="empty-state">No records match your filters.</p>
@@ -1188,7 +1196,7 @@ export function DataViewPage({ view, mythic = false }: DataViewPageProps) {
         {/* ── Players view ── */}
         {view === "players" && (
           <>
-            {data.isLoading && <p className="loading-state">Loading data…</p>}
+            {data.isLoading && <p className="loading-state" role="status">Loading data…</p>}
             {data.isError && <p className="frontend-error">Error fetching data from server.</p>}
             {data.data && visiblePlayers.length === 0 && <p className="empty-state">No players match your filters.</p>}
             {data.data && visiblePlayers.length > 0 && (
@@ -1200,7 +1208,7 @@ export function DataViewPage({ view, mythic = false }: DataViewPageProps) {
         {/* ── Other views ── */}
         {view !== "records" && view !== "players" && (
           <>
-            {data.isLoading && <p className="loading-state">Loading data…</p>}
+            {data.isLoading && <p className="loading-state" role="status">Loading data…</p>}
             {data.isError && <p className="frontend-error">Error fetching data from server.</p>}
             {data.data && (
               <StaticTable
