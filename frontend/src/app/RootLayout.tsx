@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { Outlet, useLocation, useNavigationType } from "react-router-dom";
 
+import { applyPageMetadata } from "../lib/pageMetadata";
+
 const POSITIONS_KEY = "hcr2-scroll-positions";
 
 function readPositions(): Record<string, number> {
@@ -56,6 +58,10 @@ export function RootLayout() {
       window.removeEventListener("pagehide", persist);
       persist();
     };
+  }, [pathname]);
+
+  useEffect(() => {
+    applyPageMetadata(pathname);
   }, [pathname]);
 
   useEffect(() => {
