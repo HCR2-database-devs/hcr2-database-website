@@ -34,6 +34,8 @@ USER_FIELDS = (
     "show_favorite_map",
     "show_discord_username",
     "show_discord_avatar",
+    "show_badges",
+    "show_xp",
     "admin_disabled",
     "banner_updated_at",
 )
@@ -75,6 +77,10 @@ class FakeCommunityUserRepository:
             "show_favorite_map": False,
             "show_discord_username": False,
             "show_discord_avatar": False,
+            "show_hcr2_player_name": True,
+            "show_badges": True,
+            "show_xp": False,
+            "hcr2_player_name": None,
             "admin_disabled": False,
             "banner_content_type": None,
             "banner_updated_at": None,
@@ -259,6 +265,8 @@ class Payload:
     show_discord_username = False
     show_discord_avatar = False
     show_hcr2_player_name = True
+    show_badges = True
+    show_xp = False
 
 
 def test_update_profile_persists_fields() -> None:

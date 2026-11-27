@@ -35,7 +35,7 @@ Consequences that shape this module:
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from app.core.config import Settings
 from app.core.hcr2_challenge import (
@@ -44,6 +44,7 @@ from app.core.hcr2_challenge import (
     normalize_challenge_url,
     random_distance_m,
 )
+from app.core.progression_rules import XP_HCR2_IDENTITY_VERIFIED
 from app.core.verification_code import (
     build_code,
     contains_censor_character,
@@ -59,6 +60,9 @@ from app.services.activity_log_service import ActivityLogService
 from app.services.community_account_service import CommunityProfileError
 from app.services.community_notification_service import CommunityNotificationService
 from app.services.rate_limit import RATE_LIMIT_TABLE, consume_rate_limit
+
+if TYPE_CHECKING:
+    from app.services.progression_service import ProgressionService
 
 METHOD_TEAM = "team"
 METHOD_DISCORD = "discord_screen_share"
@@ -240,6 +244,7 @@ class Hcr2LinkService:
     settings: Settings
     activity_log: ActivityLogService | None = None
     notification_service: CommunityNotificationService | None = None
+    progression_service: ProgressionService | None = None
     config: DatabaseConfig | None = None
 
     # -- configuration ------------------------------------------------------
@@ -1088,6 +1093,13 @@ class Hcr2LinkService:
             "hcr2_link_approved",
             f"Your HCR2 player name {link['player_name']} was verified by an admin.",
         )
+        if self.progression_service is not None:
+            self.progression_service.emit(
+                event_key=f"hcr2-verification:{request_id}",
+                community_user_id=int(request["community_user_id"]),
+                event_type=XP_HCR2_IDENTITY_VERIFIED,
+                payload={"player_name": link["player_name"]},
+            )
         return {"link": link}
 
     def reject_request(

@@ -64,6 +64,8 @@ class FakeCommunityAccountService:
             "show_country": True,
             "show_discord_username": False,
             "show_discord_avatar": False,
+            "show_badges": True,
+            "show_xp": False,
             "banner_updated_at": None,
         }
         self.users[user["id"]] = user
@@ -399,6 +401,16 @@ class FakeCommunityNotificationService:
         return updated
 
 
+class FakeBadgeService:
+    def get_profile_badges(self, user_id: int) -> dict[str, Any]:
+        return {"badges": [], "featured": [], "count": 0}
+
+
+class FakeProgressionService:
+    def get_summary(self, user_id: int) -> dict[str, Any]:
+        return {"total_xp": 0, "level": 1}
+
+
 def _community_client(settings: Settings) -> tuple[TestClient, FakeCommunityAccountService]:
     app = create_app()
     app.dependency_overrides[get_settings] = lambda: settings
@@ -412,6 +424,10 @@ def _community_client(settings: Settings) -> tuple[TestClient, FakeCommunityAcco
     app.dependency_overrides[
         dependencies.get_community_notification_service
     ] = lambda: notifications
+    app.dependency_overrides[dependencies.get_badge_service] = lambda: FakeBadgeService()
+    app.dependency_overrides[dependencies.get_progression_service] = (
+        lambda: FakeProgressionService()
+    )
     return TestClient(app), community
 
 
@@ -448,6 +464,9 @@ def _beta_client() -> tuple[TestClient, FakeCommunityAccountService]:
             FEATURE_COMMUNITY_MEMBERS="BETA",
             FEATURE_PROFILE_REPORTING="BETA",
             FEATURE_COMMUNITY_NOTIFICATIONS="BETA",
+            FEATURE_HCR2_ACCOUNT_LINKING="BETA",
+            FEATURE_COMMUNITY_BADGES="BETA",
+            FEATURE_COMMUNITY_XP="BETA",
         )
     )
 
@@ -1129,6 +1148,8 @@ def test_auth_status_sends_features_and_no_beta_for_logged_out() -> None:
             "profile_reporting": "BETA",
             "community_notifications": "BETA",
             "hcr2_account_linking": "BETA",
+            "community_badges": "BETA",
+            "community_xp": "BETA",
         },
     }
 

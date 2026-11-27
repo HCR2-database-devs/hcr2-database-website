@@ -133,6 +133,8 @@ API_PROFILE_VISIBILITY_FLAGS: tuple[str, ...] = (
     "show_favorite_map",
     "show_discord_username",
     "show_discord_avatar",
+    "show_badges",
+    "show_xp",
 )
 
 
@@ -247,6 +249,8 @@ class CommunityAccountService:
             show_discord_username=bool(payload.show_discord_username),
             show_discord_avatar=bool(payload.show_discord_avatar),
             show_hcr2_player_name=bool(payload.show_hcr2_player_name),
+            show_badges=bool(payload.show_badges),
+            show_xp=bool(payload.show_xp),
         )
 
     def upload_banner(
@@ -385,7 +389,9 @@ def _public_profile(account: dict[str, Any], is_owner: bool) -> dict[str, Any]:
         "show_favorite_map": account["show_favorite_map"],
         "show_discord_username": account["show_discord_username"],
         "show_discord_avatar": account["show_discord_avatar"],
-        "show_hcr2_player_name": bool(account.get("show_hcr2_player_name", True)),
+        "show_hcr2_player_name": show_hcr2,
+        "show_badges": bool(account.get("show_badges", True)),
+        "show_xp": bool(account.get("show_xp", False)),
         # Phase 4. Only ever the name of the account this profile linked, not a
         # claim about who set any historical record that happens to match it.
         "hcr2_player_name": (

@@ -25,6 +25,8 @@ def test_settings_feature_flags_default_to_enabled() -> None:
     assert settings.feature_community_members == "ENABLED"
     assert settings.feature_profile_reporting == "ENABLED"
     assert settings.feature_community_notifications == "ENABLED"
+    assert settings.feature_community_badges == "ENABLED"
+    assert settings.feature_community_xp == "ENABLED"
 
 
 def test_settings_profile_cooldowns_default_to_seven_days() -> None:

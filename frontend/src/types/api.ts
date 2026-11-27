@@ -23,11 +23,143 @@ export type CommunityAccount = {
   show_discord_username: boolean;
   show_discord_avatar: boolean;
   show_hcr2_player_name: boolean;
+  show_badges: boolean;
+  show_xp: boolean;
   admin_disabled: boolean;
   banner_updated_at?: string | null;
   is_owner?: boolean;
   hcr2_player_name?: string | null;
   hcr2_link_verified_at?: string | null;
+  hcr2_records?: CommunityHcr2Record[];
+  hcr2_beaten_record_count?: number;
+  badges?: BadgeProfileResponse;
+  progression?: ProgressionSummary;
+};
+
+export type BadgeCategory = {
+  id: number;
+  identifier: string;
+  name: string;
+  description?: string | null;
+  sort_order: number;
+  enabled?: boolean;
+  badge_count?: number;
+};
+
+export type BadgeCatalogItem = {
+  id: number;
+  identifier: string;
+  category: Pick<BadgeCategory, "id" | "identifier" | "name">;
+  name: string;
+  description: string | null;
+  icon_url: string | null;
+  badge_type: string;
+  award_method: "automatic" | "manual";
+  rarity: string;
+  hidden_until_unlocked: boolean;
+  featureable: boolean;
+  revocable: boolean;
+  permanent: boolean;
+  sort_order: number;
+  unlocked: boolean;
+  awarded_at?: string | null;
+  public_reason?: string | null;
+  can_earn: boolean;
+  requirement_type: string | null;
+  progress: { current: number; target: number; percent: number } | null;
+};
+
+export type BadgeCatalogResponse = {
+  badges: BadgeCatalogItem[];
+  count: number;
+  categories: BadgeCategory[];
+};
+
+export type UserBadge = {
+  id: number;
+  badge_id: number;
+  badge_identifier: string;
+  badge_name: string;
+  icon_path: string | null;
+  rarity: string;
+  awarded_at: string;
+  source: string;
+  public_reason: string | null;
+  featureable: boolean;
+  active: boolean;
+};
+
+export type FeaturedBadge = UserBadge & {
+  position: number;
+};
+
+export type BadgeProfileResponse = {
+  badges: UserBadge[];
+  featured: FeaturedBadge[];
+  count: number;
+};
+
+export type BadgeHistoryEntry = {
+  id: number;
+  badge_id: number;
+  badge_name: string;
+  community_user_id: number;
+  action: string;
+  actor: string | null;
+  reason: string | null;
+  event_key: string;
+  created_at: string;
+};
+
+export type BadgeHistoryResponse = {
+  history: BadgeHistoryEntry[];
+  count: number;
+  limit: number;
+  offset: number;
+};
+
+export type ProgressionSummary = {
+  total_xp: number;
+  level: number;
+  current_level_xp: number;
+  next_level_xp: number;
+  xp_to_next: number;
+  progress_percent: number;
+};
+
+export type XpTransaction = {
+  id: number;
+  amount: number;
+  event_type: string;
+  event_key: string;
+  reason: string;
+  actor: string | null;
+  created_at: string;
+};
+
+export type XpTransactionResponse = {
+  transactions: XpTransaction[];
+  count: number;
+  limit: number;
+  offset: number;
+};
+
+export type CommunityHcr2Record = {
+  idRecord: number;
+  idMap?: number | null;
+  idVehicle?: number | null;
+  idPlayer?: number | null;
+  distance: number;
+  current: number;
+  questionable?: number | null;
+  isMythic?: boolean;
+  questionable_reason?: string | null;
+  map_name?: string | null;
+  vehicle_name?: string | null;
+  player_name?: string | null;
+  player_country?: string | null;
+  tuning_parts?: string | null;
+  echoAffectedPart?: string | null;
 };
 
 export type CommunityProfileUpdate = {
@@ -43,6 +175,8 @@ export type CommunityProfileUpdate = {
   show_discord_username?: boolean;
   show_discord_avatar?: boolean;
   show_hcr2_player_name?: boolean;
+  show_badges?: boolean;
+  show_xp?: boolean;
 };
 
 export type AdminProfileUpdate = CommunityProfileUpdate & {
@@ -202,7 +336,9 @@ export type FeatureName =
   | "community_members"
   | "profile_reporting"
   | "community_notifications"
-  | "hcr2_account_linking";
+  | "hcr2_account_linking"
+  | "community_badges"
+  | "community_xp";
 
 export type FeatureState = "DISABLED" | "BETA" | "ENABLED";
 

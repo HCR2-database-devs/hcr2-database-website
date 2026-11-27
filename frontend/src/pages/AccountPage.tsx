@@ -1,12 +1,15 @@
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 
 import { CopyProfileLinkButton } from "../components/CopyProfileLinkButton";
 import { LinkedHcr2AccountSection } from "../components/hcr2Link/LinkedHcr2AccountSection";
 import { ProfileSettingsSection } from "../components/ProfileSettingsSection";
+import { ProgressionSummaryCard } from "../components/ProgressionSummaryCard";
 import { UserAvatar } from "../components/UserAvatar";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { useCanUseFeature } from "../lib/features";
 import { formatMemberSince } from "../lib/format";
+import { getMemberBadges, getOwnProgression } from "../services/badges";
 import { communityAvatar, communityDisplayName, discordAvatarUrl } from "../services/community";
 
 export function AccountPage() {
@@ -14,6 +17,20 @@ export function AccountPage() {
   const canViewProfile = useCanUseFeature("community_profiles");
   const canCustomizeProfile = useCanUseFeature("profile_customization");
   const canLinkHcr2Account = useCanUseFeature("hcr2_account_linking");
+  const canUseBadges = useCanUseFeature("community_badges");
+  const canUseXp = useCanUseFeature("community_xp");
+  const progressionQuery = useQuery({
+    queryKey: ["progression", "me"],
+    queryFn: getOwnProgression,
+    enabled: authStatus?.logged === true && canUseXp,
+    retry: false
+  });
+  const badgesQuery = useQuery({
+    queryKey: ["badges", "profile", authStatus?.community?.id],
+    queryFn: () => getMemberBadges(Number(authStatus?.community?.id)),
+    enabled: authStatus?.logged === true && canUseBadges && Boolean(authStatus?.community?.id),
+    retry: false
+  });
 
   if (isLoading) {
     return (
@@ -123,6 +140,28 @@ export function AccountPage() {
           </div>
         )}
       </div>
+
+      {(canUseBadges || canUseXp) && community && !needsOnboarding && (
+        <div className="account-card account-progression">
+          <h2>Community progression</h2>
+          <div className="account-progression__grid">
+            {canUseXp && progressionQuery.data && (
+              <ProgressionSummaryCard progression={progressionQuery.data} />
+            )}
+            {canUseBadges && badgesQuery.data && (
+              <div className="account-progression__badges">
+                <div>
+                  <strong>{badgesQuery.data.count}</strong>
+                  <span>badges unlocked</span>
+                </div>
+                <Link className="button" to="/badges">
+                  Open badge collection
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {community && !needsOnboarding && canCustomizeProfile && (
         <ProfileSettingsSection key={community.id} profile={community} />

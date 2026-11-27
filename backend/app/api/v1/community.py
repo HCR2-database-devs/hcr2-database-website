@@ -5,11 +5,13 @@ from fastapi.responses import JSONResponse, Response
 
 from app.api.dependencies import (
     get_auth_service,
+    get_badge_service,
     get_community_account_service,
     get_community_moderation_service,
+    get_progression_service,
 )
 from app.core.config import Settings, get_settings
-from app.core.features import can_use_feature
+from app.core.features import Feature, can_use_feature
 from app.schemas.community import (
     CommunityAccount,
     CommunityProfileUpdate,
@@ -17,11 +19,13 @@ from app.schemas.community import (
     UsernameUpdate,
 )
 from app.services.auth_service import AuthService
+from app.services.badge_service import BadgeService
 from app.services.community_account_service import (
     CommunityAccountService,
     CommunityProfileError,
 )
 from app.services.community_moderation_service import CommunityModerationService
+from app.services.progression_service import ProgressionService
 
 router = APIRouter(prefix="/community", tags=["community"])
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
@@ -33,6 +37,8 @@ CommunityModerationServiceDep = Annotated[
     CommunityModerationService,
     Depends(get_community_moderation_service),
 ]
+BadgeServiceDep = Annotated[BadgeService, Depends(get_badge_service)]
+ProgressionServiceDep = Annotated[ProgressionService, Depends(get_progression_service)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 
@@ -264,6 +270,8 @@ def community_profile(
     request: Request,
     auth_service: AuthServiceDep,
     community_service: CommunityAccountServiceDep,
+    badge_service: BadgeServiceDep,
+    progression_service: ProgressionServiceDep,
     settings: SettingsDep,
 ) -> Any:
     _require_feature(request, auth_service, settings, "community_profiles")
@@ -274,6 +282,15 @@ def community_profile(
     profile = community_service.get_public_profile(community_id, viewer_id)
     if profile is None:
         raise HTTPException(status_code=404, detail="Not found")
+    is_owner = bool(profile.get("is_owner"))
+    if can_use_feature(viewer_id, Feature.COMMUNITY_BADGES, settings) and (
+        is_owner or bool(profile.get("show_badges"))
+    ):
+        profile["badges"] = badge_service.get_profile_badges(community_id)
+    if can_use_feature(viewer_id, Feature.COMMUNITY_XP, settings) and (
+        is_owner or bool(profile.get("show_xp"))
+    ):
+        profile["progression"] = progression_service.get_summary(community_id)
     return profile
 
 

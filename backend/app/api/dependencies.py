@@ -4,17 +4,20 @@ from typing import Annotated
 from fastapi import Depends, Request
 
 from app.core.config import Settings, get_settings
+from app.repositories.badge import PostgresBadgeRepository
 from app.repositories.changelog import PostgresChangelogRepository
 from app.repositories.community_moderation import PostgresCommunityModerationRepository
 from app.repositories.community_notification import PostgresCommunityNotificationRepository
 from app.repositories.community_user import PostgresCommunityUserRepository
 from app.repositories.hcr2_link import PostgresHcr2LinkRepository
 from app.repositories.news import PostgresNewsRepository
+from app.repositories.progression import PostgresProgressionRepository
 from app.repositories.public_data import PostgresPublicDataRepository
 from app.services.activity_log_service import ActivityLogService
 from app.services.admin_service import AdminService
 from app.services.auth_service import AuthService
 from app.services.avatar_probe import avatar_reachable
+from app.services.badge_service import BadgeService
 from app.services.changelog_service import ChangelogService
 from app.services.community_account_service import CommunityAccountService
 from app.services.community_moderation_service import CommunityModerationService
@@ -22,6 +25,7 @@ from app.services.community_notification_service import CommunityNotificationSer
 from app.services.community_share_service import CommunityShareService
 from app.services.hcr2_link_service import Hcr2LinkService
 from app.services.news_service import NewsService
+from app.services.progression_service import ProgressionService
 from app.services.public_data_service import PublicDataService
 from app.services.public_submission_service import PublicSubmissionService
 from app.services.share_service import ShareService
@@ -77,6 +81,23 @@ def get_community_notification_service() -> CommunityNotificationService:
     return CommunityNotificationService(PostgresCommunityNotificationRepository())
 
 
+def get_progression_service(settings: SettingsDep) -> ProgressionService:
+    return ProgressionService(
+        repository=PostgresProgressionRepository(),
+        settings=settings,
+        notification_service=get_community_notification_service(),
+    )
+
+
+def get_badge_service(settings: SettingsDep) -> BadgeService:
+    return BadgeService(
+        repository=PostgresBadgeRepository(),
+        settings=settings,
+        progression_repository=PostgresProgressionRepository(),
+        notification_service=get_community_notification_service(),
+    )
+
+
 def get_community_moderation_service(settings: SettingsDep) -> CommunityModerationService:
     return CommunityModerationService(
         moderation_repository=PostgresCommunityModerationRepository(),
@@ -87,8 +108,11 @@ def get_community_moderation_service(settings: SettingsDep) -> CommunityModerati
     )
 
 
-def get_admin_service() -> AdminService:
-    return AdminService(activity_log=get_activity_log_service())
+def get_admin_service(settings: SettingsDep) -> AdminService:
+    return AdminService(
+        activity_log=get_activity_log_service(),
+        progression_service=get_progression_service(settings),
+    )
 
 
 def get_activity_log_service() -> ActivityLogService:
@@ -115,6 +139,7 @@ def get_hcr2_link_service(settings: SettingsDep) -> Hcr2LinkService:
         settings=settings,
         activity_log=get_activity_log_service(),
         notification_service=get_community_notification_service(),
+        progression_service=get_progression_service(settings),
     )
 
 

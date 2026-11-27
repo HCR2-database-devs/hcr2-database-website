@@ -3,6 +3,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { COUNTRIES } from "../lib/countries";
+import { useCanUseFeature } from "../lib/features";
 import {
   communityBannerUrl,
   compressBannerFile,
@@ -65,6 +66,10 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
   const [showDiscordUsername, setShowDiscordUsername] = useState(profile.show_discord_username);
   const [showDiscordAvatar, setShowDiscordAvatar] = useState(profile.show_discord_avatar);
   const [showHcr2PlayerName, setShowHcr2PlayerName] = useState(profile.show_hcr2_player_name);
+  const [showBadges, setShowBadges] = useState(profile.show_badges);
+  const [showXp, setShowXp] = useState(profile.show_xp);
+  const canUseBadges = useCanUseFeature("community_badges");
+  const canUseXp = useCanUseFeature("community_xp");
   const [newUsername, setNewUsername] = useState("");
   const [pendingBanner, setPendingBanner] = useState<File | null>(null);
   const [message, setMessage] = useState("");
@@ -213,7 +218,9 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
       show_favorite_map: showFavoriteMap,
       show_discord_username: showDiscordUsername,
       show_discord_avatar: showDiscordAvatar,
-      show_hcr2_player_name: showHcr2PlayerName
+      show_hcr2_player_name: showHcr2PlayerName,
+      show_badges: showBadges,
+      show_xp: showXp
     });
   }
 
@@ -390,6 +397,26 @@ export function ProfileSettingsSection({ profile }: ProfileSettingsSectionProps)
             />
             Show my linked HCR2 player name on my profile
           </label>
+          {canUseBadges && (
+            <label>
+              <input
+                type="checkbox"
+                checked={showBadges}
+                onChange={(event) => setShowBadges(event.target.checked)}
+              />
+              Show my badge showcase on my profile
+            </label>
+          )}
+          {canUseXp && (
+            <label>
+              <input
+                type="checkbox"
+                checked={showXp}
+                onChange={(event) => setShowXp(event.target.checked)}
+              />
+              Show my XP and level on my profile
+            </label>
+          )}
         </fieldset>
 
         <fieldset className="frontend-fieldset profile-settings-toggles">

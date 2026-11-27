@@ -8,8 +8,6 @@ export type PlannedFeature = {
 };
 
 export const PLANNED_FEATURES: PlannedFeature[] = [
-  { id: "achievements", label: "Achievements" },
-  { id: "xp", label: "XP system" },
   { id: "leaderboard", label: "Community leaderboard" },
   { id: "discord", label: "Discord integration" },
   { id: "friend-requests", label: "Friend requests" },

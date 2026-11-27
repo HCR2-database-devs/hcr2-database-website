@@ -11,6 +11,11 @@ from psycopg import sql
 
 from app.core.config import REPO_ROOT
 from app.core.network import canonicalize_client_ip
+from app.core.progression_rules import (
+    XP_RECORD_MILESTONE_REACHED,
+    XP_RECORD_VERIFIED,
+    XP_SUBMISSION_ACCEPTED,
+)
 from app.db.session import DatabaseConfig, open_connection
 from app.schemas.admin import (
     AddMapRequest,
@@ -33,6 +38,7 @@ from app.schemas.admin import (
 
 if TYPE_CHECKING:
     from app.services.activity_log_service import ActivityLogService
+    from app.services.progression_service import ProgressionService
 
 
 class AdminServiceError(Exception):
@@ -84,9 +90,11 @@ class AdminService:
         self,
         config: DatabaseConfig | None = None,
         activity_log: ActivityLogService | None = None,
+        progression_service: ProgressionService | None = None,
     ) -> None:
         self._config = config
         self._activity_log = activity_log
+        self._progression_service = progression_service
         self._maintenance_flag = REPO_ROOT / "MAINTENANCE"
         self._backups_dir = REPO_ROOT / "backups"
 
@@ -638,9 +646,23 @@ class AdminService:
         return "echo" in names or "amplifier" in names
 
     def approve_submission(self, submission_id: int, admin_username: str = "") -> dict[str, bool]:
+        submitter_id: int | None = None
+        first_submission = False
+        record_id: int | None = None
+        milestone_count: int | None = None
         with open_connection(self._config) as connection:
             with connection.cursor() as cursor:
                 submission = self._get_pending_submission(cursor, submission_id)
+                submitter_id = submission.get("submitter_community_user_id")
+                if submitter_id is not None:
+                    cursor.execute(
+                        """
+                        SELECT COUNT(*) AS count FROM pending_submission
+                        WHERE submitter_community_user_id = %(user_id)s AND status = 'approved'
+                        """,
+                        {"user_id": submitter_id},
+                    )
+                    first_submission = int(cursor.fetchone()["count"]) == 0
 
                 tuning_parts = _clean_text(submission.get("tuning_parts"))
                 is_mythic = self._parts_contain_mythic(tuning_parts) if tuning_parts else False
@@ -677,6 +699,18 @@ class AdminService:
                     ),
                 )
                 record_id = cursor.fetchone()["id_record"]
+                if submitter_id is not None:
+                    cursor.execute(
+                        """
+                        SELECT COUNT(*) AS count
+                        FROM world_record wr
+                        JOIN hcr2_account_link l
+                          ON l.player_id = wr.id_player AND l.status = 'active'
+                        WHERE l.community_user_id = %(user_id)s AND wr.current = 1
+                        """,
+                        {"user_id": submitter_id},
+                    )
+                    milestone_count = int(cursor.fetchone()["count"])
 
                 if tuning_parts:
                     part_ids = self._part_ids_from_names(cursor, tuning_parts)
@@ -703,6 +737,27 @@ class AdminService:
                     (submission_id,),
                 )
         self._log(admin_username, "approved", "submission", submission_id)
+        if self._progression_service is not None and submitter_id is not None:
+            self._progression_service.emit(
+                event_key=f"submission:{submission_id}",
+                community_user_id=int(submitter_id),
+                event_type=XP_SUBMISSION_ACCEPTED,
+                payload={"first_submission": first_submission},
+            )
+            if record_id is not None:
+                self._progression_service.emit(
+                    event_key=f"record:{record_id}",
+                    community_user_id=int(submitter_id),
+                    event_type=XP_RECORD_VERIFIED,
+                    payload={"record_id": record_id},
+                )
+            if milestone_count in {5, 10, 25, 50}:
+                self._progression_service.emit(
+                    event_key=f"record-milestone:{submitter_id}:{milestone_count}",
+                    community_user_id=int(submitter_id),
+                    event_type=XP_RECORD_MILESTONE_REACHED,
+                    payload={"count": milestone_count},
+                )
         return {"success": True}
 
     def reject_submission(self, submission_id: int, admin_username: str = "") -> dict[str, bool]:

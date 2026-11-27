@@ -5,6 +5,7 @@ import { App } from "./App";
 import { RootLayout } from "./RootLayout";
 
 const AccountPage = lazy(() => import("../pages/AccountPage").then((m) => ({ default: m.AccountPage })));
+const BadgesPage = lazy(() => import("../pages/BadgesPage").then((m) => ({ default: m.BadgesPage })));
 const AdminPage = lazy(() => import("../pages/AdminPage").then((m) => ({ default: m.AdminPage })));
 const ChangelogPage = lazy(() => import("../pages/ChangelogPage").then((m) => ({ default: m.ChangelogPage })));
 const CommunityPage = lazy(() => import("../pages/CommunityPage").then((m) => ({ default: m.CommunityPage })));
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <HomePage /> },
           { path: "account", element: <AccountPage /> },
+          { path: "badges", element: <BadgesPage /> },
           { path: "onboarding", element: <OnboardingPage /> },
           { path: "maps", element: <DataViewPage view="maps" /> },
           { path: "vehicles", element: <DataViewPage view="vehicles" /> },

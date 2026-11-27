@@ -15,7 +15,7 @@ import { useCanUseFeature } from "../lib/features";
 type NavItem = {
   label: string;
   to: string;
-  feature?: "community_members";
+  feature?: "community_members" | "community_badges";
 };
 
 type DropdownId = "browse" | "records" | "account";
@@ -29,6 +29,7 @@ const browseNavItems: NavItem[] = [
 
 const primaryNavItems: NavItem[] = [
   { label: "Community", to: "/community", feature: "community_members" },
+  { label: "Badges", to: "/badges", feature: "community_badges" },
   { label: "Stats", to: "/stats" }
 ];
 
@@ -44,6 +45,7 @@ export function Header() {
   const { data: authStatus } = useAuthStatus();
   const { isDark, toggleDarkMode } = useDarkMode();
   const canUseCommunity = useCanUseFeature("community_members");
+  const canUseBadges = useCanUseFeature("community_badges");
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [isNewsOpen, setNewsOpen] = useState(false);
   const [isSubmitOpen, setSubmitOpen] = useState(false);
@@ -133,6 +135,9 @@ export function Header() {
     if (item.feature === "community_members" && !canUseCommunity) {
       return null;
     }
+    if (item.feature === "community_badges" && !canUseBadges) {
+      return null;
+    }
     return (
       <NavLink
         key={item.to}
@@ -145,6 +150,9 @@ export function Header() {
         {item.label}
         {item.feature === "community_members" && (
           <BetaBadge feature="community_members" className="nav-beta-badge" />
+        )}
+        {item.feature === "community_badges" && (
+          <BetaBadge feature="community_badges" className="nav-beta-badge" />
         )}
       </NavLink>
     );

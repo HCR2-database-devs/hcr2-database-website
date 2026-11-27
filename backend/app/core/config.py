@@ -113,6 +113,14 @@ class Settings(BaseSettings):
         default="BETA",
         validation_alias="FEATURE_HCR2_ACCOUNT_LINKING",
     )
+    feature_community_badges: str = Field(
+        default="ENABLED",
+        validation_alias="FEATURE_COMMUNITY_BADGES",
+    )
+    feature_community_xp: str = Field(
+        default="ENABLED",
+        validation_alias="FEATURE_COMMUNITY_XP",
+    )
 
     username_change_cooldown_days: int = Field(
         default=7,
@@ -122,6 +130,28 @@ class Settings(BaseSettings):
         default=7,
         validation_alias="BANNER_CHANGE_COOLDOWN_DAYS",
     )
+
+    # Phase 5: community progression rewards and level curve.
+    xp_accepted_submission: int = Field(default=25, validation_alias="XP_ACCEPTED_SUBMISSION", ge=0)
+    xp_first_submission_bonus: int = Field(
+        default=25,
+        validation_alias="XP_FIRST_SUBMISSION_BONUS",
+        ge=0,
+    )
+    xp_record_verified: int = Field(default=100, validation_alias="XP_RECORD_VERIFIED", ge=0)
+    xp_record_milestone_bonus: int = Field(
+        default=25,
+        validation_alias="XP_RECORD_MILESTONE_BONUS",
+        ge=0,
+    )
+    xp_bug_report_confirmed: int = Field(
+        default=50,
+        validation_alias="XP_BUG_REPORT_CONFIRMED",
+        ge=0,
+    )
+    xp_helpful_report: int = Field(default=25, validation_alias="XP_HELPFUL_REPORT", ge=0)
+    xp_community_event: int = Field(default=50, validation_alias="XP_COMMUNITY_EVENT", ge=0)
+    xp_level_divisor: int = Field(default=100, validation_alias="XP_LEVEL_DIVISOR", ge=1)
 
     # Phase 4: HCR2 player account linking.
     #
@@ -238,6 +268,8 @@ class Settings(BaseSettings):
         "feature_profile_reporting",
         "feature_community_notifications",
         "feature_hcr2_account_linking",
+        "feature_community_badges",
+        "feature_community_xp",
         mode="before",
     )
     @classmethod

@@ -26,6 +26,8 @@ class CommunityAccount(BaseModel):
     show_discord_username: bool = False
     show_discord_avatar: bool = False
     show_hcr2_player_name: bool = True
+    show_badges: bool = True
+    show_xp: bool = False
     admin_disabled: bool = False
     banner_updated_at: datetime | None = None
 
@@ -43,6 +45,8 @@ class CommunityProfileUpdate(BaseModel):
     show_discord_username: bool = False
     show_discord_avatar: bool = False
     show_hcr2_player_name: bool = True
+    show_badges: bool = True
+    show_xp: bool = False
 
 
 class UsernameUpdate(BaseModel):

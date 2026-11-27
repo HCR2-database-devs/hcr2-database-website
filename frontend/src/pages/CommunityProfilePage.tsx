@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
+import { BadgeIcon } from "../components/BadgeIcon";
 import { BannerImage } from "../components/BannerImage";
 import { BetaBadge } from "../components/BetaBadge";
 import { BugReportNotice } from "../components/BugReportNotice";
@@ -9,6 +10,7 @@ import { CountryFlag } from "../components/CountryFlag";
 import { CopyProfileLinkButton } from "../components/CopyProfileLinkButton";
 import { FeatureGate } from "../components/FeatureGate";
 import { PlannedFeatures } from "../components/PlannedFeatures";
+import { ProgressionSummaryCard } from "../components/ProgressionSummaryCard";
 import { ReportProfileModal } from "../components/ReportProfileModal";
 import { RequireAuth } from "../components/RequireAuth";
 import { UserAvatar } from "../components/UserAvatar";
@@ -57,6 +59,8 @@ function CommunityProfileContent() {
   const communityId = Number(id);
   const { data: authStatus } = useAuthStatus();
   const canReportFeature = useCanUseFeature("profile_reporting");
+  const canUseBadges = useCanUseFeature("community_badges");
+  const canUseXp = useCanUseFeature("community_xp");
   const [reportOpen, setReportOpen] = useState(false);
   const [reported, setReported] = useState(false);
 
@@ -239,6 +243,80 @@ function CommunityProfileContent() {
               </div>
             )}
         </dl>
+
+        {canUseBadges && profile.badges && (
+          <section className="community-profile-badges" aria-labelledby="community-profile-badges-heading">
+            <div className="community-profile-section-head">
+              <h2 id="community-profile-badges-heading">Badges</h2>
+              {isOwner && (
+                <Link className="button-ghost" to="/badges">
+                  Manage badges
+                </Link>
+              )}
+            </div>
+            {profile.badges.featured.length > 0 ? (
+              <div className="community-profile-badges__list">
+                {profile.badges.featured.map((badge) => (
+                  <div key={badge.id} className="community-profile-badges__item" title={badge.badge_name}>
+                    <BadgeIcon name={badge.badge_name} src={badge.icon_path} size={48} />
+                    <span>{badge.badge_name}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="community-profile-details-empty">
+                {isOwner
+                  ? "You have not featured any badges yet."
+                  : "This member has not featured any badges yet."}
+              </p>
+            )}
+            {profile.badges.count > profile.badges.featured.length && (
+              <p className="frontend-muted">
+                +{profile.badges.count - profile.badges.featured.length} more unlocked
+              </p>
+            )}
+          </section>
+        )}
+
+        {canUseXp && profile.progression && (
+          <section className="community-profile-progression" aria-labelledby="community-profile-progression-heading">
+            <h2 id="community-profile-progression-heading">Community level</h2>
+            <ProgressionSummaryCard progression={profile.progression} compact />
+          </section>
+        )}
+
+        {showHcr2Identity ? (
+          <section
+            className="community-profile-records"
+            aria-labelledby="community-profile-records-heading"
+          >
+            <h2 id="community-profile-records-heading">World Records</h2>
+            {profile.hcr2_records && profile.hcr2_records.length > 0 ? (
+              <div className="community-record-widgets">
+                {profile.hcr2_records.map((record) => (
+                  <ProfileRecordWidget key={record.idRecord} record={record} />
+                ))}
+              </div>
+            ) : (
+              <p className="community-profile-details-empty">
+                {isOwner
+                  ? "No world records yet. Link your HCR2 name to start tracking them here."
+                  : "This member has no world records yet."}
+              </p>
+            )}
+            {profile.hcr2_beaten_record_count ? (
+              <p className="frontend-muted community-profile-beaten">
+                {isOwner
+                  ? `You previously held ${profile.hcr2_beaten_record_count} world record${
+                      profile.hcr2_beaten_record_count === 1 ? "" : "s"
+                    } that have since been beaten.`
+                  : `This member previously held ${profile.hcr2_beaten_record_count} world record${
+                      profile.hcr2_beaten_record_count === 1 ? "" : "s"
+                    } that have since been beaten.`}
+              </p>
+            ) : null}
+          </section>
+        ) : null}
 
         {isOwner && (
           <p className="community-profile-note">

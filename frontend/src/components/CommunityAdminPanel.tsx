@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AdminProfileModal } from "./AdminProfileModal";
+import { BadgeAdminPanel } from "./BadgeAdminPanel";
 import { Hcr2LinkAdminPanel } from "./Hcr2LinkAdminPanel";
 import { UserAvatar } from "./UserAvatar";
 import {
@@ -12,12 +13,13 @@ import {
   getAdminCommunityReports,
   getAdminUsernameAudit
 } from "../services/adminCommunity";
+import { useCanUseFeature } from "../lib/features";
 import { formatMemberSince } from "../lib/format";
 import { discordAvatarUrl } from "../services/community";
 
 const PAGE_SIZE = 20;
 
-type SubTab = "profiles" | "reports" | "usernameAudit" | "hcr2Links";
+type SubTab = "profiles" | "reports" | "usernameAudit" | "hcr2Links" | "badges";
 
 const REPORT_STATUSES = [
   { value: "open", label: "Open" },
@@ -27,6 +29,8 @@ const REPORT_STATUSES = [
 
 export function CommunityAdminPanel() {
   const queryClient = useQueryClient();
+  const canUseBadges = useCanUseFeature("community_badges");
+  const canUseXp = useCanUseFeature("community_xp");
   const [subTab, setSubTab] = useState<SubTab>("profiles");
   const [search, setSearch] = useState("");
   const [submittedSearch, setSubmittedSearch] = useState("");
@@ -130,6 +134,15 @@ export function CommunityAdminPanel() {
         >
           HCR2 account links
         </button>
+        {(canUseBadges || canUseXp) && (
+          <button
+            type="button"
+            className={`admin-subtab${subTab === "badges" ? " admin-subtab--active" : ""}`}
+            onClick={() => setSubTab("badges")}
+          >
+            Badges & XP
+          </button>
+        )}
       </nav>
 
       {subTab === "profiles" && (
@@ -379,6 +392,8 @@ export function CommunityAdminPanel() {
       )}
 
       {subTab === "hcr2Links" && <Hcr2LinkAdminPanel />}
+
+      {subTab === "badges" && (canUseBadges || canUseXp) && <BadgeAdminPanel />}
 
       {selectedProfileId != null && (
         <AdminProfileModal
