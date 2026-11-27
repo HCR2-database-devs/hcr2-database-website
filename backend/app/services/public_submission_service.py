@@ -65,7 +65,7 @@ class PublicSubmissionService:
         tuning_parts = self._normalize_tuning_parts(data.get("tuningParts"))
         echo_affected_part_id = self._optional_int(data.get("echo_affected_part_id"))
 
-        if not map_id or not vehicle_id or not distance or not player_name:
+        if not map_id or not vehicle_id or distance is None or not player_name:
             return self._error(
                 "Missing required fields (map, vehicle, distance, or player name).",
                 400,
@@ -84,8 +84,6 @@ class PublicSubmissionService:
                     "Submissions that are too fast are rejected.",
                     429,
                 )
-            if time_spent < 1000:
-                return self._error("Spam detected", 400)
 
         if distance <= 0:
             return self._error("Distance must be a positive number.", 400)

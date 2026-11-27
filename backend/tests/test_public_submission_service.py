@@ -35,6 +35,25 @@ def test_public_submission_rejects_distance_above_main_form_limit(
     assert result.payload == {"error": "Distance must be 1000000 or less."}
 
 
+def test_public_submission_rejects_zero_distance_with_specific_message(
+    service: PublicSubmissionService,
+) -> None:
+    result = service.submit(_valid_payload(distance="0"), "127.0.0.1")
+
+    assert result.status_code == 400
+    assert result.payload == {"error": "Distance must be a positive number."}
+
+
+def test_public_submission_rejects_too_fast_submission(service: PublicSubmissionService) -> None:
+    result = service.submit(
+        _valid_payload(form_load_time="1000", submission_time="1500"),
+        "127.0.0.1",
+    )
+
+    assert result.status_code == 429
+    assert "too fast" in str(result.payload["error"])
+
+
 def test_public_submission_rejects_player_name_above_main_form_limit(
     service: PublicSubmissionService,
 ) -> None:
