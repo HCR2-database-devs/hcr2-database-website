@@ -43,6 +43,8 @@ cd ..
 
 ```powershell
 cd frontend
+npm test
+npm run typecheck
 npm run build
 cd ..
 ```
