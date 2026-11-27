@@ -18,7 +18,6 @@ frontend/                React/Vite app, public assets and styles
 infra/dev/               Local PostgreSQL dev database
 scripts/dev/             Local setup, reset and smoke-test scripts
 docs/                    Current project notes and alignment report
-to_delete/               Deprecated PHP/HTML/JS stack kept only for later deletion
 ```
 
 ## Main Features
@@ -56,9 +55,4 @@ Local URLs:
 - [docs/beta-testing.md](docs/beta-testing.md) explains the feature flag and beta testing system.
 - [docs/README.md](docs/README.md) records the current stack, supported workflows and validation baseline.
 - [docs/main-refactor-alignment-report.md](docs/main-refactor-alignment-report.md) records the `main` alignment decisions.
-
-## Deprecated Stack
-
-The old PHP/HTML/CSS/vanilla JS stack has been moved to `to_delete/`.
-
-It is not part of the official runtime anymore. Keep it only as a short-term reference until the team is comfortable deleting it.
+- [docs/prerendering-design-note.md](docs/prerendering-design-note.md) evaluates prerendering and SSR options.

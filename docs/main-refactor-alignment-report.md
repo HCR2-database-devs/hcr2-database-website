@@ -16,7 +16,7 @@ Date: 2026-04-22
 - `main` consolidated duplicate logical tables into canonical `news` and `pending_submission`.
 - `main` replaced application-side `MAX(id)+1` allocation with PostgreSQL sequences and `RETURNING`.
 - `main` kept frontend-compatible camelCase JSON keys for public PHP endpoints.
-- The refactor branch kept FastAPI/React as the official runtime and the old PHP app isolated under `to_delete/`.
+- The refactor branch kept FastAPI/React as the official runtime; the old PHP app was removed from the repository after the alignment was complete.
 
 ## Changes Integrated Into The Refactor
 

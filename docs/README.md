@@ -8,7 +8,6 @@ This folder contains current project notes only. Historical pass-by-pass audit f
 - React + Vite + TypeScript frontend in `frontend/`
 - PostgreSQL as the only supported application database
 - Local PostgreSQL dev stack in `infra/dev/`
-- Legacy PHP/HTML/CSS/JS kept only under `to_delete/` as a temporary reference
 
 ## Canonical Database Shape
 
