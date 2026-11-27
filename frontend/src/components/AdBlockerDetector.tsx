@@ -4,6 +4,7 @@ import { useConsent } from "../hooks/useConsent";
 import { useDialogAccessibility } from "../hooks/useDialogAccessibility";
 import { subscribeAdsenseError } from "../lib/adsenseStatus";
 import { shouldSkipOptionalThirdParties } from "../lib/thirdParties";
+import { SUPPORT_URL } from "../lib/siteConfig";
 
 const CHECK_TIMEOUT_MS = 15_000;
 const DISMISSED_KEY = "hcr2-adblock-notice-dismissed";
@@ -75,7 +76,7 @@ export function AdBlockerDetector() {
       </div>
       <div className="adblock-notice__actions">
         <a
-          href="https://en.tipeee.com/hcr2-database"
+          href={SUPPORT_URL}
           target="_blank"
           rel="noopener noreferrer"
         >

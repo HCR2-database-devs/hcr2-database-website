@@ -8,6 +8,7 @@ import { UserAvatar } from "../components/UserAvatar";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { useCanUseFeature } from "../lib/features";
 import { formatMemberSince } from "../lib/format";
+import { AUTH_LOGIN_URL } from "../lib/siteConfig";
 import { communityAvatar, communityDisplayName, discordAvatarUrl } from "../services/community";
 
 export function AccountPage() {
@@ -37,7 +38,7 @@ export function AccountPage() {
             className="button"
             type="button"
             onClick={() => {
-              window.location.href = "https://auth.hcr2.xyz/login";
+              window.location.href = AUTH_LOGIN_URL;
             }}
           >
             Sign in with Discord

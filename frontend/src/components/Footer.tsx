@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import { REPO_URL } from "../lib/communityInfo";
+import { SUPPORT_URL } from "../lib/siteConfig";
 
 export function Footer() {
   return (
@@ -22,7 +23,7 @@ export function Footer() {
             GitHub
           </a>
           <a
-            href="https://en.tipeee.com/hcr2-database"
+            href={SUPPORT_URL}
             target="_blank"
             rel="noopener noreferrer"
           >

@@ -19,6 +19,20 @@ export default defineConfig(({ mode }) => {
         "@shared": sharedDir
       }
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes("node_modules/react-dom/") || id.includes("node_modules/react/") || id.includes("node_modules/scheduler/")) {
+              return "react-vendor";
+            }
+            if (id.includes("node_modules/react-router")) return "router-vendor";
+            if (id.includes("node_modules/@tanstack/")) return "query-vendor";
+            return undefined;
+          }
+        }
+      }
+    },
     server: {
       port: 5173,
       // Allow serving files from shared/, which lives outside this package.

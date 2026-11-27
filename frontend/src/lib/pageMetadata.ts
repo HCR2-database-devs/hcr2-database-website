@@ -1,5 +1,6 @@
+import { SITE_URL } from "./siteConfig";
+
 export const SITE_NAME = "HCR2 Adventure Database (unofficial)";
-export const SITE_URL = "https://hcr2.xyz";
 
 interface PageMetadata {
   title: string;

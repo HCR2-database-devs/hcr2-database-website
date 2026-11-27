@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { useAuthStatus } from "../hooks/useAuthStatus";
+import { AUTH_LOGIN_URL } from "../lib/siteConfig";
 
 type RequireAuthProps = {
   children: ReactNode;
@@ -24,7 +25,7 @@ export function RequireAuth({ children }: RequireAuthProps) {
             className="button"
             type="button"
             onClick={() => {
-              window.location.href = "https://auth.hcr2.xyz/login";
+              window.location.href = AUTH_LOGIN_URL;
             }}
           >
             Sign in with Discord

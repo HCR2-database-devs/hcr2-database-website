@@ -1,3 +1,5 @@
+import { REPO_URL } from "../lib/communityInfo";
+
 export function TermsOfServicePage() {
   return (
     <main className="standalone-page">
@@ -177,7 +179,7 @@ export function TermsOfServicePage() {
         <p>
           The website source code is available on{" "}
           <a
-            href="https://github.com/HCR2-database-devs/hcr2-database-website"
+            href={REPO_URL}
             target="_blank"
             rel="noopener noreferrer"
           >

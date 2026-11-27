@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { useCanUseFeature } from "../lib/features";
+import { AUTH_LOGIN_URL } from "../lib/siteConfig";
 import { setCommunityUsername } from "../services/community";
 
 const MIN_USERNAME_LENGTH = 3;
@@ -54,7 +55,7 @@ export function OnboardingPage() {
             className="button"
             type="button"
             onClick={() => {
-              window.location.href = "https://auth.hcr2.xyz/login";
+              window.location.href = AUTH_LOGIN_URL;
             }}
           >
             Sign in with Discord

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+import "../styles/stats.css";
+
 import { AdSlot } from "../components/AdSlot";
 import { BarChart, LineChart } from "../components/StatsCharts";
 import type { BarChartPoint, LineChartPoint } from "../components/StatsCharts";

@@ -1,0 +1,238 @@
+/* ------------------------------------------------------------------ */
+/*  Admin community panel                                              */
+/* ------------------------------------------------------------------ */
+
+.admin-community-panel {
+  padding: 0 var(--page-padding) 28px;
+}
+
+.admin-subtabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.admin-subtab {
+  align-items: center;
+  background: var(--surface);
+  border: 2px solid var(--outline);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 650;
+  gap: 8px;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
+}
+
+.admin-subtab--active {
+  background: var(--gloss), var(--button-gradient);
+  border-color: var(--accent-cyan);
+  color: #ffffff;
+}
+
+.admin-subtab-count {
+  background: var(--surface-hover);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  padding: 0 6px;
+}
+
+.admin-subtab--active .admin-subtab-count {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.admin-section {
+  margin-top: 14px;
+}
+
+.admin-profile-table {
+  border: 2px solid var(--outline);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.admin-profile-row {
+  align-items: center;
+  background: var(--surface);
+  border: none;
+  border-bottom: 1px solid var(--outline);
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  font-size: 14px;
+  gap: 10px;
+  padding: 10px 14px;
+  text-align: left;
+  width: 100%;
+}
+
+.admin-profile-row:last-child {
+  border-bottom: none;
+}
+
+.admin-profile-row:hover {
+  background: var(--surface-hover);
+}
+
+.admin-profile-row-name {
+  font-weight: 700;
+}
+
+.admin-profile-row-sub {
+  color: var(--muted-strong);
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.admin-profile-row-meta {
+  color: var(--muted-strong);
+  font-size: 12px;
+}
+
+.admin-open-reports {
+  color: var(--accent-orange);
+  font-weight: 700;
+}
+
+.admin-report-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-report-card {
+  background: var(--surface);
+  border: 2px solid var(--outline);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.admin-report-header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-report-title {
+  font-weight: 700;
+}
+
+.admin-report-meta {
+  color: var(--muted-strong);
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.admin-link-button {
+  background: none;
+  border: none;
+  border-bottom: 1px dashed var(--accent-cyan);
+  color: var(--accent-cyan);
+  cursor: pointer;
+  font-size: inherit;
+  font-weight: inherit;
+  padding: 0;
+}
+
+.admin-link-button:hover {
+  color: var(--text-strong);
+  border-bottom-style: solid;
+}
+
+.admin-report-reason {
+  color: var(--muted-strong);
+  font-size: 14px;
+  margin: 8px 0 0;
+  line-height: 1.35;
+}
+
+.admin-report-resolution {
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-style: italic;
+  margin: 6px 0 0;
+}
+
+.admin-report-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.admin-profile-summary {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.admin-profile-name {
+  font-weight: 700;
+  margin: 0;
+}
+
+.admin-profile-name-sub {
+  color: var(--muted-strong);
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.admin-profile-meta {
+  color: var(--muted-strong);
+  font-size: 12px;
+  margin: 0;
+}
+
+.admin-profile-banner {
+  aspect-ratio: 3.6 / 1;
+  object-fit: cover;
+  margin-bottom: 14px;
+  width: 100%;
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 640px) {
+  .community-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .community-filters select,
+  .community-filters input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .community-profile-head {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .community-profile-identity {
+    justify-content: center;
+  }
+
+  .community-profile-banner {
+    max-height: 140px;
+  }
+
+  .community-report-btn {
+    margin-left: 0;
+  }
+
+  .community-profile-actions {
+    justify-content: center;
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .admin-profile-row-meta:nth-child(n + 4) {
+    display: none;
+  }
+}
+

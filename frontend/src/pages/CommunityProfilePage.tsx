@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
+import "../styles/community.css";
 import { BannerImage } from "../components/BannerImage";
 import { BetaBadge } from "../components/BetaBadge";
 import { BugReportNotice } from "../components/BugReportNotice";

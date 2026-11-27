@@ -7,6 +7,7 @@ import { DonatorBanner } from "../components/DonatorBanner";
 import { PlannedFeatures } from "../components/PlannedFeatures";
 import { REPO_URL } from "../lib/communityInfo";
 import { asText, formatDistance, iconSlug, iconUrl, TuningPartsIcons } from "../lib/legacyDisplay";
+import { SUPPORT_URL } from "../lib/siteConfig";
 import { getHomeSummary } from "../services/publicData";
 import type { DataRow } from "../types/api";
 
@@ -430,7 +431,7 @@ function LinksSection() {
         </a>
         <a
           className="link-card feature-card"
-          href="https://www.tipeee.com/hcr2-database"
+          href={SUPPORT_URL}
           target="_blank"
           rel="noopener noreferrer"
         >

@@ -1,12 +1,15 @@
 ﻿import { FormEvent, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
+import "../styles/community.css";
+import "../styles/admin-community.css";
 import { ActivityLogPanel } from "../components/ActivityLogPanel";
 import { CommunityAdminPanel } from "../components/CommunityAdminPanel";
 import { FormattedText } from "../components/FormattedText";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { formatDateTime } from "../lib/format";
 import { formatDate, TuningPartWithIcon } from "../lib/legacyDisplay";
+import { AUTH_LOGIN_URL } from "../lib/siteConfig";
 import {
   addMap,
   addTuningPart,
@@ -858,7 +861,7 @@ export function AdminPage() {
         <div className="form-container">
           <h2>Admin</h2>
           <p className="frontend-error">You must be signed in with an authorized Discord account.</p>
-          <button type="button" onClick={() => (window.location.href = "https://auth.hcr2.xyz/login")}>
+          <button type="button" onClick={() => (window.location.href = AUTH_LOGIN_URL)}>
             Sign in with Discord
           </button>
         </div>

@@ -4,10 +4,11 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { COMMUNITY_LAUNCH_ANNOUNCEMENT_ID } from "../lib/communityInfo";
 import { useCanUseFeature } from "../lib/features";
+import { AUTH_LOGIN_URL } from "../lib/siteConfig";
 
 const storageKey = `announcement:${COMMUNITY_LAUNCH_ANNOUNCEMENT_ID}`;
 
-const LOGIN_URL = "https://auth.hcr2.xyz/login";
+const LOGIN_URL = AUTH_LOGIN_URL;
 
 function keyFor(loggedIn: boolean): string {
   return loggedIn ? `${storageKey}:logged-in` : `${storageKey}:logged-out`;

@@ -11,6 +11,7 @@ import { discordAvatarUrl } from "../services/community";
 import { useAuthStatus } from "../hooks/useAuthStatus";
 import { useDarkMode } from "../hooks/useDarkMode";
 import { useCanUseFeature } from "../lib/features";
+import { AUTH_LOGIN_URL } from "../lib/siteConfig";
 
 type NavItem = {
   label: string;
@@ -325,7 +326,7 @@ export function Header() {
                   type="button"
                   className="nav-action discord-btn"
                   onClick={() => {
-                    window.location.href = "https://auth.hcr2.xyz/login";
+                    window.location.href = AUTH_LOGIN_URL;
                   }}
                 >
                   <img className="discord-logo" src="/img/Discord-Symbol-Blurple.png" alt="" width={18} height={14} loading="lazy" decoding="async" />

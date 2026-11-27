@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
+import "../styles/community.css";
 import { BetaBadge } from "../components/BetaBadge";
 import { FeatureGate } from "../components/FeatureGate";
 import { MemberCard } from "../components/MemberCard";
