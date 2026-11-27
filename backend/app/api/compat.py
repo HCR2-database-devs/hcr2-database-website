@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.api.dependencies import (
+    ApiKeyAuthorizedDep,
     get_admin_service,
     get_auth_service,
     get_community_account_service,
@@ -111,10 +112,10 @@ def compatibility_load_data(
 def compatibility_api_records(
     request: Request,
     service: PublicDataServiceDep,
-    settings: SettingsDep,
+    authorized: ApiKeyAuthorizedDep,
 ) -> Any:
-    api_key = request.query_params.get("api_key") or request.headers.get("X-API-Key")
-    if not api_key or api_key not in settings.api_keys:
+    """Compatibility record search. Prefer ``X-API-Key`` over the deprecated query key."""
+    if not authorized:
         return JSONResponse({"error": "Unauthorized: invalid API key"}, status_code=401)
     try:
         return service.search_records(dict(request.query_params))

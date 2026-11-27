@@ -31,14 +31,17 @@ SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 
 def get_api_key(request: Request) -> str | None:
-    return request.query_params.get("api_key") or request.headers.get("X-API-Key")
+    """Return the API key, preferring the header over the deprecated query parameter."""
+    return request.headers.get("X-API-Key") or request.query_params.get("api_key")
 
 
 def api_key_authorized(request: Request, settings: SettingsDep) -> bool:
     """Return True when the caller supplied a key listed in ``API_KEYS``.
 
-    Comparison is constant-time. Returns a bool rather than raising so each
-    route can pick its own error shape.
+    ``X-API-Key`` is the supported method. The ``api_key`` query parameter is
+    deprecated because it leaks keys into access logs and referrers; it is kept
+    only for existing integrations. Comparison is constant-time. Returns a bool
+    rather than raising so each route can pick its own error shape.
     """
     api_key = get_api_key(request)
     if not api_key:

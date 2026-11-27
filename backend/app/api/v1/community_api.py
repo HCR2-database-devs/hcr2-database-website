@@ -40,8 +40,9 @@ def community_profile_api(
     any client using JSON.parse. Ids that are not 17-20 digits are rejected with
     422 rather than looked up.
 
-    Authenticate with the ``X-API-Key`` header or an ``api_key`` query parameter,
-    using a key from ``API_KEYS``.
+    Authenticate with the ``X-API-Key`` header, using a key from ``API_KEYS``.
+    The ``api_key`` query parameter is deprecated and kept only for existing
+    clients because it leaks keys into logs and referrers.
 
     The key grants trusted access, so every profile field is returned even when
     the member marked it private on their settings page. Each such field is

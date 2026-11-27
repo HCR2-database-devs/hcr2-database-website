@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from app.api.dependencies import (
+    ApiKeyAuthorizedDep,
     get_auth_service,
     get_changelog_service,
     get_community_account_service,
@@ -131,10 +132,14 @@ def get_home_summary(
 def search_records(
     request: Request,
     service: PublicDataServiceDep,
-    settings: SettingsDep,
+    authorized: ApiKeyAuthorizedDep,
 ) -> Any:
-    api_key = request.query_params.get("api_key") or request.headers.get("X-API-Key")
-    if not api_key or api_key not in settings.api_keys:
+    """Search records. Authenticate with ``X-API-Key``.
+
+    The ``api_key`` query parameter is deprecated and supported only for
+    existing clients.
+    """
+    if not authorized:
         return JSONResponse({"error": "Unauthorized: invalid API key"}, status_code=401)
     try:
         return service.search_records(dict(request.query_params))
