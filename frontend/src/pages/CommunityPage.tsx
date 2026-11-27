@@ -237,10 +237,10 @@ function CommunityPageContent() {
         </button>
       </form>
 
-      {membersQuery.isLoading && <p className="community-status">Loading community...</p>}
+      {membersQuery.isLoading && <p className="community-status" role="status">Loading community...</p>}
 
       {!membersQuery.isLoading && membersQuery.isError && (
-        <p className="frontend-error">Could not load the community. Please try again.</p>
+        <p className="frontend-error" role="alert">Could not load the community. Please try again.</p>
       )}
 
       {!membersQuery.isLoading && !membersQuery.isError && members.length === 0 && (

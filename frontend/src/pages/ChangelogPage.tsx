@@ -25,7 +25,7 @@ export function ChangelogPage() {
       </section>
 
       <section className="data-section">
-        {changelog.isLoading && <p className="loading-state">Loading changelog…</p>}
+        {changelog.isLoading && <p className="loading-state" role="status">Loading changelog…</p>}
         {changelog.isError && <p className="frontend-error">Failed to load changelog.</p>}
         {!changelog.isLoading && changelog.data?.changelog.length === 0 && (
           <p className="empty-state">No changes logged yet.</p>

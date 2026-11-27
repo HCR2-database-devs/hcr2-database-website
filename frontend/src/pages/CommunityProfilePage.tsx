@@ -181,7 +181,7 @@ function CommunityProfileContent() {
   if (profileQuery.isLoading) {
     return (
       <div className="page-container">
-        <p className="community-status">Loading profile...</p>
+        <p className="community-status" role="status">Loading profile...</p>
       </div>
     );
   }
@@ -189,7 +189,7 @@ function CommunityProfileContent() {
   if (profileQuery.isError || !profileQuery.data) {
     return (
       <div className="page-container">
-        <p className="frontend-error">
+        <p className="frontend-error" role="alert">
           This profile is not available. It may be set to private or the link may be wrong.
         </p>
         <Link className="button" to="/community">

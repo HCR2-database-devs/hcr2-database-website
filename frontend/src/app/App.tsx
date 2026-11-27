@@ -43,11 +43,14 @@ export function App() {
 
   return (
     <>
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
       <ConsentBanner />
       <AdBlockerDetector />
       <AdSenseLoader />
       <Header />
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <CommunityAnnouncement />
         <Outlet />
         <AdSlot slotId="9695011824" />
