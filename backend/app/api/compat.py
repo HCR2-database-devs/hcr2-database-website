@@ -15,6 +15,7 @@ from app.api.dependencies import (
 from app.api.responses import DATABASE_ERROR_TYPES, database_error_response, error_response
 from app.api.session_cookies import clear_session_cookies
 from app.api.submission import handle_public_submission
+from app.api.uploads import read_icon_upload
 from app.core.config import Settings, get_settings
 from app.schemas.admin import (
     AddMapRequest,
@@ -231,14 +232,7 @@ async def compatibility_assign_setup(
 
 
 async def _catalog_icon(data: dict[str, Any]) -> tuple[str | None, str | None, bytes | None]:
-    upload = data.get("icon")
-    if upload is None or not getattr(upload, "filename", None):
-        return None, None, None
-    return (
-        getattr(upload, "filename", None),
-        getattr(upload, "content_type", None),
-        await upload.read(),
-    )
+    return await read_icon_upload(data.get("icon"))
 
 
 @router.post("/php/add_map.php", response_model=None)

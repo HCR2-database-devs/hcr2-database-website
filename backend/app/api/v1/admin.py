@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from fastapi.responses import FileResponse, JSONResponse
 
 from app.api.dependencies import get_admin_service, get_auth_service
+from app.api.uploads import read_icon_upload
 from app.schemas.admin import (
     AddMapRequest,
     AddTuningPartRequest,
@@ -50,12 +51,6 @@ def _admin_status(request: Request, auth_service: AuthService) -> dict[str, Any]
 
 def _error_response(exc: AdminServiceError) -> JSONResponse:
     return JSONResponse({"error": str(exc)}, status_code=exc.status_code)
-
-
-async def _read_upload(upload: UploadFile | None) -> tuple[str | None, str | None, bytes | None]:
-    if upload is None or not upload.filename:
-        return None, None, None
-    return upload.filename, upload.content_type, await upload.read()
 
 
 @router.get("/records", response_model=None)
@@ -193,7 +188,7 @@ async def add_map_form(
 ) -> Any:
     admin = _admin_status(request, auth_service)
     username = str(admin.get("username") or "")
-    filename, content_type, content = await _read_upload(icon)
+    filename, content_type, content = await read_icon_upload(icon)
     try:
         service.validate_icon_upload(filename, content_type, content)
         result = service.add_map(AddMapRequest(mapName=map_name, special=special), username)
@@ -233,7 +228,7 @@ async def add_vehicle_form(
 ) -> Any:
     admin = _admin_status(request, auth_service)
     username = str(admin.get("username") or "")
-    filename, content_type, content = await _read_upload(icon)
+    filename, content_type, content = await read_icon_upload(icon)
     try:
         service.validate_icon_upload(filename, content_type, content)
         result = service.add_vehicle(AddVehicleRequest(vehicleName=vehicle_name), username)
@@ -273,7 +268,7 @@ async def add_tuning_part_form(
 ) -> Any:
     admin = _admin_status(request, auth_service)
     username = str(admin.get("username") or "")
-    filename, content_type, content = await _read_upload(icon)
+    filename, content_type, content = await read_icon_upload(icon)
     try:
         service.validate_icon_upload(filename, content_type, content)
         result = service.add_tuning_part(AddTuningPartRequest(partName=part_name), username)

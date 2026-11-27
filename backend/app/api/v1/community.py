@@ -9,6 +9,7 @@ from app.api.dependencies import (
     get_community_moderation_service,
 )
 from app.api.session_cookies import clear_session_cookies
+from app.api.uploads import read_banner_upload
 from app.core.config import Settings, get_settings
 from app.core.features import can_use_feature
 from app.schemas.community import (
@@ -79,12 +80,6 @@ def _require_community_access(
     """Require a signed-in user and return their community account (if any)."""
     status = _require_user(request, auth_service)
     return community_service.get_account(str(status["id"]))
-
-
-async def _read_upload(upload: UploadFile | None) -> tuple[str | None, str | None, bytes | None]:
-    if upload is None or not upload.filename:
-        return None, None, None
-    return upload.filename, upload.content_type, await upload.read()
 
 
 def _profile_error_response(exc: CommunityProfileError) -> JSONResponse:
@@ -223,7 +218,7 @@ async def upload_own_banner(
         auth_service,
         community_service.get_account(str(status["id"])),
     )
-    _, _, content = await _read_upload(banner)
+    _, _, content = await read_banner_upload(banner)
     try:
         account = community_service.upload_banner(
             str(status["id"]),
