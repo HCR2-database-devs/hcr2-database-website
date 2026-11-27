@@ -1,6 +1,6 @@
 # Project Documentation
 
-This folder contains current project notes only. Historical pass-by-pass audit files were removed after the FastAPI/React refactor was aligned with `main`.
+This folder contains current project notes only. Historical pass-by-pass audit files were removed after the FastAPI/React refactor was aligned with `main`. The current audit is [audit-2026-11.md](audit-2026-11.md).
 
 ## Current Stack
 

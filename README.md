@@ -56,3 +56,4 @@ Local URLs:
 - [docs/README.md](docs/README.md) records the current stack, supported workflows and validation baseline.
 - [docs/main-refactor-alignment-report.md](docs/main-refactor-alignment-report.md) records the `main` alignment decisions.
 - [docs/prerendering-design-note.md](docs/prerendering-design-note.md) evaluates prerendering and SSR options.
+- [docs/audit-2026-11.md](docs/audit-2026-11.md) records the November 2026 audit, fixes and open decisions.
