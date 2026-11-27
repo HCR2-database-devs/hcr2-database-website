@@ -525,12 +525,15 @@ def test_delete_me_deletes_account_and_clears_session() -> None:
     assert response.json() == {"success": True, "deleted": True}
     assert community.get_account("user-a") is None
     cookie_headers = response.headers.get_list("set-cookie")
-    assert len(cookie_headers) == 4
+    assert len(cookie_headers) == 2
     assert all("Max-Age=0" in header for header in cookie_headers)
+    assert all("Secure" in header for header in cookie_headers)
+    assert all("HttpOnly" in header for header in cookie_headers)
+    assert all("SameSite=lax" in header for header in cookie_headers)
     assert sum("WC_TOKEN=" in header for header in cookie_headers) == 2
-    assert sum("PHPSESSID=" in header for header in cookie_headers) == 2
-    assert sum("Domain=.hcr2.xyz" in header for header in cookie_headers) == 2
-    assert sum("Domain=" not in header for header in cookie_headers) == 2
+    assert not any("PHPSESSID=" in header for header in cookie_headers)
+    assert sum("Domain=.hcr2.xyz" in header for header in cookie_headers) == 1
+    assert sum("Domain=" not in header for header in cookie_headers) == 1
 
 
 def test_delete_me_is_safe_when_no_community_account_exists() -> None:

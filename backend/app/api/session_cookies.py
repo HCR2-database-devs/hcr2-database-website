@@ -1,6 +1,6 @@
 from starlette.responses import Response
 
-SESSION_COOKIE_NAMES = ("PHPSESSID", "WC_TOKEN")
+SESSION_COOKIE_NAMES = ("WC_TOKEN",)
 SESSION_COOKIE_DOMAINS: tuple[str | None, ...] = (None, ".hcr2.xyz")
 
 
