@@ -4022,72 +4022,58 @@ tbody tr:hover {
   }
 }
 
-/* ── Ad blocker bait (invisible to users, targeted by ad blockers) ── */
+/* ── Ad blocker notice (non-blocking) ── */
 
-/* ── Ad blocker overlay ── */
-
-.adblock-overlay {
+.adblock-notice {
   position: fixed;
-  inset: 0;
-  z-index: 99999;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  z-index: 95;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  background: var(--canvas, #11104f);
-  padding: 1rem;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  width: min(760px, calc(100% - 2rem));
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border, #38406b);
+  border-radius: 12px;
+  background: var(--card, #1b1b4b);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 35%);
 }
 
-.adblock-overlay__card {
-  max-width: 480px;
-  text-align: center;
-}
-
-.adblock-overlay__icon {
-  width: 64px;
-  height: 64px;
-  margin-bottom: 1.5rem;
-}
-
-.adblock-overlay__card h2 {
-  margin-bottom: 0.75rem;
+.adblock-notice h2 {
+  margin-bottom: 0.25rem;
   color: var(--text-strong, #ffffff);
+  font-size: 1rem;
 }
 
-.adblock-overlay__card p {
+.adblock-notice p {
   color: var(--muted, #bac8e8);
-  line-height: 1.6;
-  margin-bottom: 1.5rem;
+  line-height: 1.5;
 }
 
-.adblock-overlay__alt {
-  font-size: 0.9rem;
-  margin-bottom: 1.5rem;
+.adblock-notice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-.adblock-overlay__alt a {
+.adblock-notice__actions a {
   color: var(--accent, #36d961);
   text-decoration: underline;
 }
 
-.adblock-overlay__alt a:hover {
-  opacity: 0.8;
-}
-
-.adblock-overlay__refresh {
-  display: inline-block;
-  padding: 0.625rem 1.5rem;
-  border: none;
+.adblock-notice__actions button {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border, #38406b);
   border-radius: 8px;
   background: var(--button-gradient, linear-gradient(180deg, #98ff58 0%, #25ca4b 48%, #118735 100%));
   color: #fff;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.15s;
-}
-
-.adblock-overlay__refresh:hover {
-  opacity: 0.85;
 }
 
 .activity-log-toggle {

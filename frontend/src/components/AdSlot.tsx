@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
+import { useConsent } from "../hooks/useConsent";
+import { shouldSkipOptionalThirdParties } from "../lib/thirdParties";
+
 interface AdSlotProps {
   slotId: string;
   className?: string;
@@ -10,11 +13,13 @@ const AD_LOAD_CHECK_MS = 2000;
 export function AdSlot({ slotId, className }: AdSlotProps) {
   const enabled = import.meta.env.VITE_ADS_ENABLED === "true";
   const publisherId = import.meta.env.VITE_ADS_PUBLISHER_ID ?? "";
+  const { consent } = useConsent();
+  const allowed = enabled && Boolean(publisherId) && consent?.ads === true;
   const containerRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    if (!enabled || !publisherId || !containerRef.current) return;
+    if (!allowed || shouldSkipOptionalThirdParties() || !containerRef.current) return;
 
     const ins = containerRef.current.querySelector(`ins[data-ad-slot="${slotId}"]`);
     if (!ins) return;
@@ -32,9 +37,9 @@ export function AdSlot({ slotId, className }: AdSlotProps) {
     }, AD_LOAD_CHECK_MS);
 
     return () => clearTimeout(timer);
-  }, [enabled, publisherId, slotId]);
+  }, [allowed, slotId]);
 
-  if (!enabled || !publisherId || !visible) return null;
+  if (!allowed || shouldSkipOptionalThirdParties() || !visible) return null;
 
   return (
     <div className={`ad-container${className ? ` ${className}` : ""}`}>
